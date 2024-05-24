@@ -40,17 +40,46 @@ func NewShannonSDK(
 	}, nil
 }
 
-func (sdk *ShannonSDK) GetCurrentSession(
+func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	ctx context.Context,
 	appAddress string,
 	serviceId string,
-) (session *sessiontypes.Session, err error) {
+) (sessionSuppliers *SessionSuppliers, err error) {
 	height, err := sdk.blockClient.GetLatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return sdk.sessionClient.GetSession(ctx, appAddress, serviceId, height)
+	currentSession, err := sdk.sessionClient.GetSession(ctx, appAddress, serviceId, height)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionSuppliers = &SessionSuppliers{
+		Session:            currentSession,
+		SuppliersEndpoints: make([]*SingleSupplierEndpoint, 0),
+	}
+
+	for _, supplier := range currentSession.Suppliers {
+		for _, service := range supplier.Services {
+			if service.Service.Id != serviceId {
+				continue
+			}
+
+			for _, endpoint := range service.Endpoints {
+				sessionSuppliers.SuppliersEndpoints = append(
+					sessionSuppliers.SuppliersEndpoints,
+					&SingleSupplierEndpoint{
+						RpcType:         endpoint.RpcType,
+						Url:             endpoint.Url,
+						SupplierAddress: supplier.Address,
+					},
+				)
+			}
+		}
+	}
+
+	return sessionSuppliers, nil
 }
 
 func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
