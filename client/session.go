@@ -1,4 +1,4 @@
-package session
+package client
 
 import (
 	"context"
@@ -6,15 +6,17 @@ import (
 	"github.com/cosmos/gogoproto/grpc"
 	"github.com/pokt-network/poktroll/x/session/types"
 	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
+
+	"github.com/pokt-network/shannon-sdk/sdk"
 )
 
-var _ SessionClient = (*sessionClient)(nil)
+var _ sdk.SessionClient = (*sessionClient)(nil)
 
 type sessionClient struct {
 	queryClient types.QueryClient
 }
 
-func NewSessionClient(grpcConn grpc.ClientConn) SessionClient {
+func NewSessionClient(grpcConn grpc.ClientConn) sdk.SessionClient {
 	return &sessionClient{
 		queryClient: types.NewQueryClient(grpcConn),
 	}

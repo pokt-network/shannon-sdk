@@ -1,12 +1,14 @@
-package signer
+package client
 
-var _ Signer = (*signer)(nil)
+import "github.com/pokt-network/shannon-sdk/sdk"
+
+var _ sdk.Signer = (*signer)(nil)
 
 type signer struct {
 	privateKeyHex string
 }
 
-func NewSigner(privateKeyHex string) (Signer, error) {
+func NewSigner(privateKeyHex string) (sdk.Signer, error) {
 	return &signer{
 		privateKeyHex: privateKeyHex,
 	}, nil

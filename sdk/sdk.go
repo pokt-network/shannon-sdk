@@ -9,36 +9,27 @@ import (
 	ringtypes "github.com/athanorlabs/go-dleq/types"
 	"github.com/noot/ring-go"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
-	"github.com/pokt-network/poktroll/pkg/polylog"
 	"github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-
-	"github.com/pokt-network/shannon-sdk/account"
-	"github.com/pokt-network/shannon-sdk/application"
-	"github.com/pokt-network/shannon-sdk/block"
-	"github.com/pokt-network/shannon-sdk/relay"
-	"github.com/pokt-network/shannon-sdk/session"
-	"github.com/pokt-network/shannon-sdk/signer"
 )
 
 type shannonSDK struct {
-	applicationClient application.ApplicationClient
-	sessionClient     session.SessionClient
-	accountClient     account.AccountClient
-	blockClient       block.BlockClient
-	relayClient       relay.RelayClient
-	signer            signer.Signer
+	applicationClient ApplicationClient
+	sessionClient     SessionClient
+	accountClient     AccountClient
+	blockClient       BlockClient
+	relayClient       RelayClient
+	signer            Signer
 }
 
 func NewShannonSDK(
-	applicationClient application.ApplicationClient,
-	sessionClient session.SessionClient,
-	accountClient account.AccountClient,
-	blockClient block.BlockClient,
-	relayClient relay.RelayClient,
-	logger polylog.Logger,
-	signer signer.Signer,
-) *shannonSDK {
+	applicationClient ApplicationClient,
+	sessionClient SessionClient,
+	accountClient AccountClient,
+	blockClient BlockClient,
+	relayClient RelayClient,
+	signer Signer,
+) (*shannonSDK, error) {
 	return &shannonSDK{
 		applicationClient: applicationClient,
 		sessionClient:     sessionClient,
@@ -46,7 +37,7 @@ func NewShannonSDK(
 		blockClient:       blockClient,
 		relayClient:       relayClient,
 		signer:            signer,
-	}
+	}, nil
 }
 
 func (sdk *shannonSDK) GetCurrentSession(

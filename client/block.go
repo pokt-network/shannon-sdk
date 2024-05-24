@@ -1,19 +1,21 @@
-package block
+package client
 
 import (
 	"context"
 
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
+
+	"github.com/pokt-network/shannon-sdk/sdk"
 )
 
-var _ BlockClient = (*blockClient)(nil)
+var _ sdk.BlockClient = (*blockClient)(nil)
 
 type blockClient struct {
 	blockQueryClient *rpchttp.HTTP
 }
 
-func NewBlockClient(queryNodeRPCUrl string) (BlockClient, error) {
+func NewBlockClient(queryNodeRPCUrl string) (sdk.BlockClient, error) {
 	blockQueryClient, err := sdkclient.NewClientFromNode(queryNodeRPCUrl)
 	if err != nil {
 		return nil, err

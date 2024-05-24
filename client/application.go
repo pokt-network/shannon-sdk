@@ -1,19 +1,21 @@
-package application
+package client
 
 import (
 	"context"
 
 	"github.com/cosmos/gogoproto/grpc"
 	"github.com/pokt-network/poktroll/x/application/types"
+
+	"github.com/pokt-network/shannon-sdk/sdk"
 )
 
-var _ ApplicationClient = (*applicationClient)(nil)
+var _ sdk.ApplicationClient = (*applicationClient)(nil)
 
 type applicationClient struct {
 	queryClient types.QueryClient
 }
 
-func NewApplicationClient(grpcConn grpc.ClientConn) (ApplicationClient, error) {
+func NewApplicationClient(grpcConn grpc.ClientConn) (sdk.ApplicationClient, error) {
 	return &applicationClient{
 		queryClient: types.NewQueryClient(grpcConn),
 	}, nil

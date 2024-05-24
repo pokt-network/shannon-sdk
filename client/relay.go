@@ -1,4 +1,4 @@
-package relay
+package client
 
 import (
 	"bytes"
@@ -6,15 +6,17 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/pokt-network/shannon-sdk/sdk"
 )
 
-var _ RelayClient = (*relayClient)(nil)
+var _ sdk.RelayClient = (*relayClient)(nil)
 
 type relayClient struct {
 	httpClient *http.Client
 }
 
-func NewRelayClient() (RelayClient, error) {
+func NewRelayClient() (sdk.RelayClient, error) {
 	return &relayClient{
 		httpClient: http.DefaultClient,
 	}, nil

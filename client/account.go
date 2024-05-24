@@ -1,4 +1,4 @@
-package account
+package client
 
 import (
 	"context"
@@ -9,10 +9,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	accounttypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	grpc "github.com/cosmos/gogoproto/grpc"
+
+	"github.com/pokt-network/shannon-sdk/sdk"
 )
 
 var (
-	_          AccountClient = (*accountClient)(nil)
+	_          sdk.AccountClient = (*accountClient)(nil)
 	queryCodec *codec.ProtoCodec
 )
 
@@ -26,7 +28,7 @@ type accountClient struct {
 	queryClient accounttypes.QueryClient
 }
 
-func NewAccountClient(grpcConn grpc.ClientConn) (AccountClient, error) {
+func NewAccountClient(grpcConn grpc.ClientConn) (sdk.AccountClient, error) {
 	return &accountClient{
 		accounttypes.NewQueryClient(grpcConn),
 	}, nil
