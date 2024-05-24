@@ -13,7 +13,7 @@ import (
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 )
 
-type shannonSDK struct {
+type ShannonSDK struct {
 	applicationClient ApplicationClient
 	sessionClient     SessionClient
 	accountClient     AccountClient
@@ -29,8 +29,8 @@ func NewShannonSDK(
 	blockClient BlockClient,
 	relayClient RelayClient,
 	signer Signer,
-) (*shannonSDK, error) {
-	return &shannonSDK{
+) (*ShannonSDK, error) {
+	return &ShannonSDK{
 		applicationClient: applicationClient,
 		sessionClient:     sessionClient,
 		accountClient:     accountClient,
@@ -40,7 +40,7 @@ func NewShannonSDK(
 	}, nil
 }
 
-func (sdk *shannonSDK) GetCurrentSession(
+func (sdk *ShannonSDK) GetCurrentSession(
 	ctx context.Context,
 	appAddress string,
 	serviceId string,
@@ -53,7 +53,7 @@ func (sdk *shannonSDK) GetCurrentSession(
 	return sdk.sessionClient.GetSession(ctx, appAddress, serviceId, height)
 }
 
-func (sdk *shannonSDK) GetGatewayDelegatingApplications(
+func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
 	ctx context.Context,
 	gatewayAddress string,
 ) ([]string, error) {
@@ -78,7 +78,7 @@ func (sdk *shannonSDK) GetGatewayDelegatingApplications(
 	return gatewayDelegatingApplications, nil
 }
 
-func (sdk *shannonSDK) SendRelay(
+func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
 	supplierAddress string,
 	supplierUrl string,
@@ -136,7 +136,7 @@ func (sdk *shannonSDK) SendRelay(
 	return relayResponse, nil
 }
 
-func (sdk *shannonSDK) signRelayRequest(
+func (sdk *ShannonSDK) signRelayRequest(
 	ctx context.Context,
 	relayRequest *types.RelayRequest,
 ) (signature []byte, err error) {
@@ -170,7 +170,7 @@ func (sdk *shannonSDK) signRelayRequest(
 	return ringSig.Serialize()
 }
 
-func (sdk *shannonSDK) getRingForApplicationAddress(
+func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ctx context.Context,
 	appAddress string,
 ) (addressRing *ring.Ring, err error) {
