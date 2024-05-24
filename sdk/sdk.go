@@ -10,7 +10,6 @@ import (
 	"github.com/noot/ring-go"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/service/types"
-	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 )
 
 type ShannonSDK struct {
@@ -73,6 +72,7 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 						RpcType:         endpoint.RpcType,
 						Url:             endpoint.Url,
 						SupplierAddress: supplier.Address,
+						Header:          currentSession.Header,
 					},
 				)
 			}
@@ -109,20 +109,18 @@ func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
 
 func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
-	supplierAddress string,
-	supplierUrl string,
-	sessionHeader *sessiontypes.SessionHeader,
+	sessionSupplierEndpoint *SingleSupplierEndpoint,
 	requestBody []byte,
 	method string,
 	requestHeaders map[string][]string,
 ) (relayResponse *types.RelayResponse, err error) {
-	if err := sessionHeader.ValidateBasic(); err != nil {
+	if err := sessionSupplierEndpoint.Header.ValidateBasic(); err != nil {
 		return nil, err
 	}
 
 	relayRequest := &types.RelayRequest{
 		Meta: types.RelayRequestMetadata{
-			SessionHeader: sessionHeader,
+			SessionHeader: sessionSupplierEndpoint.Header,
 			Signature:     nil,
 		},
 		Payload: requestBody,
@@ -140,7 +138,12 @@ func (sdk *ShannonSDK) SendRelay(
 		return nil, err
 	}
 
-	relayResponseBz, err := sdk.relayClient.Do(ctx, supplierUrl, relayRequestBz, method, requestHeaders)
+	relayResponseBz, err := sdk.relayClient.Do(
+		ctx,
+		sessionSupplierEndpoint.Url,
+		relayRequestBz,
+		method, requestHeaders,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +156,10 @@ func (sdk *ShannonSDK) SendRelay(
 		return nil, err
 	}
 
-	supplierPubKey, err := sdk.accountClient.GetPubKeyFromAddress(ctx, supplierAddress)
+	supplierPubKey, err := sdk.accountClient.GetPubKeyFromAddress(
+		ctx,
+		sessionSupplierEndpoint.SupplierAddress,
+	)
 	if err != nil {
 		return nil, err
 	}

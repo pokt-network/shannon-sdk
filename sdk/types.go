@@ -24,4 +24,5 @@ type SingleSupplierEndpoint struct {
 	Url             string
 	RpcType         sharedtypes.RPCType
 	SupplierAddress string
+	Header          *sessiontypes.SessionHeader
 }
