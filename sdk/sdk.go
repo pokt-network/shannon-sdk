@@ -7,10 +7,17 @@ import (
 
 	ring_secp256k1 "github.com/athanorlabs/go-dleq/secp256k1"
 	ringtypes "github.com/athanorlabs/go-dleq/types"
+	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/noot/ring-go"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/service/types"
 )
+
+// init initializes the codec for the account module
+func init() {
+	reg := cdctypes.NewInterfaceRegistry()
+	types.RegisterInterfaces(reg)
+}
 
 // ShannonSDK is the main struct for the SDK that will be used by the service
 // to interact with the Shannon network

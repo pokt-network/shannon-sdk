@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/types"
 	accounttypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -20,7 +20,7 @@ var (
 
 // init initializes the codec for the account module
 func init() {
-	reg := codectypes.NewInterfaceRegistry()
+	reg := cdctypes.NewInterfaceRegistry()
 	accounttypes.RegisterInterfaces(reg)
 	queryCodec = codec.NewProtoCodec(reg)
 }
