@@ -12,6 +12,8 @@ import (
 	"github.com/pokt-network/poktroll/x/service/types"
 )
 
+// ShannonSDK is the main struct for the SDK that will be used by the service
+// to interact with the Shannon network
 type ShannonSDK struct {
 	applicationClient ApplicationClient
 	sessionClient     SessionClient
@@ -21,6 +23,9 @@ type ShannonSDK struct {
 	signer            Signer
 }
 
+// NewShannonSDK creates a new ShannonSDK instance with the given clients and signer.
+// The clients are used to interact with the Shannon network.
+// The signer is used to sign the relay requests.
 func NewShannonSDK(
 	applicationClient ApplicationClient,
 	sessionClient SessionClient,
@@ -39,17 +44,20 @@ func NewShannonSDK(
 	}, nil
 }
 
+// GetSessionSupplierEndpoints returns the current session with its assigned
+// suppliers and their corresponding endpoints for the given application address
+// and service id.
 func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	ctx context.Context,
 	appAddress string,
 	serviceId string,
 ) (sessionSuppliers *SessionSuppliers, err error) {
-	height, err := sdk.blockClient.GetLatestBlockHeight(ctx)
+	latestHeight, err := sdk.blockClient.GetLatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	currentSession, err := sdk.sessionClient.GetSession(ctx, appAddress, serviceId, height)
+	currentSession, err := sdk.sessionClient.GetSession(ctx, appAddress, serviceId, latestHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +90,8 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	return sessionSuppliers, nil
 }
 
+// GetGatewayDelegatingApplications returns the applications that are delegating
+// to the given gateway address.
 func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
 	ctx context.Context,
 	gatewayAddress string,
@@ -98,8 +108,11 @@ func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
 
 	gatewayDelegatingApplications := make([]string, 0)
 	for _, application := range allApplications {
+		// Get the gateways that are currently delegated to the application
+		// at the current height and check if the given gateway address is in the list.
 		gatewaysDelegatedTo := rings.GetRingAddressesAtBlock(&application, currentHeight)
 		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
+			// The application is delegating to the given gateway address, add it to the list.
 			gatewayDelegatingApplications = append(gatewayDelegatingApplications, application.Address)
 		}
 	}
@@ -107,6 +120,9 @@ func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
 	return gatewayDelegatingApplications, nil
 }
 
+// SendRelay signs and sends a relay request to the given supplier endpoint
+// with the given request body, method, and headers. It returns the relay
+// response after verifying the supplier's signature.
 func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
 	sessionSupplierEndpoint *SingleSupplierEndpoint,
@@ -138,7 +154,7 @@ func (sdk *ShannonSDK) SendRelay(
 		return nil, err
 	}
 
-	relayResponseBz, err := sdk.relayClient.Do(
+	relayResponseBz, err := sdk.relayClient.SendRequest(
 		ctx,
 		sessionSupplierEndpoint.Url,
 		relayRequestBz,
@@ -171,6 +187,8 @@ func (sdk *ShannonSDK) SendRelay(
 	return relayResponse, nil
 }
 
+// signRelayRequest signs the given relay request using the signer's private key
+// and the application's ring signature.
 func (sdk *ShannonSDK) signRelayRequest(
 	ctx context.Context,
 	relayRequest *types.RelayRequest,
@@ -205,6 +223,9 @@ func (sdk *ShannonSDK) signRelayRequest(
 	return ringSig.Serialize()
 }
 
+// getRingForApplicationAddress returns the ring for the given application address.
+// The ring is created using the application's public key and the public keys of
+// the gateways that are currently delegated from the application.
 func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ctx context.Context,
 	appAddress string,
@@ -214,16 +235,19 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 		return nil, err
 	}
 
-	height, err := sdk.blockClient.GetLatestBlockHeight(ctx)
+	latestHeight, err := sdk.blockClient.GetLatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	currentGatewayAddresses := rings.GetRingAddressesAtBlock(&application, height)
+	// Get the current gateway addresses that are delegated from the application
+	// at the latest height.
+	currentGatewayAddresses := rings.GetRingAddressesAtBlock(&application, latestHeight)
 
-	ringAddresses := make([]string, 0, 1+len(currentGatewayAddresses))
+	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, application.Address)
 
+	// If there are no current gateway addresses, use the application address as the ring address.
 	if len(currentGatewayAddresses) == 0 {
 		ringAddresses = append(ringAddresses, application.Address)
 	} else {
@@ -233,6 +257,7 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 	curve := ring_secp256k1.NewCurve()
 	ringPoints := make([]ringtypes.Point, 0, len(ringAddresses))
 
+	// Create a ring point for each address.
 	for _, address := range ringAddresses {
 		pubKey, err := sdk.accountClient.GetPubKeyFromAddress(ctx, address)
 		if err != nil {

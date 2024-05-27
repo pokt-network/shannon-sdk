@@ -11,16 +11,21 @@ import (
 
 var _ sdk.ApplicationClient = (*applicationClient)(nil)
 
+// applicationClient is an ApplicationClient implementation that uses the gRPC query client
+// of the application module.
+// It is a wrapper around the Poktroll generated application QueryClient.
 type applicationClient struct {
 	queryClient types.QueryClient
 }
 
+// NewApplicationClient creates a new application client with the provided gRPC connection.
 func NewApplicationClient(grpcConn grpc.ClientConn) (sdk.ApplicationClient, error) {
 	return &applicationClient{
 		queryClient: types.NewQueryClient(grpcConn),
 	}, nil
 }
 
+// GetAllApplications returns all applications in the network.
 func (ac *applicationClient) GetAllApplications(
 	ctx context.Context,
 ) ([]types.Application, error) {
@@ -33,6 +38,7 @@ func (ac *applicationClient) GetAllApplications(
 	return res.Applications, nil
 }
 
+// GetApplication returns the details of the application with the given address.
 func (ac *applicationClient) GetApplication(
 	ctx context.Context,
 	appAddress string,

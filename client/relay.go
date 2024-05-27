@@ -22,7 +22,7 @@ func NewRelayClient() (sdk.RelayClient, error) {
 	}, nil
 }
 
-func (r *relayClient) Do(
+func (r *relayClient) SendRequest(
 	ctx context.Context,
 	supplierUrlStr string,
 	relayRequestBz []byte,

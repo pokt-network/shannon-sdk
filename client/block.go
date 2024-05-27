@@ -11,10 +11,14 @@ import (
 
 var _ sdk.BlockClient = (*blockClient)(nil)
 
+// blockClient is a BlockClient implementation that uses the HTTP query client
+// of the CosmosSDK.
+// It is a wrapper around the CosmosSDK rpc HTTP client.
 type blockClient struct {
 	blockQueryClient *rpchttp.HTTP
 }
 
+// NewBlockClient creates a new block client with the provided RPC URL.
 func NewBlockClient(queryNodeRPCUrl string) (sdk.BlockClient, error) {
 	blockQueryClient, err := sdkclient.NewClientFromNode(queryNodeRPCUrl)
 	if err != nil {
@@ -26,6 +30,7 @@ func NewBlockClient(queryNodeRPCUrl string) (sdk.BlockClient, error) {
 	}, nil
 }
 
+// GetLatestBlockHeight returns the height of the latest committed block in the blockchain.
 func (bc *blockClient) GetLatestBlockHeight(ctx context.Context) (height int64, err error) {
 	block, err := bc.blockQueryClient.Block(ctx, nil)
 	if err != nil {

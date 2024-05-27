@@ -12,16 +12,21 @@ import (
 
 var _ sdk.SessionClient = (*sessionClient)(nil)
 
+// sessionClient is a SessionClient implementation that uses the gRPC query client
+// of the session module.
+// It is a wrapper around the Poktroll generated session QueryClient.
 type sessionClient struct {
 	queryClient types.QueryClient
 }
 
+// NewSessionClient creates a new session client with the provided gRPC connection.
 func NewSessionClient(grpcConn grpc.ClientConn) sdk.SessionClient {
 	return &sessionClient{
 		queryClient: types.NewQueryClient(grpcConn),
 	}
 }
 
+// GetSession returns the session with the given application address, service id and height.
 func (s *sessionClient) GetSession(
 	ctx context.Context,
 	appAddress string,

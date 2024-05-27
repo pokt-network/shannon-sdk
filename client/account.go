@@ -18,22 +18,29 @@ var (
 	queryCodec *codec.ProtoCodec
 )
 
+// init initializes the codec for the account module
 func init() {
 	reg := codectypes.NewInterfaceRegistry()
 	accounttypes.RegisterInterfaces(reg)
 	queryCodec = codec.NewProtoCodec(reg)
 }
 
+// accountClient is an AccountClient implementation that uses the gRPC query client
+// of the account module.
+// It is a wrapper around the CosmosSDK account QueryClient.
 type accountClient struct {
 	queryClient accounttypes.QueryClient
 }
 
+// NewAccountClient creates a new account client with the provided gRPC connection.
 func NewAccountClient(grpcConn grpc.ClientConn) (sdk.AccountClient, error) {
 	return &accountClient{
 		accounttypes.NewQueryClient(grpcConn),
 	}, nil
 }
 
+// GetPubKeyFromAddress returns the public key of the account with the given address.
+// It queries the account module using the gRPC query client.
 func (ac *accountClient) GetPubKeyFromAddress(
 	ctx context.Context,
 	address string,
