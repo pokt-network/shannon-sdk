@@ -14,7 +14,6 @@ var _ sdk.SessionClient = (*sessionClient)(nil)
 
 // sessionClient is a SessionClient implementation that uses the gRPC query client
 // of the session module.
-// It is a wrapper around the Poktroll generated session QueryClient.
 type sessionClient struct {
 	queryClient types.QueryClient
 }

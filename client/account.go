@@ -27,7 +27,6 @@ func init() {
 
 // accountClient is an AccountClient implementation that uses the gRPC query client
 // of the account module.
-// It is a wrapper around the CosmosSDK account QueryClient.
 type accountClient struct {
 	queryClient accounttypes.QueryClient
 }

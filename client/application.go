@@ -11,9 +11,8 @@ import (
 
 var _ sdk.ApplicationClient = (*applicationClient)(nil)
 
-// applicationClient is an ApplicationClient implementation that uses the gRPC query client
-// of the application module.
-// It is a wrapper around the Poktroll generated application QueryClient.
+// applicationClient is an ApplicationClient implementation that uses the gRPC
+// query client of the application module.
 type applicationClient struct {
 	queryClient types.QueryClient
 }

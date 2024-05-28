@@ -13,7 +13,6 @@ var _ sdk.BlockClient = (*blockClient)(nil)
 
 // blockClient is a BlockClient implementation that uses the HTTP query client
 // of the CosmosSDK.
-// It is a wrapper around the CosmosSDK rpc HTTP client.
 type blockClient struct {
 	blockQueryClient *rpchttp.HTTP
 }

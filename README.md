@@ -1,27 +1,47 @@
-# ShannonSDK
-ShannonSDK is a software development kit designed to facilitate interaction with
-the Poktroll network for both `Gateway` and sovereign `Application` developers.
-It streamlines the process of building protocol-correct `RelayRequests` and
-verifying the correctness of `RelayResponses` received from `Suppliers`' RelayMiners.
+# ShannonSDK <!-- omit in toc -->
+
+ShannonSDK is a Software Development Kit designed to facilitate interaction with
+the POKT Network for developers of both `Gateway`s and sovereign `Application`s.
+It streamlines the process of building POKT compatible `RelayRequests`, verifying
+`RelayResponses` from RelayMiners, `Suppliers` co-processors, and abstracting out
+other protocol-specific details.
+
+To learn more about any of the actors or components mentioned above, please refer
+to [dev.poktroll.com/category/actors](https://dev.poktroll.com/category/actors).
+
+- [Overview](#overview)
+- [Key Components](#key-components)
+- [Initialization](#initialization)
+- [Usage](#usage)
+  - [Get Session Supplier Endpoints](#get-session-supplier-endpoints)
+  - [Get Gateway Delegating Applications](#get-gateway-delegating-applications)
+  - [Send Relay](#send-relay)
+- [Implementation Details](#implementation-details)
+- [Error Handling](#error-handling)
+- [Dependencies implementation](#dependencies-implementation)
 
 ## Overview
+
 ShannonSDK encapsulates various clients and a signer necessary for interacting
 with the `Poktroll` network. It provides an intuitive interface to manage `Sessions`,
 and `RelayRequests`.
+
 This document outlines the key components and functionalities of the SDK, along
 with detailed usage instructions.
 
 ## Key Components
+
 The SDK consists of the following core components:
 
-* ApplicationClient: Handles interactions related to applications on the network.
-* SessionClient: Manages session-related operations.
-* AccountClient: Deals with account-related queries and operations.
-* BlockClient: Fetches information about blocks on the network.
-* RelayClient: Sends relay requests to the network.
-* Signer: Signs relay requests to ensure authenticity and integrity.
+- ApplicationClient: Handles interactions related to applications on the network.
+- SessionClient: Manages session-related operations.
+- AccountClient: Deals with account-related queries and operations.
+- BlockClient: Fetches information about blocks on the network.
+- RelayClient: Sends relay requests to the network.
+- Signer: Signs relay requests to ensure authenticity and integrity.
 
 ## Initialization
+
 To create a new instance of ShannonSDK, you need to provide implementations for
 the required clients and signer. Here is an example of how to initialize the SDK:
 
@@ -49,6 +69,7 @@ if err != nil {
 ## Usage
 
 ### Get Session Supplier Endpoints
+
 The `GetSessionSupplierEndpoints` method retrieves the current `Session` and its
 assigned `Suppliers`' endpoints for a given `Application` address and `serviceId`.
 
@@ -68,13 +89,14 @@ for _, endpoint := range sessionSuppliers.SuppliersEndpoints {
 ```
 
 ### Get Gateway Delegating Applications
-The `GetGatewayDelegatingApplications` method returns the `Application`s that are
+
+The `GetApplicationsDelegatingToGateway` method returns the `Application`s that are
 delegating to a given `Gateway` address.
 
 ```go
 gatewayAddress := "your-gateway-address"
 
-delegatingApps, err := sdk.GetGatewayDelegatingApplications(ctx, gatewayAddress)
+delegatingApps, err := sdk.GetApplicationsDelegatingToGateway(ctx, gatewayAddress)
 if err != nil {
     log.Fatalf("failed to get gateway delegating applications: %v", err)
 }
@@ -85,6 +107,7 @@ for _, app := range delegatingApps {
 ```
 
 ### Send Relay
+
 The `SendRelay` method signs and sends a `RelayRequest` to the given `Supplier` endpoint,
 and verifies the `Supplier`'s signature on the `RelayResponse`.
 
@@ -131,12 +154,14 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 ```
 
 ## Implementation Details
+
 Dependencies
 ShannonSDK relies on interfaces for its dependencies, which must be implemented
 by the developer. This allows flexibility in how network access is handled,
 whether data is cached, and other implementation specifics.
 
 ## Error Handling
+
 The SDK does not define any custom error types. It relies on the errors returned
 by its dependencies. This design choice simplifies error handling by ensuring
 that errors are propagated directly from the underlying implementations.

@@ -90,9 +90,9 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	return sessionSuppliers, nil
 }
 
-// GetGatewayDelegatingApplications returns the applications that are delegating
-// to the given gateway address.
-func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
+// GetApplicationsDelegatingToGateway returns the application addresses that are
+// delegating to the given gateway address.
+func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
 ) ([]string, error) {

@@ -12,6 +12,7 @@ import (
 
 var _ sdk.RelayClient = (*relayClient)(nil)
 
+
 type relayClient struct {
 	httpClient *http.Client
 }

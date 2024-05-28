@@ -4,7 +4,8 @@ import "github.com/pokt-network/shannon-sdk/sdk"
 
 var _ sdk.Signer = (*signer)(nil)
 
-// signer is a Signer simple implementation that uses a cached private key.
+// signer is a simple implementation of the cosmos Signer that uses an in-memory
+// cached private key.
 type signer struct {
 	privateKeyHex string
 }
