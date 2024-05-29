@@ -90,9 +90,9 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	return sessionSuppliers, nil
 }
 
-// GetApplicationsDelegatingToGateway returns the application addresses that are
-// delegating to the given gateway address.
-func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
+// GetGatewayDelegatingApplications returns the applications that are delegating
+// to the given gateway address.
+func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
 	ctx context.Context,
 	gatewayAddress string,
 ) ([]string, error) {
@@ -127,8 +127,6 @@ func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
 	sessionSupplierEndpoint *SingleSupplierEndpoint,
 	reuqestBz []byte,
-	method string,
-	requestHeaders map[string][]string,
 ) (relayResponse *types.RelayResponse, err error) {
 	if err := sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
 		return nil, err
@@ -248,7 +246,6 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ringAddresses = append(ringAddresses, application.Address)
 
 	// If there are no current gateway addresses, use the application address as the ring address.
-	// This is needed because at least two addresses are required to generate a ring signature.
 	if len(currentGatewayAddresses) == 0 {
 		ringAddresses = append(ringAddresses, application.Address)
 	} else {
