@@ -16,9 +16,10 @@ to [dev.poktroll.com/category/actors](https://dev.poktroll.com/category/actors).
   - [Get Session Supplier Endpoints](#get-session-supplier-endpoints)
   - [Get Gateway Delegating Applications](#get-gateway-delegating-applications)
   - [Send Relay](#send-relay)
-- [Implementation Details](#implementation-details)
-- [Error Handling](#error-handling)
-- [Dependencies implementation](#dependencies-implementation)
+- [ShannonSDK Internals](#shannonsdk-internals)
+  - [Implementation Details](#implementation-details)
+  - [Error Handling](#error-handling)
+  - [Dependencies implementation](#dependencies-implementation)
 
 ## Overview
 
@@ -33,16 +34,16 @@ with detailed usage instructions.
 
 The SDK consists of the following core components:
 
-- ApplicationClient: Handles interactions related to applications on the network.
-- SessionClient: Manages session-related operations.
-- AccountClient: Deals with account-related queries and operations.
-- BlockClient: Fetches information about blocks on the network.
-- RelayClient: Sends relay requests to the network.
-- Signer: Signs relay requests to ensure authenticity and integrity.
+- **ApplicationClient**: Handles interactions related to applications on the network.
+- **SessionClient**: Manages session-related operations.
+- **AccountClient**: Deals with account-related queries and operations.
+- **BlockClient**: Fetches information about blocks on the network.
+- **RelayClient**: Sends relay requests to the network.
+- **Signer**: Signs relay requests to ensure authenticity and integrity.
 
 ## Initialization
 
-To create a new instance of ShannonSDK, you need to provide implementations for
+To create a new instance of ShannonSDK, you need to provide the implementations for
 the required clients and signer. Here is an example of how to initialize the SDK:
 
 ```go
@@ -153,20 +154,21 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 }
 ```
 
-## Implementation Details
+## ShannonSDK Internals
 
-Dependencies
+### Implementation Details
+
 ShannonSDK relies on interfaces for its dependencies, which must be implemented
 by the developer. This allows flexibility in how network access is handled,
 whether data is cached, and other implementation specifics.
 
-## Error Handling
+### Error Handling
 
 The SDK does not define any custom error types. It relies on the errors returned
 by its dependencies. This design choice simplifies error handling by ensuring
 that errors are propagated directly from the underlying implementations.
 
-## Dependencies implementation
+### Dependencies implementation
 
 `./client` package contains simple implementations of the clients required by
 the SDK. These implementations are based on the `grpc` and `http` packages in
