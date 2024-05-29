@@ -249,6 +249,7 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ringAddresses = append(ringAddresses, application.Address)
 
 	// If there are no current gateway addresses, use the application address as the ring address.
+	// This is needed because at least two addresses are required to generate a ring signature.
 	if len(currentGatewayAddresses) == 0 {
 		ringAddresses = append(ringAddresses, application.Address)
 	} else {
