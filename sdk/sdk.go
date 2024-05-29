@@ -126,7 +126,7 @@ func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
 func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
 	sessionSupplierEndpoint *SingleSupplierEndpoint,
-	reuqestBz []byte,
+	requestBz []byte,
 ) (relayResponse *types.RelayResponse, err error) {
 	if err := sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (sdk *ShannonSDK) SendRelay(
 			SessionHeader: sessionSupplierEndpoint.SessionHeader,
 			Signature:     nil,
 		},
-		Payload: reuqestBz,
+		Payload: requestBz,
 	}
 
 	relayRequestSig, err := sdk.signRelayRequest(ctx, relayRequest)
