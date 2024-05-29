@@ -80,7 +80,7 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 						RpcType:         endpoint.RpcType,
 						Url:             endpoint.Url,
 						SupplierAddress: supplier.Address,
-						Header:          currentSession.Header,
+						SessionHeader:   currentSession.Header,
 					},
 				)
 			}
@@ -126,20 +126,20 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
 	sessionSupplierEndpoint *SingleSupplierEndpoint,
-	requestBody []byte,
+	reuqestBz []byte,
 	method string,
 	requestHeaders map[string][]string,
 ) (relayResponse *types.RelayResponse, err error) {
-	if err := sessionSupplierEndpoint.Header.ValidateBasic(); err != nil {
+	if err := sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
 		return nil, err
 	}
 
 	relayRequest := &types.RelayRequest{
 		Meta: types.RelayRequestMetadata{
-			SessionHeader: sessionSupplierEndpoint.Header,
+			SessionHeader: sessionSupplierEndpoint.SessionHeader,
 			Signature:     nil,
 		},
-		Payload: requestBody,
+		Payload: reuqestBz,
 	}
 
 	relayRequestSig, err := sdk.signRelayRequest(ctx, relayRequest)
@@ -158,7 +158,6 @@ func (sdk *ShannonSDK) SendRelay(
 		ctx,
 		sessionSupplierEndpoint.Url,
 		relayRequestBz,
-		method, requestHeaders,
 	)
 	if err != nil {
 		return nil, err

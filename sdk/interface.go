@@ -65,13 +65,10 @@ type RelayClient interface {
 	// SendRequest sends a relay request to the supplier at the given URL.
 	// It accepts the relay request bytes to avoid relying on protocol specific
 	// request objects such as http.Request.
-	// In the case of HTTP, the method is the HTTP method such as GET, POST etc...
 	SendRequest(
 		ctx context.Context,
 		supplierUrl string,
 		relayRequestBz []byte,
-		method string,
-		requestHeaders map[string][]string,
 	) (relayResponseBz []byte, err error)
 }
 
