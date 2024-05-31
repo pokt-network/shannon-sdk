@@ -6,6 +6,7 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
 )
 
 // AccountClient is the interface to interact with the on-chain account module.
@@ -41,6 +42,17 @@ type ApplicationClient interface {
 		ctx context.Context,
 		appAddress string,
 	) (apptypes.Application, error)
+}
+
+// SharedParamsClient is the interface to interact with the on-chain shared module.
+//
+// For example, it can be used to get the number of blocks per session.
+//
+// The implementations of this interface could leverage caching to avoid querying
+// the blockchain for the same data multiple times but need to invalidate it by
+// listening to the relevant events.
+type SharedParamsClient interface {
+	GetParams(ctx context.Context) (params *sharedtypes.Params, err error)
 }
 
 // BlockClient is the interface to interact with the on-chain block module.

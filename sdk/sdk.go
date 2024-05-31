@@ -19,6 +19,7 @@ type ShannonSDK struct {
 	applicationClient ApplicationClient
 	sessionClient     SessionClient
 	accountClient     AccountClient
+	paramsClient      SharedParamsClient
 	blockClient       BlockClient
 	relayClient       RelayClient
 	signer            Signer
@@ -31,6 +32,7 @@ func NewShannonSDK(
 	applicationClient ApplicationClient,
 	sessionClient SessionClient,
 	accountClient AccountClient,
+	paramsClient SharedParamsClient,
 	blockClient BlockClient,
 	relayClient RelayClient,
 	signer Signer,
@@ -39,6 +41,7 @@ func NewShannonSDK(
 		applicationClient: applicationClient,
 		sessionClient:     sessionClient,
 		accountClient:     accountClient,
+		paramsClient:      paramsClient,
 		blockClient:       blockClient,
 		relayClient:       relayClient,
 		signer:            signer,
@@ -107,11 +110,16 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 		return nil, err
 	}
 
+	params, err := sdk.paramsClient.GetParams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	gatewayDelegatingApplications := make([]string, 0)
 	for _, application := range allApplications {
 		// Get the gateways that are currently delegated to the application
 		// at the current height and check if the given gateway address is in the list.
-		gatewaysDelegatedTo := rings.GetRingAddressesAtBlock(&application, currentHeight)
+		gatewaysDelegatedTo := rings.GetRingAddressesAtBlock(params, &application, currentHeight)
 		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
 			// The application is delegating to the given gateway address, add it to the list.
 			gatewayDelegatingApplications = append(gatewayDelegatingApplications, application.Address)
@@ -239,9 +247,14 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 		return nil, err
 	}
 
+	params, err := sdk.paramsClient.GetParams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get the current gateway addresses that are delegated from the application
 	// at the latest height.
-	currentGatewayAddresses := rings.GetRingAddressesAtBlock(&application, latestHeight)
+	currentGatewayAddresses := rings.GetRingAddressesAtBlock(params, &application, latestHeight)
 
 	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, application.Address)
