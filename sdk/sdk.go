@@ -14,6 +14,7 @@ import (
 
 // ShannonSDK is the main struct for the SDK that will be used by the service
 // to interact with the Shannon network
+// TODO_TEST: Add unit tests for the ShannonSDK struct
 type ShannonSDK struct {
 	applicationClient ApplicationClient
 	sessionClient     SessionClient
@@ -90,9 +91,9 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	return sessionSuppliers, nil
 }
 
-// GetGatewayDelegatingApplications returns the applications that are delegating
-// to the given gateway address.
-func (sdk *ShannonSDK) GetGatewayDelegatingApplications(
+// GetApplicationsDelegatingToGateway returns the application addresses that are
+// delegating to the given gateway address.
+func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
 ) ([]string, error) {

@@ -1,0 +1,21 @@
+syntax = "proto3";
+package httpcodec;
+
+option go_package = "github.com/pokt-network/shannon-sdk/httpcodec";
+
+// HTTPRequest represents an HTTP request to be serialized and sent to a RelayMiner
+// within a RelayRequest payload
+message HTTPRequest {
+  string method = 1;
+  map<string, string> header = 2;
+  string url = 3;
+  bytes body = 4;
+}
+
+// HTTPResponse represents an HTTP response to be serialized and sent by a RelayMiner
+// within a RelayResponse payload
+message HTTPResponse {
+  int32 status_code = 1;
+  map<string, string> header = 2;
+  bytes body = 3;
+}
