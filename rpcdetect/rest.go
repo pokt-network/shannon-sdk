@@ -1,37 +1,65 @@
 package rpcdetect
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"net/http"
+
+	"google.golang.org/protobuf/proto"
+
+	"github.com/pokt-network/shannon-sdk/httpcodec"
 )
 
-func isREST(_ *http.Request) bool {
+var (
+	defaultRESTErrorReply   *httpcodec.HTTPResponse
+	defaultRESTErrorReplyBz []byte
+)
+
+func init() {
+	defaultRESTErrorReply = &httpcodec.HTTPResponse{
+		StatusCode: http.StatusInternalServerError,
+		Header:     map[string]string{contentTypeHeaderKey: "text/plain"},
+		Body:       []byte(`Internal error`),
+	}
+
+	var err error
+	defaultRESTErrorReplyBz, err = proto.Marshal(defaultRESTErrorReply)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func isREST(_ *httpcodec.HTTPRequest) bool {
 	return true
 }
 
-func formatRESTError(request *http.Request, err error, isInternal bool) *http.Response {
-	statusCode := http.StatusBadRequest
+func formatRESTError(
+	err error,
+	poktRequest *httpcodec.HTTPRequest,
+	isInternal bool,
+) (*httpcodec.HTTPResponse, []byte) {
 	errorMsg := err.Error()
-
+	statusCode := http.StatusBadRequest
 	if isInternal {
-		statusCode = http.StatusInternalServerError
 		errorMsg = "Internal error"
+		statusCode = http.StatusInternalServerError
 	}
 
-	if request.Header.Get("Content-Type") == "application/json" {
-		errorMsg = fmt.Sprintf(`{"error": "%s"}`, errorMsg)
+	contentTypeHeaderValue := poktRequest.Header[contentTypeHeaderKey]
+	responseBodyBz := []byte(errorMsg)
+	if contentTypeHeaderValue == "application/json" {
+		responseBodyBz = []byte(fmt.Sprintf(`{"error": "%s"}`, errorMsg))
 	}
 
-	headers := http.Header{}
-	headers.Set("Content-Type", request.Header.Get("Content-Type"))
-
-	bodyReader := io.NopCloser(bytes.NewReader([]byte(errorMsg)))
-
-	return &http.Response{
-		StatusCode: statusCode,
-		Header:     headers,
-		Body:       bodyReader,
+	poktResponse := &httpcodec.HTTPResponse{
+		StatusCode: int32(statusCode),
+		Header:     map[string]string{contentTypeHeaderKey: contentTypeHeaderValue},
+		Body:       responseBodyBz,
 	}
+
+	poktResponseBz, err := proto.Marshal(poktResponse)
+	if err != nil {
+		return defaultRESTErrorReply, defaultRESTErrorReplyBz
+	}
+
+	return poktResponse, poktResponseBz
 }

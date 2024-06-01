@@ -1,80 +1,106 @@
 package rpcdetect
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"net/http"
+
+	"google.golang.org/protobuf/proto"
+
+	"github.com/pokt-network/shannon-sdk/httpcodec"
 )
 
-var internalErrorPayload = []byte(`{"jsonrpc":"2.0","id":0,"error":{"code":-32000,"message":"Internal error","data":null}}`)
+var (
+	defaultJSONRPCErrorReply   *httpcodec.HTTPResponse
+	defaultJSONRPCErrorReplyBz []byte
+)
+
+func init() {
+	defaultJSONRPCErrorReply = &httpcodec.HTTPResponse{
+		StatusCode: http.StatusInternalServerError,
+		Header:     map[string]string{contentTypeHeaderKey: "application/json"},
+		Body:       []byte(`{"jsonrpc":"2.0","id":0,"error":{"code":-32000,"message":"Internal error","data":null}}`),
+	}
+
+	var err error
+	defaultJSONRPCErrorReplyBz, err = proto.Marshal(defaultJSONRPCErrorReply)
+	if err != nil {
+		panic(err)
+	}
+}
 
 type jsonRPCPayload struct {
 	Id      uint64 `json:"id"`
-	JsonRPC string `json:"jsonrpc"`
+	JSONRPC string `json:"jsonrpc"`
 	Method  string `json:"method"`
 }
 
-func isJSONRPC(request *http.Request) bool {
-	header := request.Header
-	if header.Get("Content-Type") != "application/json" {
+func isJSONRPC(poktRequest *httpcodec.HTTPRequest) bool {
+	if poktRequest.Header[contentTypeHeaderKey] != "application/json" {
 		return false
 	}
 
-	payload, err := readJSONRPCPayload(request)
+	payload, err := readJSONRPCPayload(poktRequest.Body)
 	if err != nil {
 		return false
 	}
 
-	if payload.Id == 0 || len(payload.JsonRPC) == 0 || len(payload.Method) == 0 {
+	if payload.Id == 0 || len(payload.JSONRPC) == 0 || len(payload.Method) == 0 {
 		return false
 	}
 
 	return true
 }
 
-func formatJSONRPCError(request *http.Request, err error, isInternal bool) *http.Response {
-	errStr := err.Error()
+func formatJSONRPCError(
+	err error,
+	poktRequestBz *httpcodec.HTTPRequest,
+	isInternal bool,
+) (*httpcodec.HTTPResponse, []byte) {
+	errorMsg := err.Error()
+	statusCode := http.StatusBadRequest
 	if isInternal {
-		errStr = "Internal error"
+		errorMsg = "Internal error"
+		statusCode = http.StatusInternalServerError
 	}
 
 	requestId := uint64(0)
-	payload, err := readJSONRPCPayload(request)
+	payload, err := readJSONRPCPayload(poktRequestBz.Body)
 	if err == nil {
 		requestId = payload.Id
 	}
 
-	errorReplayPayload := map[string]any{
+	errorReplyPayload := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      requestId,
 		"error": map[string]any{
 			"code":    -32000,
-			"message": errStr,
+			"message": errorMsg,
 			"data":    nil,
 		},
 	}
 
-	responseBody, err := json.Marshal(errorReplayPayload)
+	responseBodyBz, err := json.Marshal(errorReplyPayload)
 	if err != nil {
-		responseBody = internalErrorPayload
+		return defaultJSONRPCErrorReply, defaultJSONRPCErrorReplyBz
 	}
 
-	bodyReader := io.NopCloser(bytes.NewReader(responseBody))
+	poktResponse := &httpcodec.HTTPResponse{
+		StatusCode: int32(statusCode),
+		Header:     map[string]string{contentTypeHeaderKey: "application/json"},
+		Body:       responseBodyBz,
+	}
 
-	return &http.Response{Body: bodyReader}
+	responseBz, err := proto.Marshal(poktResponse)
+	if err != nil {
+		return defaultJSONRPCErrorReply, defaultJSONRPCErrorReplyBz
+	}
+
+	return poktResponse, responseBz
 }
 
-func readJSONRPCPayload(request *http.Request) (*jsonRPCPayload, error) {
-	payloadBz, err := io.ReadAll(request.Body)
-	request.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-	request.Body = io.NopCloser(bytes.NewReader(payloadBz))
-
+func readJSONRPCPayload(requestBodyBz []byte) (*jsonRPCPayload, error) {
 	var payload jsonRPCPayload
-	if err = json.Unmarshal(payloadBz, &payload); err != nil {
+	if err := json.Unmarshal(requestBodyBz, &payload); err != nil {
 		return nil, err
 	}
 
