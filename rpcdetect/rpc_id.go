@@ -29,15 +29,15 @@ func init() {
 	}
 }
 
-func GetRPCType(poktRequest *httpcodec.HTTPRequest) (rpcType sharedtypes.RPCType, err error) {
+func GetRPCType(poktRequest *httpcodec.HTTPRequest) sharedtypes.RPCType {
 	if isJSONRPC(poktRequest) {
-		return sharedtypes.RPCType_JSON_RPC, nil
+		return sharedtypes.RPCType_JSON_RPC
 	}
 	if isREST(poktRequest) {
-		return sharedtypes.RPCType_REST, nil
+		return sharedtypes.RPCType_REST
 	}
 
-	return sharedtypes.RPCType_UNKNOWN_RPC, nil
+	return sharedtypes.RPCType_UNKNOWN_RPC
 }
 
 func FormatError(
