@@ -1,0 +1,29 @@
+syntax = "proto3";
+package sdk.types;
+
+option go_package = "github.com/pokt-network/shannon-sdk/types";
+
+// POKTHTTPRequest represents an http.Request to be serialized and sent to a RelayMiner
+// by an Application/Gateway client within a RelayRequest payload.
+message POKTHTTPRequest {
+  string method = 1;
+  // Header is a map of keys to multiple values belonging to the same key used
+  // to group headers together, This is to avoid creating a new message type
+  // that represents a single header key-values messages. Since protobuf does not
+  // support `map<string, repeated string>`.
+  map<string, string> header = 2;
+  string url = 3;
+  bytes body_bz = 4;
+}
+
+// POKTHTTPResponse represents an http.Response to be serialized and sent by a RelayMiner
+// back to the Application/Gateway client within a RelayResponse payload.
+message POKTHTTPResponse {
+  uint32 status_code = 1;
+  // Header is a map of keys to multiple values belonging to the same key used
+  // to group headers together, This is to avoid creating a new message type
+  // that represents a header key-values message. Since protobuf does not
+  // support `map<string, repeated string>`.
+  map<string, string> header = 2;
+  bytes body_bz = 3;
+}

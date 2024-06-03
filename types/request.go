@@ -1,4 +1,4 @@
-package httpcodec
+package types
 
 import (
 	"bytes"
@@ -24,11 +24,11 @@ func SerializeHTTPRequest(request *http.Request) (body []byte, err error) {
 		headers[key] = strings.Join(values, ",")
 	}
 
-	httpRequest := &HTTPRequest{
+	httpRequest := &POKTHTTPRequest{
 		Method: request.Method,
 		Header: headers,
 		Url:    request.URL.String(),
-		Body:   requestBodyBz,
+		BodyBz: requestBodyBz,
 	}
 
 	return proto.Marshal(httpRequest)
@@ -37,7 +37,7 @@ func SerializeHTTPRequest(request *http.Request) (body []byte, err error) {
 // DeserializeHTTPRequest takes a byte slice and deserializes it into a
 // SerializableHTTPRequest object.
 func DeserializeHTTPRequest(requestBz []byte) (request *http.Request, err error) {
-	httpRequest := &HTTPRequest{}
+	httpRequest := &POKTHTTPRequest{}
 
 	if err := proto.Unmarshal(requestBz, httpRequest); err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func DeserializeHTTPRequest(requestBz []byte) (request *http.Request, err error)
 		Method: httpRequest.Method,
 		Header: headers,
 		URL:    requestUrl,
-		Body:   io.NopCloser(bytes.NewReader(httpRequest.Body)),
+		Body:   io.NopCloser(bytes.NewReader(httpRequest.BodyBz)),
 	}
 
 	return request, nil
