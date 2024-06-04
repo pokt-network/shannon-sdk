@@ -9,7 +9,9 @@ import (
 	ringtypes "github.com/athanorlabs/go-dleq/types"
 	"github.com/noot/ring-go"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
-	"github.com/pokt-network/poktroll/x/service/types"
+	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+
+	"github.com/pokt-network/shannon-sdk/types"
 )
 
 // ShannonSDK is the main struct for the SDK that will be used by the service
@@ -55,7 +57,7 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	ctx context.Context,
 	appAddress string,
 	serviceId string,
-) (sessionSuppliers *SessionSuppliers, err error) {
+) (sessionSuppliers *types.SessionSuppliers, err error) {
 	latestHeight, err := sdk.blockClient.GetLatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
@@ -66,9 +68,9 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 		return nil, err
 	}
 
-	sessionSuppliers = &SessionSuppliers{
+	sessionSuppliers = &types.SessionSuppliers{
 		Session:            currentSession,
-		SuppliersEndpoints: make([]*SingleSupplierEndpoint, 0),
+		SuppliersEndpoints: make([]*types.SingleSupplierEndpoint, 0),
 	}
 
 	for _, supplier := range currentSession.Suppliers {
@@ -80,7 +82,7 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 			for _, endpoint := range service.Endpoints {
 				sessionSuppliers.SuppliersEndpoints = append(
 					sessionSuppliers.SuppliersEndpoints,
-					&SingleSupplierEndpoint{
+					&types.SingleSupplierEndpoint{
 						RpcType:         endpoint.RpcType,
 						Url:             endpoint.Url,
 						SupplierAddress: supplier.Address,
@@ -134,15 +136,15 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 // response after verifying the supplier's signature.
 func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
-	sessionSupplierEndpoint *SingleSupplierEndpoint,
+	sessionSupplierEndpoint *types.SingleSupplierEndpoint,
 	requestBz []byte,
-) (relayResponse *types.RelayResponse, err error) {
+) (relayResponse *servicetypes.RelayResponse, err error) {
 	if err := sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
 		return nil, err
 	}
 
-	relayRequest := &types.RelayRequest{
-		Meta: types.RelayRequestMetadata{
+	relayRequest := &servicetypes.RelayRequest{
+		Meta: servicetypes.RelayRequestMetadata{
 			SessionHeader: sessionSupplierEndpoint.SessionHeader,
 			Signature:     nil,
 		},
@@ -170,7 +172,7 @@ func (sdk *ShannonSDK) SendRelay(
 		return nil, err
 	}
 
-	relayResponse = &types.RelayResponse{}
+	relayResponse = &servicetypes.RelayResponse{}
 	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err
 	}
@@ -198,7 +200,7 @@ func (sdk *ShannonSDK) SendRelay(
 // and the application's ring signature.
 func (sdk *ShannonSDK) signRelayRequest(
 	ctx context.Context,
-	relayRequest *types.RelayRequest,
+	relayRequest *servicetypes.RelayRequest,
 ) (signature []byte, err error) {
 	appAddress := relayRequest.GetMeta().SessionHeader.GetApplicationAddress()
 

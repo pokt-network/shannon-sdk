@@ -1,9 +1,8 @@
-package httpcodec
+package types
 
 import (
 	"io"
 	"net/http"
-	"strings"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -17,29 +16,32 @@ func SerializeHTTPRequest(request *http.Request) (body []byte, err error) {
 		return nil, err
 	}
 
-	headers := make(map[string]string)
+	headers := map[string]*Header{}
 	for key := range request.Header {
-		headers[key] = strings.Join(request.Header.Values(key), ",")
+		headers[key] = &Header{
+			Key:    key,
+			Values: request.Header.Values(key),
+		}
 	}
 
-	httpRequest := &HTTPRequest{
+	httpRequest := &POKTHTTPRequest{
 		Method: request.Method,
 		Header: headers,
 		Url:    request.URL.String(),
-		Body:   requestBodyBz,
+		BodyBz: requestBodyBz,
 	}
 
 	return proto.Marshal(httpRequest)
 }
 
 // DeserializeHTTPRequest takes a byte slice and deserializes it into a
-// SerializableHTTPRequest object.
-func DeserializeHTTPRequest(requestBz []byte) (request *HTTPRequest, err error) {
-	httpRequest := &HTTPRequest{}
+// POKTHTTPRequest object.
+func DeserializeHTTPRequest(requestBz []byte) (request *POKTHTTPRequest, err error) {
+	poktHTTPRequest := &POKTHTTPRequest{}
 
-	if err := proto.Unmarshal(requestBz, httpRequest); err != nil {
+	if err := proto.Unmarshal(requestBz, poktHTTPRequest); err != nil {
 		return nil, err
 	}
 
-	return httpRequest, nil
+	return poktHTTPRequest, nil
 }

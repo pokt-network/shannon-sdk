@@ -1,4 +1,4 @@
-package sdk
+package types
 
 import (
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
