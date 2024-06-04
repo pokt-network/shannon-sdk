@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -19,9 +18,12 @@ func SerializeHTTPRequest(request *http.Request) (body []byte, err error) {
 		return nil, err
 	}
 
-	headers := make(map[string]string)
-	for key, values := range request.Header {
-		headers[key] = strings.Join(values, ",")
+	headers := map[string]*Header{}
+	for key := range request.Header {
+		headers[key] = &Header{
+			Key:    key,
+			Values: request.Header.Values(key),
+		}
 	}
 
 	httpRequest := &POKTHTTPRequest{
@@ -37,30 +39,29 @@ func SerializeHTTPRequest(request *http.Request) (body []byte, err error) {
 // DeserializeHTTPRequest takes a byte slice and deserializes it into a
 // SerializableHTTPRequest object.
 func DeserializeHTTPRequest(requestBz []byte) (request *http.Request, err error) {
-	httpRequest := &POKTHTTPRequest{}
+	poktHTTPRequest := &POKTHTTPRequest{}
 
-	if err := proto.Unmarshal(requestBz, httpRequest); err != nil {
+	if err := proto.Unmarshal(requestBz, poktHTTPRequest); err != nil {
 		return nil, err
 	}
 
 	headers := make(http.Header)
-	for key, valuesStr := range httpRequest.Header {
-		values := strings.Split(valuesStr, ",")
-		for _, value := range values {
+	for key, header := range poktHTTPRequest.Header {
+		for _, value := range header.Values {
 			headers.Add(key, value)
 		}
 	}
 
-	requestUrl, err := url.Parse(httpRequest.Url)
+	requestUrl, err := url.Parse(poktHTTPRequest.Url)
 	if err != nil {
 		return nil, err
 	}
 
 	request = &http.Request{
-		Method: httpRequest.Method,
+		Method: poktHTTPRequest.Method,
 		Header: headers,
 		URL:    requestUrl,
-		Body:   io.NopCloser(bytes.NewReader(httpRequest.BodyBz)),
+		Body:   io.NopCloser(bytes.NewReader(poktHTTPRequest.BodyBz)),
 	}
 
 	return request, nil

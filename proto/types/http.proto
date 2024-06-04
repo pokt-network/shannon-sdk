@@ -6,13 +6,19 @@ option go_package = "github.com/pokt-network/shannon-sdk/types";
 // POKTHTTPRequest represents an http.Request to be serialized and sent to a RelayMiner
 // by an Application/Gateway client within a RelayRequest payload.
 message POKTHTTPRequest {
+  // Method is the HTTP method/verb of the request. If it is a RESTful API, it
+  // will be one of the following: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD.
+  // If it is a JSON-RPC API, it will be POST.
   string method = 1;
   // Header is a map of keys to multiple values belonging to the same key used
   // to group headers together, This is to avoid creating a new message type
   // that represents a single header key-values messages. Since protobuf does not
   // support `map<string, repeated string>`.
-  map<string, string> header = 2;
+  map<string, Header> header = 2;
   string url = 3;
+  // BodyBz is the body of the request in bytes. Since POKTHTTPRequest mimics the
+  // http.Request with the difference that the body is a byte slice instead of a
+  // io.ReadCloser.
   bytes body_bz = 4;
 }
 
@@ -24,6 +30,14 @@ message POKTHTTPResponse {
   // to group headers together, This is to avoid creating a new message type
   // that represents a header key-values message. Since protobuf does not
   // support `map<string, repeated string>`.
-  map<string, string> header = 2;
+  map<string, Header> header = 2;
+  // BodyBz is the body of the request in bytes. Since POKTHTTPRequest mimics the
+  // http.Request with the difference that the body is a byte slice instead of a
+  // io.ReadCloser.
   bytes body_bz = 3;
+}
+
+message Header {
+  string key = 1;
+  repeated string values = 2;
 }
