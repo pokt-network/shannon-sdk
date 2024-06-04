@@ -3,22 +3,29 @@ package rpcdetect
 import (
 	"fmt"
 	"net/http"
+	"slices"
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pokt-network/shannon-sdk/httpcodec"
+	"github.com/pokt-network/shannon-sdk/types"
 )
 
 var (
-	defaultRESTErrorReply   *httpcodec.HTTPResponse
+	defaultRESTErrorReply   *types.POKTHTTPResponse
 	defaultRESTErrorReplyBz []byte
 )
 
 func init() {
-	defaultRESTErrorReply = &httpcodec.HTTPResponse{
+	header := &types.Header{
+		Key:    contentTypeHeaderKey,
+		Values: []string{"text/plain"},
+	}
+	headers := map[string]*types.Header{contentTypeHeaderKey: header}
+
+	defaultRESTErrorReply = &types.POKTHTTPResponse{
 		StatusCode: http.StatusInternalServerError,
-		Header:     map[string]string{contentTypeHeaderKey: "text/plain"},
-		Body:       []byte(`Internal error`),
+		Header:     headers,
+		BodyBz:     []byte(`Internal error`),
 	}
 
 	var err error
@@ -28,15 +35,15 @@ func init() {
 	}
 }
 
-func isREST(_ *httpcodec.HTTPRequest) bool {
+func isREST(_ *types.POKTHTTPRequest) bool {
 	return true
 }
 
 func formatRESTError(
 	err error,
-	poktRequest *httpcodec.HTTPRequest,
+	poktRequest *types.POKTHTTPRequest,
 	isInternal bool,
-) (*httpcodec.HTTPResponse, []byte) {
+) (*types.POKTHTTPResponse, []byte) {
 	errorMsg := err.Error()
 	statusCode := http.StatusBadRequest
 	if isInternal {
@@ -44,16 +51,22 @@ func formatRESTError(
 		statusCode = http.StatusInternalServerError
 	}
 
-	contentTypeHeaderValue := poktRequest.Header[contentTypeHeaderKey]
+	contentTypeHeaderValues := poktRequest.Header[contentTypeHeaderKey].Values
 	responseBodyBz := []byte(errorMsg)
-	if contentTypeHeaderValue == "application/json" {
+	if slices.Contains(contentTypeHeaderValues, "application/json") {
 		responseBodyBz = []byte(fmt.Sprintf(`{"error": "%s"}`, errorMsg))
 	}
 
-	poktResponse := &httpcodec.HTTPResponse{
-		StatusCode: int32(statusCode),
-		Header:     map[string]string{contentTypeHeaderKey: contentTypeHeaderValue},
-		Body:       responseBodyBz,
+	header := &types.Header{
+		Key:    contentTypeHeaderKey,
+		Values: contentTypeHeaderValues,
+	}
+	headers := map[string]*types.Header{contentTypeHeaderKey: header}
+
+	poktResponse := &types.POKTHTTPResponse{
+		StatusCode: uint32(statusCode),
+		Header:     headers,
+		BodyBz:     responseBodyBz,
 	}
 
 	poktResponseBz, err := proto.Marshal(poktResponse)

@@ -3,22 +3,29 @@ package rpcdetect
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pokt-network/shannon-sdk/httpcodec"
+	"github.com/pokt-network/shannon-sdk/types"
 )
 
 var (
-	defaultJSONRPCErrorReply   *httpcodec.HTTPResponse
+	defaultJSONRPCErrorReply   *types.POKTHTTPResponse
 	defaultJSONRPCErrorReplyBz []byte
 )
 
 func init() {
-	defaultJSONRPCErrorReply = &httpcodec.HTTPResponse{
+	header := &types.Header{
+		Key:    contentTypeHeaderKey,
+		Values: []string{"application/json"},
+	}
+	headers := map[string]*types.Header{contentTypeHeaderKey: header}
+
+	defaultJSONRPCErrorReply = &types.POKTHTTPResponse{
 		StatusCode: http.StatusInternalServerError,
-		Header:     map[string]string{contentTypeHeaderKey: "application/json"},
-		Body:       []byte(`{"jsonrpc":"2.0","id":0,"error":{"code":-32000,"message":"Internal error","data":null}}`),
+		Header:     headers,
+		BodyBz:     []byte(`{"jsonrpc":"2.0","id":0,"error":{"code":-32000,"message":"Internal error","data":null}}`),
 	}
 
 	var err error
@@ -34,12 +41,12 @@ type jsonRPCPayload struct {
 	Method  string `json:"method"`
 }
 
-func isJSONRPC(poktRequest *httpcodec.HTTPRequest) bool {
-	if poktRequest.Header[contentTypeHeaderKey] != "application/json" {
+func isJSONRPC(poktRequest *types.POKTHTTPRequest) bool {
+	if slices.Contains(poktRequest.Header[contentTypeHeaderKey].Values, "application/json") {
 		return false
 	}
 
-	payload, err := readJSONRPCPayload(poktRequest.Body)
+	payload, err := readJSONRPCPayload(poktRequest.BodyBz)
 	if err != nil {
 		return false
 	}
@@ -53,9 +60,9 @@ func isJSONRPC(poktRequest *httpcodec.HTTPRequest) bool {
 
 func formatJSONRPCError(
 	err error,
-	poktRequestBz *httpcodec.HTTPRequest,
+	poktRequestBz *types.POKTHTTPRequest,
 	isInternal bool,
-) (*httpcodec.HTTPResponse, []byte) {
+) (*types.POKTHTTPResponse, []byte) {
 	errorMsg := err.Error()
 	statusCode := http.StatusBadRequest
 	if isInternal {
@@ -64,7 +71,7 @@ func formatJSONRPCError(
 	}
 
 	requestId := uint64(0)
-	payload, err := readJSONRPCPayload(poktRequestBz.Body)
+	payload, err := readJSONRPCPayload(poktRequestBz.BodyBz)
 	if err == nil {
 		requestId = payload.Id
 	}
@@ -84,10 +91,15 @@ func formatJSONRPCError(
 		return defaultJSONRPCErrorReply, defaultJSONRPCErrorReplyBz
 	}
 
-	poktResponse := &httpcodec.HTTPResponse{
-		StatusCode: int32(statusCode),
-		Header:     map[string]string{contentTypeHeaderKey: "application/json"},
-		Body:       responseBodyBz,
+	header := &types.Header{
+		Key:    contentTypeHeaderKey,
+		Values: []string{"application/json"},
+	}
+	headers := map[string]*types.Header{contentTypeHeaderKey: header}
+	poktResponse := &types.POKTHTTPResponse{
+		StatusCode: uint32(statusCode),
+		Header:     headers,
+		BodyBz:     responseBodyBz,
 	}
 
 	responseBz, err := proto.Marshal(poktResponse)

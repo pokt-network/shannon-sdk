@@ -6,20 +6,26 @@ import (
 	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pokt-network/shannon-sdk/httpcodec"
+	"github.com/pokt-network/shannon-sdk/types"
 )
 
 var (
 	contentTypeHeaderKey           = "Content-Type"
-	unsupportedRPCTypeErrorReply   *httpcodec.HTTPResponse
+	unsupportedRPCTypeErrorReply   *types.POKTHTTPResponse
 	unsupportedRPCTypeErrorReplyBz []byte
 )
 
 func init() {
-	unsupportedRPCTypeErrorReply = &httpcodec.HTTPResponse{
+	header := &types.Header{
+		Key:    contentTypeHeaderKey,
+		Values: []string{"text/plain"},
+	}
+	headers := map[string]*types.Header{contentTypeHeaderKey: header}
+
+	unsupportedRPCTypeErrorReply = &types.POKTHTTPResponse{
 		StatusCode: http.StatusBadGateway,
-		Header:     map[string]string{contentTypeHeaderKey: "text/plain"},
-		Body:       []byte(`unsupported rpc type`),
+		Header:     headers,
+		BodyBz:     []byte(`unsupported rpc type`),
 	}
 
 	var err error
@@ -29,7 +35,7 @@ func init() {
 	}
 }
 
-func GetRPCType(poktRequest *httpcodec.HTTPRequest) sharedtypes.RPCType {
+func GetRPCType(poktRequest *types.POKTHTTPRequest) sharedtypes.RPCType {
 	if isJSONRPC(poktRequest) {
 		return sharedtypes.RPCType_JSON_RPC
 	}
@@ -42,10 +48,10 @@ func GetRPCType(poktRequest *httpcodec.HTTPRequest) sharedtypes.RPCType {
 
 func FormatError(
 	err error,
-	request *httpcodec.HTTPRequest,
+	request *types.POKTHTTPRequest,
 	rpcType sharedtypes.RPCType,
 	isInternal bool,
-) (*httpcodec.HTTPResponse, []byte) {
+) (*types.POKTHTTPResponse, []byte) {
 	switch rpcType {
 	case sharedtypes.RPCType_JSON_RPC:
 		return formatJSONRPCError(err, request, isInternal)
