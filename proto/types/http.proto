@@ -6,38 +6,52 @@ option go_package = "github.com/pokt-network/shannon-sdk/types";
 // POKTHTTPRequest represents an http.Request to be serialized and sent to a RelayMiner
 // by an Application/Gateway client within a RelayRequest payload.
 message POKTHTTPRequest {
-  // Method is the HTTP method/verb of the request. If it is a RESTful API, it
+  // method is the HTTP method/verb of the request. If it is a RESTful API, it
   // will be one of the following: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD.
   // If it is a JSON-RPC API, it will be POST.
   string method = 1;
-  // Header is a map of keys to multiple values belonging to the same key used
+  // header is a map of keys to multiple values belonging to the same key used
   // to group headers together, This is to avoid creating a new message type
   // that represents a single header key-values messages. Since protobuf does not
   // support `map<string, repeated string>`.
   map<string, Header> header = 2;
+  // url is the URL of the request. It is a string that represents the request's
+  // URL with all its components (scheme, host, path, query, fragment).
   string url = 3;
-  // BodyBz is the body of the request in bytes. Since POKTHTTPRequest mimics the
-  // http.Request with the difference that the body is a byte slice instead of a
-  // io.ReadCloser.
+  // body_bz is the body of the request in bytes. POKTHTTPRequest mimics
+  // http.request with the difference that the body is a byte slice instead of
+  // an io.readcloser, this is to avoid reading the io.readcloser each time
+  // the body is needed.
   bytes body_bz = 4;
 }
 
 // POKTHTTPResponse represents an http.Response to be serialized and sent by a RelayMiner
 // back to the Application/Gateway client within a RelayResponse payload.
 message POKTHTTPResponse {
+  // status_code is the HTTP status code of the response. If it is a RESTful API,
+  // it will be one of the following: 200, 201, 204, 400, 401, 403, 404, 500.
+  // If it is a JSON-RPC API, the status code will be 200 and any error will be
+  // in the body of the response.
   uint32 status_code = 1;
-  // Header is a map of keys to multiple values belonging to the same key used
+  // header is a map of keys to multiple values belonging to the same key used
   // to group headers together, This is to avoid creating a new message type
   // that represents a header key-values message. Since protobuf does not
   // support `map<string, repeated string>`.
   map<string, Header> header = 2;
-  // BodyBz is the body of the request in bytes. Since POKTHTTPRequest mimics the
-  // http.Request with the difference that the body is a byte slice instead of a
-  // io.ReadCloser.
+  // body_bz is the body of the request in bytes. POKTHTTPResponse mimics
+  // http.request with the difference that the body is a byte slice instead of
+  // an io.readcloser, this is to avoid reading the io.readcloser each time
+  // the body is needed.
   bytes body_bz = 3;
 }
 
+// Header represents a single header key-values message.
+// Since protobuf does not support map<string, repeated string>, we use this
+// message to accurately represent a single http.Header key which could have multiple
+// values.
 message Header {
+  // The key of the header.
   string key = 1;
+  // The values associated with the header key.
   repeated string values = 2;
 }
