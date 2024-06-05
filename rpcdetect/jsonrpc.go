@@ -16,6 +16,7 @@ var (
 )
 
 func init() {
+	// Initialize the default JSON-RPC error reply
 	header := &types.Header{
 		Key:    contentTypeHeaderKey,
 		Values: []string{"application/json"},
@@ -41,6 +42,7 @@ type jsonRPCPayload struct {
 	Method  string `json:"method"`
 }
 
+// isJSONRPC checks if the given POKTHTTPRequest is a JSON-RPC request.
 func isJSONRPC(poktRequest *types.POKTHTTPRequest) bool {
 	if slices.Contains(poktRequest.Header[contentTypeHeaderKey].Values, "application/json") {
 		return false
@@ -58,6 +60,7 @@ func isJSONRPC(poktRequest *types.POKTHTTPRequest) bool {
 	return true
 }
 
+// formatJSONRPCError formats the given error into a JSON-RPC error response.
 func formatJSONRPCError(
 	err error,
 	poktRequestBz *types.POKTHTTPRequest,
@@ -76,10 +79,10 @@ func formatJSONRPCError(
 		requestId = payload.Id
 	}
 
-	errorReplyPayload := map[string]any{
+	errorReplyPayload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      requestId,
-		"error": map[string]any{
+		"error": map[string]interface{}{
 			"code":    -32000,
 			"message": errorMsg,
 			"data":    nil,
@@ -110,6 +113,7 @@ func formatJSONRPCError(
 	return poktResponse, responseBz
 }
 
+// readJSONRPCPayload reads and parses the JSON-RPC payload from the given request body.
 func readJSONRPCPayload(requestBodyBz []byte) (*jsonRPCPayload, error) {
 	var payload jsonRPCPayload
 	if err := json.Unmarshal(requestBodyBz, &payload); err != nil {

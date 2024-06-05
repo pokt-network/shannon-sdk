@@ -16,6 +16,7 @@ var (
 )
 
 func init() {
+	// Initialize the default REST error reply
 	header := &types.Header{
 		Key:    contentTypeHeaderKey,
 		Values: []string{"text/plain"},
@@ -35,10 +36,13 @@ func init() {
 	}
 }
 
-func isREST(_ *types.POKTHTTPRequest) bool {
-	return true
+// isREST checks if the given POKTHTTPRequest is a REST request.
+func isREST(poktRequest *types.POKTHTTPRequest) bool {
+	return poktRequest.Url != ""
 }
 
+// formatRESTError formats the given error into a POKTHTTPResponse and its
+// corresponding byte representation.
 func formatRESTError(
 	err error,
 	poktRequest *types.POKTHTTPRequest,
