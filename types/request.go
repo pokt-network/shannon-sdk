@@ -43,7 +43,13 @@ func SerializeHTTPRequest(
 func DeserializeHTTPRequest(requestBz []byte) (request *POKTHTTPRequest, err error) {
 	poktHTTPRequest := &POKTHTTPRequest{}
 
-	err = proto.Unmarshal(requestBz, poktHTTPRequest)
+	if err := proto.Unmarshal(requestBz, poktHTTPRequest); err != nil {
+		return nil, err
+	}
+
+	if poktHTTPRequest.Header == nil {
+		poktHTTPRequest.Header = map[string]*Header{}
+	}
 
 	return poktHTTPRequest, err
 }

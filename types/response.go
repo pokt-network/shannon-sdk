@@ -46,7 +46,13 @@ func SerializeHTTPResponse(
 func DeserializeHTTPResponse(responseBz []byte) (response *POKTHTTPResponse, err error) {
 	poktHTTPResponse := &POKTHTTPResponse{}
 
-	err = proto.Unmarshal(responseBz, poktHTTPResponse)
+	if err := proto.Unmarshal(responseBz, poktHTTPResponse); err != nil {
+		return nil, err
+	}
+
+	if poktHTTPResponse.Header == nil {
+		poktHTTPResponse.Header = map[string]*Header{}
+	}
 
 	return poktHTTPResponse, err
 }
