@@ -3,9 +3,9 @@ module github.com/pokt-network/shannon-sdk
 go 1.22.2
 
 replace (
-	// Uncomment to use a local copy of poktroll for development purposes.
-	// TODO_IN_THIS_PR: comment it out.
-	github.com/pokt-network/poktroll => ../poktroll
+// Uncomment to use a local copy of poktroll for development purposes.
+// TODO_IN_THIS_PR: comment it out.
+// github.com/pokt-network/poktroll => ../poktroll
 )
 
 require (
