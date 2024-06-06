@@ -145,8 +145,9 @@ func (sdk *ShannonSDK) SendRelay(
 
 	relayRequest := &servicetypes.RelayRequest{
 		Meta: servicetypes.RelayRequestMetadata{
-			SessionHeader: sessionSupplierEndpoint.SessionHeader,
-			Signature:     nil,
+			SessionHeader:   sessionSupplierEndpoint.SessionHeader,
+			Signature:       nil,
+			SupplierAddress: sessionSupplierEndpoint.SupplierAddress,
 		},
 		Payload: requestBz,
 	}
