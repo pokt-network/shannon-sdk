@@ -55,7 +55,11 @@ func formatRESTError(
 		statusCode = http.StatusInternalServerError
 	}
 
-	contentTypeHeaderValues := poktRequest.Header[contentTypeHeaderKey].Values
+	contentTypeHeaderValues := []string{"text/plain"}
+	if contentTypeHeader, ok := poktRequest.Header[contentTypeHeaderKey]; ok {
+		contentTypeHeaderValues = contentTypeHeader.Values
+	}
+
 	responseBodyBz := []byte(errorMsg)
 	if slices.Contains(contentTypeHeaderValues, "application/json") {
 		responseBodyBz = []byte(fmt.Sprintf(`{"error": "%s"}`, errorMsg))

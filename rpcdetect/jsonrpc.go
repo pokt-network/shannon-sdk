@@ -44,7 +44,12 @@ type jsonRPCPayload struct {
 
 // isJSONRPC checks if the given POKTHTTPRequest is a JSON-RPC request.
 func isJSONRPC(poktRequest *types.POKTHTTPRequest) bool {
-	if slices.Contains(poktRequest.Header[contentTypeHeaderKey].Values, "application/json") {
+	contentType, ok := poktRequest.Header[contentTypeHeaderKey]
+	if !ok {
+		return false
+	}
+
+	if !slices.Contains(contentType.Values, "application/json") {
 		return false
 	}
 
