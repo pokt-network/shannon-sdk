@@ -43,6 +43,12 @@ func init() {
 
 // isREST checks if the given POKTHTTPRequest is a REST request.
 func isREST(poktRequest *types.POKTHTTPRequest) bool {
+	// Since a REST request could have an empty body, can be of any method, and
+	// can have any content type, we can't use those to determine if a request is
+	// a REST request.
+	// One general way to determine if a request is a REST request is to check if
+	// it has a non-empty URL. This is because REST requests have typically at least
+	// one URL path segment, which could be the resource path, api version, etc.
 	return poktRequest.Url != ""
 }
 

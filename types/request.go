@@ -11,7 +11,7 @@ import (
 // slice that can be embedded into another struct, such as RelayRequest.Payload.
 func SerializeHTTPRequest(
 	request *http.Request,
-) (poktHTTPRequest *POKTHTTPRequest, body []byte, err error) {
+) (poktHTTPRequest *POKTHTTPRequest, poktHTTPRequestBz []byte, err error) {
 	requestBodyBz, err := io.ReadAll(request.Body)
 	request.Body.Close()
 	if err != nil {
@@ -33,7 +33,7 @@ func SerializeHTTPRequest(
 		BodyBz: requestBodyBz,
 	}
 
-	poktHTTPRequestBz, err := proto.Marshal(poktHTTPRequest)
+	poktHTTPRequestBz, err = proto.Marshal(poktHTTPRequest)
 
 	return poktHTTPRequest, poktHTTPRequestBz, err
 }
