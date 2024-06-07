@@ -50,6 +50,8 @@ func GetRPCType(poktRequest *types.POKTHTTPRequest) sharedtypes.RPCType {
 	return sharedtypes.RPCType_UNKNOWN_RPC
 }
 
+// FormatError formats the given error into a POKTHTTPResponse and its
+// corresponding byte representation.
 func FormatError(
 	err error,
 	request *types.POKTHTTPRequest,
