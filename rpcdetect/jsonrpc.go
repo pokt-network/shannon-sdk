@@ -11,10 +11,15 @@ import (
 )
 
 var (
+	// defaultJSONRPCErrorReply is the default JSON-RPC error reply to be sent if the
+	// formatJSONRPCError function fails to format the appropriate one.
 	defaultJSONRPCErrorReply   *types.POKTHTTPResponse
 	defaultJSONRPCErrorReplyBz []byte
 )
 
+// init initializes the default JSON-RPC error reply. This function is called before
+// the main function and panics if it fails to marshal the default JSON-RPC error reply,
+// making the program exit early.
 func init() {
 	// Initialize the default JSON-RPC error reply
 	header := &types.Header{
@@ -36,6 +41,8 @@ func init() {
 	}
 }
 
+// jsonRPCPayload represents the JSON-RPC payload fields that are relevant for
+// detecting JSON-RPC requests.
 type jsonRPCPayload struct {
 	Id      uint64 `json:"id"`
 	JSONRPC string `json:"jsonrpc"`
@@ -72,6 +79,8 @@ func formatJSONRPCError(
 	isInternal bool,
 ) (*types.POKTHTTPResponse, []byte) {
 	errorMsg := err.Error()
+	// If the error is internal, we don't to expose the error message to the client
+	// but instead return a generic error message.
 	if isInternal {
 		errorMsg = "Internal error"
 	}
@@ -94,6 +103,8 @@ func formatJSONRPCError(
 
 	responseBodyBz, err := json.Marshal(errorReplyPayload)
 	if err != nil {
+		// If we fail to marshal the error reply payload, we return the default JSON-RPC
+		// error reply.
 		return defaultJSONRPCErrorReply, defaultJSONRPCErrorReplyBz
 	}
 

@@ -11,10 +11,15 @@ import (
 )
 
 var (
+	// defaultRESTErrorReply is the default REST error reply to be sent if the
+	// formatRESTError function fails to format the appropriate one.
 	defaultRESTErrorReply   *types.POKTHTTPResponse
 	defaultRESTErrorReplyBz []byte
 )
 
+// init initializes the default REST error reply. This function is called before
+// the main function and panics if it fails to marshal the default REST error reply,
+// making the program exit early.
 func init() {
 	// Initialize the default REST error reply
 	header := &types.Header{

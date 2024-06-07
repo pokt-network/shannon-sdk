@@ -15,6 +15,9 @@ var (
 	unsupportedRPCTypeErrorReplyBz []byte
 )
 
+// init initializes the unsupported RPC type error reply. This function is called before
+// the main function and panics if it fails to marshal the unsupported RPC type error reply,
+// making the program exit early.
 func init() {
 	header := &types.Header{
 		Key:    contentTypeHeaderKey,
@@ -35,6 +38,7 @@ func init() {
 	}
 }
 
+// GetRPCType returns the RPC type of the given POKTHTTPRequest.
 func GetRPCType(poktRequest *types.POKTHTTPRequest) sharedtypes.RPCType {
 	if isJSONRPC(poktRequest) {
 		return sharedtypes.RPCType_JSON_RPC
