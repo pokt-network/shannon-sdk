@@ -72,10 +72,8 @@ func formatJSONRPCError(
 	isInternal bool,
 ) (*types.POKTHTTPResponse, []byte) {
 	errorMsg := err.Error()
-	statusCode := http.StatusBadRequest
 	if isInternal {
 		errorMsg = "Internal error"
-		statusCode = http.StatusInternalServerError
 	}
 
 	requestId := uint64(0)
@@ -105,7 +103,7 @@ func formatJSONRPCError(
 	}
 	headers := map[string]*types.Header{contentTypeHeaderKey: header}
 	poktResponse := &types.POKTHTTPResponse{
-		StatusCode: uint32(statusCode),
+		StatusCode: http.StatusOK,
 		Header:     headers,
 		BodyBz:     responseBodyBz,
 	}
