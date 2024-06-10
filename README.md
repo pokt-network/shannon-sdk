@@ -16,10 +16,12 @@ to [dev.poktroll.com/category/actors](https://dev.poktroll.com/category/actors).
   - [Get Session Supplier Endpoints](#get-session-supplier-endpoints)
   - [Get Gateway Delegating Applications](#get-gateway-delegating-applications)
   - [Send Relay](#send-relay)
+  - [Helper functions](#helper-functions)
 - [ShannonSDK Internals](#shannonsdk-internals)
   - [Implementation Details](#implementation-details)
   - [Error Handling](#error-handling)
   - [Dependencies implementation](#dependencies-implementation)
+  - [Poktroll dependencies](#poktroll-dependencies)
 
 ## Overview
 
@@ -37,6 +39,7 @@ The SDK consists of the following core components:
 - **ApplicationClient**: Handles interactions related to applications on the network.
 - **SessionClient**: Manages session-related operations.
 - **AccountClient**: Deals with account-related queries and operations.
+- **SharedParamsClient**: Provides shared parameters such as various governance params to the SDK.
 - **BlockClient**: Fetches information about blocks on the network.
 - **RelayClient**: Sends relay requests to the network.
 - **Signer**: Signs relay requests to ensure authenticity and integrity.
@@ -50,6 +53,7 @@ the required clients and signer. Here is an example of how to initialize the SDK
 applicationClient := NewApplicationClient(grpcConn)
 sessionClient := NewSessionClient(grpcConn)
 accountClient := NewAccountClient(grpcConn)
+sharedParamsClient := NewSharedParamsClient(grpcConn)
 blockClient := NewBlockClient(poktrollRPCURL)
 relayClient := NewRelayClient()
 signer := NewSigner(privateKeyHex)
@@ -58,6 +62,7 @@ sdk, err := NewShannonSDK(
   applicationClient,
   sessionClient,
   accountClient,
+  sharedParamsClient,
   blockClient,
   relayClient,
   signer,
@@ -126,32 +131,63 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
     // Chose a supplier endpoint
     selectedSupplier := sessionSupplierEndpoints.SuppliersEndpoints[0]
 
-    // Read the request body
-    requestBodyBz, err := io.ReadAll(request.Body)
-    if err != nil {
-        // Handle error
-    }
-    request.Body.Close()
+    // Serialize the whole upstream request
+    _, requestBz, err := types.SerializeHTTPRequest(request)
 
     // Forward the request to the selected supplier endpoint by using the same
     // method and headers.
     // The SDK will take care of signing the request and verifying the response.
-    relayResponse, err := sdk.SendRelay(
-      ctx,
-      selectedSupplier,
-      requestBody,
-      request.Method,
-      request.Header,
-    )
+    relayResponse, err := sdk.SendRelay(ctx, selectedSupplier, requestBz)
     if err != nil {
         // Handle error
     }
 
-    // Send back the relay response to the client
-    if _, err := writer.Write(relayResponse.Payload); err != nil {
+    // Deserialize the http response from the relay response payload
+    httpResponse, err := types.DeserializeHTTPResponse(relayResponse.Payload)
+    if err != nil {
+        // Handle error
+    }
+
+    // Set the response status code
+    writer.WriteHeader(int(httpResponse.StatusCode))
+
+    // Set the response headers
+    for key, header := range httpResponse.Header {
+        for _, value := range header.Values {
+            writer.Header().Add(key, value)
+        }
+    }
+
+    // Send back the response body to the client
+    if _, err := writer.Write(httpResponse.BodyBz); err != nil {
         // Handle error
     }
 }
+```
+
+### Helper functions
+
+In order to transparently relay requests and responses between `Gateway`s/`Application`s
+and the `RelayMiner`s, the full request and response components must be transferred
+between the parties. This includes the request's method, headers, body, and the response's
+status code, headers, and body.
+
+Since the `http.Request` and `http.Response` types are not serializable, the SDK provides
+helper functions that return serializable representations of these types.
+
+SDK consumers can use them to serialize upstream requests and embed them in `RelayRequest`
+payloads, and deserialize `RelayResponse` payloads to obtain the original responses
+
+```go
+// Parse the http.Request to get the request components that will be sent
+// to the RelayMiner.
+poktHTTPRequest, requestBz, err := sdktypes.SerializeHTTPRequest(request)
+
+// SendRelay
+
+// Parse the RelayResponse payload to get the serviceResponse that will
+// be forwarded to the client.
+serviceResponse, err := sdktypes.DeserializeHTTPResponse(relayResponse.Payload)
 ```
 
 ## ShannonSDK Internals
@@ -170,6 +206,13 @@ that errors are propagated directly from the underlying implementations.
 
 ### Dependencies implementation
 
-`./client` package contains simple implementations of the clients required by
+`./client` package contains example implementations of the clients required by
 the SDK. These implementations are based on the `grpc` and `http` packages in
 Go, and they can be used as a reference for building more complex ones.
+
+### Poktroll dependencies
+
+The SDK relies on the `poktroll` repository for the `types` package, which
+acts as a single source of truth for the data structures used by the SDK.
+This design choice ensures consistency across the various components of the
+POKT ecosystem.
