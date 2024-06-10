@@ -1,0 +1,33 @@
+name: Run tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  GKE_CLUSTER: protocol-us-central1
+  GKE_ZONE: us-central1
+
+jobs:
+  go-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: "0"
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22.2"
+
+      - name: Run golangci-lint
+        run: make go_lint
+
+      - name: Test
+        run: make test_all
