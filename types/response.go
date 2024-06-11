@@ -3,6 +3,7 @@ package types
 import (
 	"io"
 	"net/http"
+	"slices"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -24,9 +25,14 @@ func SerializeHTTPResponse(
 	// We have to avoid using http.Header.Get(key) because it only returns the
 	// first value of the key.
 	for key := range response.Header {
+		// Sort the header values to ensure that the order of the values is
+		// consistent and byte-for-byte equal when comparing the serialized
+		// response.
+		headerValues := response.Header.Values(key)
+		slices.Sort(headerValues)
 		headers[key] = &Header{
 			Key:    key,
-			Values: response.Header.Values(key),
+			Values: headerValues,
 		}
 	}
 

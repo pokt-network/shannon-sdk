@@ -15,11 +15,14 @@ import (
 )
 
 var (
-	contentTypeKey   = "Content-Type"
-	contentTypeValue = "application/json"
-	contentBz        = []byte(`{"key":"value"}`)
-	contentUrl       = "http://localhost:8080"
-	requestMethod    = "POST"
+	contentTypeHeaderKey       = "Content-Type"
+	contentTypeHeaderValue     = "application/json"
+	arbitraryHeaderKey         = "Arbitrary-Key"
+	arbitraryHeaderFirstValue  = "arbitrary-first-value"
+	arbitraryHeaderSecondValue = "arbitrary-second-value"
+	contentBz                  = []byte(`{"key":"value"}`)
+	contentUrl                 = "http://localhost:8080"
+	requestMethod              = "POST"
 )
 
 func TestCodec_SerializeRequest_Success(t *testing.T) {
@@ -29,7 +32,8 @@ func TestCodec_SerializeRequest_Success(t *testing.T) {
 	req := &http.Request{
 		Method: requestMethod,
 		Header: map[string][]string{
-			contentTypeKey: {contentTypeValue},
+			contentTypeHeaderKey: {contentTypeHeaderValue},
+			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		URL:  requestUrl,
 		Body: io.NopCloser(bytes.NewReader(contentBz)),
@@ -41,10 +45,11 @@ func TestCodec_SerializeRequest_Success(t *testing.T) {
 	marshalledPOKTReqBz, err := proto.Marshal(poktReq)
 	require.NoError(t, err)
 
-	require.Equal(t,
-		req.Header.Get(contentTypeKey),
-		poktReq.Header[contentTypeKey].Values[0],
-	)
+	for key := range req.Header {
+		for i, value := range req.Header.Values(key) {
+			require.Equal(t, value, poktReq.Header[key].Values[i])
+		}
+	}
 	require.Equal(t, req.Method, poktReq.Method)
 	require.Equal(t, req.URL.String(), poktReq.Url)
 	require.Equal(t, poktReq.BodyBz, contentBz)
@@ -58,7 +63,7 @@ func TestCodec_SerializeRequest_Error(t *testing.T) {
 	req := &http.Request{
 		Method: requestMethod,
 		Header: map[string][]string{
-			contentTypeKey: {contentTypeValue},
+			contentTypeHeaderKey: {contentTypeHeaderValue},
 		},
 		URL:  requestUrl,
 		Body: io.NopCloser(&errorReader{}),
@@ -72,7 +77,8 @@ func TestCodec_DeserializeRequest_Success(t *testing.T) {
 	req := &http.Request{
 		Method: requestMethod,
 		Header: map[string][]string{
-			contentTypeKey: {contentTypeValue},
+			contentTypeHeaderKey: {contentTypeHeaderValue},
+			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		URL:  &url.URL{Path: contentUrl},
 		Body: io.NopCloser(bytes.NewReader(contentBz)),
@@ -103,7 +109,8 @@ func TestCodec_SerializeResponse_Success(t *testing.T) {
 	res := &http.Response{
 		StatusCode: http.StatusOK,
 		Header: map[string][]string{
-			contentTypeKey: {contentTypeValue},
+			contentTypeHeaderKey: {contentTypeHeaderValue},
+			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		Body: io.NopCloser(bytes.NewReader(contentBz)),
 	}
@@ -114,11 +121,12 @@ func TestCodec_SerializeResponse_Success(t *testing.T) {
 	marshalledPOKTResBz, err := proto.Marshal(poktRes)
 	require.NoError(t, err)
 
+	for key := range res.Header {
+		for i, value := range res.Header.Values(key) {
+			require.Equal(t, value, poktRes.Header[key].Values[i])
+		}
+	}
 	require.Equal(t, res.StatusCode, int(poktRes.StatusCode))
-	require.Equal(t,
-		res.Header.Get(contentTypeKey),
-		poktRes.Header[contentTypeKey].Values[0],
-	)
 	require.Equal(t, poktRes.BodyBz, contentBz)
 	require.Equal(t, poktResBz, marshalledPOKTResBz)
 }
@@ -127,7 +135,7 @@ func TestCodec_SerializeResponse_Error(t *testing.T) {
 	res := &http.Response{
 		StatusCode: http.StatusOK,
 		Header: map[string][]string{
-			contentTypeKey: {contentTypeValue},
+			contentTypeHeaderKey: {contentTypeHeaderValue},
 		},
 		Body: io.NopCloser(&errorReader{}),
 	}
@@ -140,7 +148,8 @@ func TestCodec_DeserializeResponse_Success(t *testing.T) {
 	res := &http.Response{
 		StatusCode: http.StatusOK,
 		Header: map[string][]string{
-			contentTypeKey: {contentTypeValue},
+			contentTypeHeaderKey: {contentTypeHeaderValue},
+			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		Body: io.NopCloser(bytes.NewReader(contentBz)),
 	}
@@ -165,6 +174,7 @@ func TestCodec_DeserializeResponse_Error(t *testing.T) {
 	require.Error(t, err)
 }
 
+// errorReader is an io.Reader that always returns an error.
 type errorReader struct{}
 
 func (er *errorReader) Read(p []byte) (n int, err error) {

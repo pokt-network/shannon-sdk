@@ -3,6 +3,7 @@ package types
 import (
 	"io"
 	"net/http"
+	"slices"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -20,9 +21,14 @@ func SerializeHTTPRequest(
 
 	headers := map[string]*Header{}
 	for key := range request.Header {
+		// Sort the header values to ensure that the order of the values is
+		// consistent and byte-for-byte equal when comparing the serialized
+		// request.
+		headerValues := request.Header.Values(key)
+		slices.Sort(headerValues)
 		headers[key] = &Header{
 			Key:    key,
-			Values: request.Header.Values(key),
+			Values: headerValues,
 		}
 	}
 
