@@ -26,7 +26,7 @@ func init() {
 	headers := map[string]*types.Header{contentTypeHeaderKey: header}
 
 	unsupportedRPCTypeErrorReply = &types.POKTHTTPResponse{
-		StatusCode: http.StatusBadGateway,
+		StatusCode: http.StatusBadRequest,
 		Header:     headers,
 		BodyBz:     []byte(`unsupported rpc type`),
 	}
@@ -55,9 +55,10 @@ func GetRPCType(poktRequest *types.POKTHTTPRequest) sharedtypes.RPCType {
 func FormatError(
 	err error,
 	request *types.POKTHTTPRequest,
-	rpcType sharedtypes.RPCType,
 	isInternal bool,
 ) (*types.POKTHTTPResponse, []byte) {
+	rpcType := GetRPCType(request)
+
 	switch rpcType {
 	case sharedtypes.RPCType_JSON_RPC:
 		return formatJSONRPCError(err, request, isInternal)
