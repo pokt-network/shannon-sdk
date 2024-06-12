@@ -9,6 +9,9 @@ import (
 
 // ApplicationClient is an ApplicationClient implementation that uses the gRPC
 // query client of the application module.
+// QueryClient is made public because it should eventually become an interface, as it is being consumed here.
+//
+//	More details in the following link: https://go.dev/wiki/CodeReviewComments#interfaces
 type ApplicationClient struct {
 	types.QueryClient
 }
