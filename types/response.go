@@ -50,6 +50,8 @@ func DeserializeHTTPResponse(responseBz []byte) (response *POKTHTTPResponse, err
 		return nil, err
 	}
 
+	// If the responseBz has no header, we need to initialize it to avoid nil
+	// pointer dereference.
 	if poktHTTPResponse.Header == nil {
 		poktHTTPResponse.Header = map[string]*Header{}
 	}
