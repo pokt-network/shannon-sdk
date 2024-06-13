@@ -16,7 +16,7 @@ import (
 
 var (
 	contentTypeHeaderKey       = "Content-Type"
-	contentTypeHeaderValue     = "application/json"
+	contentTypeHeaderValueJSON = "application/json"
 	arbitraryHeaderKey         = "Arbitrary-Key"
 	arbitraryHeaderFirstValue  = "arbitrary-first-value"
 	arbitraryHeaderSecondValue = "arbitrary-second-value"
@@ -32,7 +32,7 @@ func TestCodec_SerializeRequest_Success(t *testing.T) {
 	req := &http.Request{
 		Method: requestMethod,
 		Header: map[string][]string{
-			contentTypeHeaderKey: {contentTypeHeaderValue},
+			contentTypeHeaderKey: {contentTypeHeaderValueJSON},
 			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		URL:  requestUrl,
@@ -63,7 +63,7 @@ func TestCodec_SerializeRequest_Error(t *testing.T) {
 	req := &http.Request{
 		Method: requestMethod,
 		Header: map[string][]string{
-			contentTypeHeaderKey: {contentTypeHeaderValue},
+			contentTypeHeaderKey: {contentTypeHeaderValueJSON},
 		},
 		URL:  requestUrl,
 		Body: io.NopCloser(&errorReader{}),
@@ -77,7 +77,7 @@ func TestCodec_DeserializeRequest_Success(t *testing.T) {
 	req := &http.Request{
 		Method: requestMethod,
 		Header: map[string][]string{
-			contentTypeHeaderKey: {contentTypeHeaderValue},
+			contentTypeHeaderKey: {contentTypeHeaderValueJSON},
 			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		URL:  &url.URL{Path: contentUrl},
@@ -109,7 +109,7 @@ func TestCodec_SerializeResponse_Success(t *testing.T) {
 	res := &http.Response{
 		StatusCode: http.StatusOK,
 		Header: map[string][]string{
-			contentTypeHeaderKey: {contentTypeHeaderValue},
+			contentTypeHeaderKey: {contentTypeHeaderValueJSON},
 			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		Body: io.NopCloser(bytes.NewReader(contentBz)),
@@ -135,7 +135,7 @@ func TestCodec_SerializeResponse_Error(t *testing.T) {
 	res := &http.Response{
 		StatusCode: http.StatusOK,
 		Header: map[string][]string{
-			contentTypeHeaderKey: {contentTypeHeaderValue},
+			contentTypeHeaderKey: {contentTypeHeaderValueJSON},
 		},
 		Body: io.NopCloser(&errorReader{}),
 	}
@@ -148,7 +148,7 @@ func TestCodec_DeserializeResponse_Success(t *testing.T) {
 	res := &http.Response{
 		StatusCode: http.StatusOK,
 		Header: map[string][]string{
-			contentTypeHeaderKey: {contentTypeHeaderValue},
+			contentTypeHeaderKey: {contentTypeHeaderValueJSON},
 			arbitraryHeaderKey:   {arbitraryHeaderFirstValue, arbitraryHeaderSecondValue},
 		},
 		Body: io.NopCloser(bytes.NewReader(contentBz)),

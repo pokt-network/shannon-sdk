@@ -1,4 +1,4 @@
-package rpcdetect_test
+package types_test
 
 import (
 	"errors"
@@ -7,14 +7,12 @@ import (
 	"testing"
 
 	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
-	"github.com/pokt-network/shannon-sdk/rpcdetect"
-	"github.com/pokt-network/shannon-sdk/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/shannon-sdk/types"
 )
 
 var (
-	contentTypeHeaderKey    = "Content-Type"
-	contentTypeHeaderValue  = "application/json"
 	restContentBz           = []byte(`{"key":"value"}`)
 	jsonRPCContentBz        = []byte(`{"jsonrpc":"2.0","method":"m","params":[],"id":1}`)
 	method                  = "POST"
@@ -23,7 +21,7 @@ var (
 	defaultJSONRPCErrorCode = -32000
 )
 
-func TestRPCId_DetectRPC(t *testing.T) {
+func TestRPCType_DetectRPC(t *testing.T) {
 	tests := []struct {
 		desc            string
 		inputRequest    *types.POKTHTTPRequest
@@ -35,7 +33,7 @@ func TestRPCId_DetectRPC(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				Method: method,
@@ -50,7 +48,7 @@ func TestRPCId_DetectRPC(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				Method: method,
@@ -65,7 +63,7 @@ func TestRPCId_DetectRPC(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				Method: method,
@@ -78,14 +76,14 @@ func TestRPCId_DetectRPC(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			actualRPCType := rpcdetect.GetRPCType(tt.inputRequest)
+			actualRPCType := tt.inputRequest.GetRPCType()
 
 			require.Equal(t, tt.expectedRPCType, actualRPCType)
 		})
 	}
 }
 
-func TestRPCId_FormatError(t *testing.T) {
+func TestRPCType_FormatError(t *testing.T) {
 	tests := []struct {
 		desc                  string
 		inputError            error
@@ -101,7 +99,7 @@ func TestRPCId_FormatError(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				Method: method,
@@ -113,7 +111,7 @@ func TestRPCId_FormatError(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				BodyBz: []byte(fmt.Sprintf(
@@ -157,7 +155,7 @@ func TestRPCId_FormatError(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				Method: method,
@@ -183,7 +181,7 @@ func TestRPCId_FormatError(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				Method: method,
@@ -195,7 +193,7 @@ func TestRPCId_FormatError(t *testing.T) {
 				Header: map[string]*types.Header{
 					contentTypeHeaderKey: {
 						Key:    contentTypeHeaderKey,
-						Values: []string{contentTypeHeaderValue},
+						Values: []string{contentTypeHeaderValueJSON},
 					},
 				},
 				BodyBz: []byte(fmt.Sprintf(
@@ -209,7 +207,7 @@ func TestRPCId_FormatError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			actualErrorResponse, _ := rpcdetect.FormatError(tt.inputError, tt.inputRequest, tt.isInternal)
+			actualErrorResponse, _ := tt.inputRequest.FormatError(tt.inputError, tt.isInternal)
 
 			require.Equal(t, tt.expectedErrorResponse.StatusCode, actualErrorResponse.StatusCode)
 			require.Equal(t, tt.expectedErrorResponse.BodyBz, actualErrorResponse.BodyBz)
