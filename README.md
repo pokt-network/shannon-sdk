@@ -139,13 +139,13 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
     // The SDK will take care of signing the request and verifying the response.
     relayResponse, err := sdk.SendRelay(ctx, selectedSupplier, requestBz)
     if err != nil {
-        // Handle error
+        panic("TODO: handle error")
     }
 
     // Deserialize the http response from the relay response payload
     httpResponse, err := types.DeserializeHTTPResponse(relayResponse.Payload)
     if err != nil {
-        // Handle error
+        panic("TODO: handle error")
     }
 
     // Set the response status code
@@ -160,7 +160,7 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 
     // Send back the response body to the client
     if _, err := writer.Write(httpResponse.BodyBz); err != nil {
-        // Handle error
+        panic("TODO: handle error")
     }
 }
 ```
