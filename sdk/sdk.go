@@ -116,7 +116,7 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	// TODO_DISCUSS: remove this call: pass to this function the list of Application structs, which can be obtained separately using the ApplicationClient.
 	// It can be composed using other basic components of the SDK, e.g. get all the applications, get the latest block height, etc.
 	// If this specific sequence of using basic components of the SDK occurs frequently enough that summarizing all the steps in
-	//   a single function call is desirable, one possible option could be defining helper functions.
+	// a single function call is desirable, one possible option could be defining helper functions.
 	allApplications, err := sdk.ApplicationLister.GetAllApplications(ctx)
 	if err != nil {
 		return nil, err
@@ -256,7 +256,7 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ctx context.Context,
 	appAddress string,
 ) (addressRing *ring.Ring, err error) {
-	// DISCUSS: It may be a good idea to remove this call, and pass the application struct to this function, instead of an address.
+	// TODO_DISCUSS: It may be a good idea to remove this call, and pass the application struct to this function, instead of an address.
 	application, err := sdk.ApplicationLister.GetApplication(ctx, appAddress)
 	if err != nil {
 		return nil, err
