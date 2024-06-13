@@ -4,7 +4,6 @@ import (
 	"context"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
 )
@@ -21,27 +20,6 @@ type AccountClient interface {
 		ctx context.Context,
 		address string,
 	) (pubKey cryptotypes.PubKey, err error)
-}
-
-// ApplicationClient is the interface to interact with the on-chain application module.
-//
-// For example, it can be used to get the list of applications and the details of a specific application.
-//
-// The implementations of this interface could leverage caching to avoid querying
-// the blockchain for the same data multiple times but need to invalidate it by
-// listening to the relevant events such as MsgStakeApplication, MsgUnstakeApplication etc...
-type ApplicationClient interface {
-	// GetAllApplications returns the list of all applications.
-	// TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
-	GetAllApplications(
-		ctx context.Context,
-	) ([]apptypes.Application, error)
-
-	// GetApplication returns the details of a single application with the given address.
-	GetApplication(
-		ctx context.Context,
-		appAddress string,
-	) (apptypes.Application, error)
 }
 
 // SharedParamsClient is the interface to interact with the on-chain shared module.
