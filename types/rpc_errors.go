@@ -68,7 +68,7 @@ func initDefaultUnsupportedRPCTypeErrorReply() {
 	headers := map[string]*Header{contentTypeHeaderKey: header}
 
 	unsupportedRPCTypeErrorReply = &POKTHTTPResponse{
-		StatusCode: http.StatusBadGateway,
+		StatusCode: http.StatusBadRequest,
 		Header:     headers,
 		BodyBz:     []byte(`unsupported rpc type`),
 	}
