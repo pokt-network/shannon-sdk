@@ -1,6 +1,8 @@
 package types
 
 import (
+	"net/http"
+
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
 )
@@ -25,4 +27,13 @@ type SingleSupplierEndpoint struct {
 	RpcType         sharedtypes.RPCType
 	SupplierAddress string
 	SessionHeader   *sessiontypes.SessionHeader
+}
+
+// CopyToHTTPHeader copies the poktHeader map to the httpHeader map.
+func CopyToHTTPHeader(poktHeader map[string]*Header, httpHeader http.Header) {
+	for key, header := range poktHeader {
+		for _, value := range header.Values {
+			httpHeader.Add(key, value)
+		}
+	}
 }

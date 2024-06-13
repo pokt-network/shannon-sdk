@@ -148,15 +148,11 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
         panic("TODO: handle error")
     }
 
+    // Set the response headers
+    CopyToHTTPHeader(httpResponse.Header, writer.Header())
+
     // Set the response status code
     writer.WriteHeader(int(httpResponse.StatusCode))
-
-    // Set the response headers
-    for key, header := range httpResponse.Header {
-        for _, value := range header.Values {
-            writer.Header().Add(key, value)
-        }
-    }
 
     // Send back the response body to the client
     if _, err := writer.Write(httpResponse.BodyBz); err != nil {
