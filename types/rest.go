@@ -15,7 +15,7 @@ var (
 	defaultRESTErrorReplyBz []byte
 )
 
-// init initializes the package level variables for the REST error reply.
+// init initializes the package level variables such as the REST error reply.
 func init() {
 	// Initialize the default REST error reply and panic if it fails. This is done
 	// to make the program exit early if the default REST error reply fails to be

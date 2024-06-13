@@ -19,7 +19,7 @@ var (
 	unsupportedRPCTypeErrorReplyBz []byte
 )
 
-// init initializes the package level variables for the unsupported RPC type error reply.
+// init initializes the package level variables such as the unsupported RPC type error reply.
 func init() {
 	// Initialize the default unsupported RPC type error reply and panic if it fails.
 	// This is done to make the program exit early if the default unsupported RPC type
@@ -27,7 +27,7 @@ func init() {
 	initDefaultUnsupportedRPCTypeErrorReply()
 }
 
-// GetRPCType returns the RPC type of the given POKTHTTPRequest.
+// GetRPCType returns the RPC type of a POKTHTTPRequest.
 func (poktRequest *POKTHTTPRequest) GetRPCType() sharedtypes.RPCType {
 	if poktRequest.isJSONRPC() {
 		return sharedtypes.RPCType_JSON_RPC

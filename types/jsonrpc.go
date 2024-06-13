@@ -32,7 +32,7 @@ type jsonRPCPayloadMeta struct {
 	Method  string `json:"method"`
 }
 
-// init initializes the package level variables for the JSON-RPC error reply.
+// init initializes the package level variables such as the JSON-RPC error reply.
 func init() {
 	// Initialize the default JSON-RPC error reply and panic if it fails. This is done
 	// to make the program exit early if the default JSON-RPC error reply fails to be
