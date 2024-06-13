@@ -17,9 +17,9 @@ import (
 
 // ApplicationLister returns all the applications or a single application with the specified address.
 //
-//	It is used by the SDK to perform functions related to applications, e.g. listing applications delegating to a gateway address.
+// It is used by the SDK to perform functions related to applications, e.g. listing applications delegating to a gateway address.
 //
-// DISCUSS: it may be possible to remove the need for this through providing helper functions and/or methods on the application struct.
+// TODO_DISCUSS: it may be possible to remove the need for this through providing helper functions and/or methods on the application struct.
 type ApplicationLister interface {
 	GetAllApplications(context.Context) ([]apptypes.Application, error)
 	GetApplication(ctx context.Context, appAddress string) (apptypes.Application, error)
@@ -113,10 +113,10 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
 ) ([]string, error) {
-	// DISCUSS: remove this call: pass to this function the list of Application structs, which can be obtained separately using the ApplicationClient.
-	//	It can be composed using other basic components of the SDK, e.g. get all the applications, get the latest block height, etc.
-	//	If this specific sequence of using basic components of the SDK occurs frequently enough that summarizing all the steps in
-	//		a single function call is desirable, one possible option could be defining helper functions.
+	// TODO_DISCUSS: remove this call: pass to this function the list of Application structs, which can be obtained separately using the ApplicationClient.
+	// It can be composed using other basic components of the SDK, e.g. get all the applications, get the latest block height, etc.
+	// If this specific sequence of using basic components of the SDK occurs frequently enough that summarizing all the steps in
+	//   a single function call is desirable, one possible option could be defining helper functions.
 	allApplications, err := sdk.ApplicationLister.GetAllApplications(ctx)
 	if err != nil {
 		return nil, err
