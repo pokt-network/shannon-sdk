@@ -7,11 +7,18 @@ import (
 	"github.com/pokt-network/poktroll/x/application/types"
 )
 
-// ApplicationClient is an ApplicationClient implementation that uses the gRPC
-// query client of the application module.
+// ApplicationClient is the interface to interact with the on-chain application-module.
+//
+// For example, it can be used to get the list of applications and the details of a specific application.
+//
+// The ApplicationClient uses the gRPC query client of the application module.
 // QueryClient is made public because it should eventually become an interface, as it is being consumed here.
 //
 //	More details in the following link: https://go.dev/wiki/CodeReviewComments#interfaces
+//
+// This implementation could be extended in the future to leverage caching to avoid querying
+// the blockchain for the same data multiple times, but such a cache would need to be invalidated by
+// listening to the relevant events such as MsgStakeApplication, MsgUnstakeApplication etc...
 type ApplicationClient struct {
 	types.QueryClient
 }
@@ -24,6 +31,7 @@ func NewApplicationClient(grpcConn grpc.ClientConn) *ApplicationClient {
 }
 
 // GetAllApplications returns all applications in the network.
+// TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
 func (ac *ApplicationClient) GetAllApplications(
 	ctx context.Context,
 ) ([]types.Application, error) {
