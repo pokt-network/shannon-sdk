@@ -193,7 +193,9 @@ func (sdk *ShannonSDK) SendRelay(
 	}
 
 	if err := relayResponse.ValidateBasic(); err != nil {
-		return nil, err
+		// Even if the relay response is invalid, we still return it to the caller
+		// as it might contain the reason why it's failing basic validation.
+		return relayResponse, err
 	}
 
 	supplierPubKey, err := sdk.accountClient.GetPubKeyFromAddress(
