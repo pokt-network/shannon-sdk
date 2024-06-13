@@ -32,12 +32,21 @@ type HeightClient interface {
 	LatestBlockHeight(ctx context.Context) (height int64, err error)
 }
 
+type SessionFetcher interface {
+	GetSession(
+		ctx context.Context,
+		appAddress string,
+		serviceId string,
+		height int64,
+	) (session *sessiontypes.Session, err error)
+}
+
 // ShannonSDK is the main struct for the SDK that will be used by the service
 // to interact with the Shannon network
 // TODO_TEST: Add unit tests for the ShannonSDK struct
 type ShannonSDK struct {
 	ApplicationLister
-	sessionClient SessionClient
+	SessionFetcher
 	accountClient AccountClient
 	paramsClient  SharedParamsClient
 	HeightClient
@@ -50,7 +59,7 @@ type ShannonSDK struct {
 // The signer is used to sign the relay requests.
 func NewShannonSDK(
 	applicationLister ApplicationLister,
-	sessionClient SessionClient,
+	sessionFetcher SessionFetcher,
 	accountClient AccountClient,
 	paramsClient SharedParamsClient,
 	heightClient HeightClient,
@@ -59,7 +68,7 @@ func NewShannonSDK(
 ) (*ShannonSDK, error) {
 	return &ShannonSDK{
 		ApplicationLister: applicationLister,
-		sessionClient:     sessionClient,
+		SessionFetcher:    sessionFetcher,
 		accountClient:     accountClient,
 		paramsClient:      paramsClient,
 		HeightClient:      heightClient,
@@ -68,6 +77,10 @@ func NewShannonSDK(
 	}, nil
 }
 
+// TODO_DISCUSS: GetSessionSupplierEndpoints does not need to be a SDK method:
+// It can either be replaced by a method on the Session struct, or by a helper function
+// which accepts a session and returns the Suppliers list.
+//
 // GetSessionSupplierEndpoints returns the current session with its assigned
 // suppliers and their corresponding endpoints for the given application address
 // and service id.
@@ -81,7 +94,12 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 		return nil, err
 	}
 
-	currentSession, err := sdk.sessionClient.GetSession(ctx, appAddress, serviceId, latestHeight)
+	// TODO_DISCUSS: Would it be feasible to add a GetCurrentSession, supported by the underlying protocol?
+	// It seems likely that GetSession will almost always be used to get the session matching the latest height.
+	// If this is a correct assumption, the aforementioned support from the protocol could simplify fetching the current session.
+	// In addition, the current session that is being returned could include the latest block height, reducing the number of
+	// SDK calls needed for sending relays.
+	currentSession, err := sdk.SessionFetcher.GetSession(ctx, appAddress, serviceId, latestHeight)
 	if err != nil {
 		return nil, err
 	}

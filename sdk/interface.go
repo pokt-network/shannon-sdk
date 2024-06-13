@@ -4,7 +4,6 @@ import (
 	"context"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
 )
 
@@ -48,21 +47,6 @@ type RelayClient interface {
 		supplierUrl string,
 		relayRequestBz []byte,
 	) (relayResponseBz []byte, err error)
-}
-
-// SessionClient is the interface to interact with the on-chain session module.
-
-// For example, it can be used to get the current session for a given application
-// and service id at a given height.
-type SessionClient interface {
-	// GetSession returns the current session for the given application address
-	// and service id at the given height.
-	GetSession(
-		ctx context.Context,
-		appAddress string,
-		serviceId string,
-		height int64,
-	) (session *sessiontypes.Session, err error)
 }
 
 // Signer is the interface used to interact with private keys.
