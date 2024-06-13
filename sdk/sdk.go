@@ -9,29 +9,40 @@ import (
 	ringtypes "github.com/athanorlabs/go-dleq/types"
 	"github.com/noot/ring-go"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
+	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 
 	"github.com/pokt-network/shannon-sdk/types"
 )
 
+// ApplicationLister returns all the applications or a single application with the specified address.
+//
+//	It is used by the SDK to perform functions related to applications, e.g. listing applications delegating to a gateway address.
+//
+// DISCUSS: it may be possible to remove the need for this through providing helper functions and/or methods on the application struct.
+type ApplicationLister interface {
+	GetAllApplications(context.Context) ([]apptypes.Application, error)
+	GetApplication(ctx context.Context, appAddress string) (apptypes.Application, error)
+}
+
 // ShannonSDK is the main struct for the SDK that will be used by the service
 // to interact with the Shannon network
 // TODO_TEST: Add unit tests for the ShannonSDK struct
 type ShannonSDK struct {
-	applicationClient ApplicationClient
-	sessionClient     SessionClient
-	accountClient     AccountClient
-	paramsClient      SharedParamsClient
-	blockClient       BlockClient
-	relayClient       RelayClient
-	signer            Signer
+	ApplicationLister
+	sessionClient SessionClient
+	accountClient AccountClient
+	paramsClient  SharedParamsClient
+	blockClient   BlockClient
+	relayClient   RelayClient
+	signer        Signer
 }
 
 // NewShannonSDK creates a new ShannonSDK instance with the given clients and signer.
 // The clients are used to interact with the Shannon network.
 // The signer is used to sign the relay requests.
 func NewShannonSDK(
-	applicationClient ApplicationClient,
+	applicationLister ApplicationLister,
 	sessionClient SessionClient,
 	accountClient AccountClient,
 	paramsClient SharedParamsClient,
@@ -40,7 +51,7 @@ func NewShannonSDK(
 	signer Signer,
 ) (*ShannonSDK, error) {
 	return &ShannonSDK{
-		applicationClient: applicationClient,
+		ApplicationLister: applicationLister,
 		sessionClient:     sessionClient,
 		accountClient:     accountClient,
 		paramsClient:      paramsClient,
@@ -102,7 +113,11 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
 ) ([]string, error) {
-	allApplications, err := sdk.applicationClient.GetAllApplications(ctx)
+	// DISCUSS: remove this call: pass to this function the list of Application structs, which can be obtained separately using the ApplicationClient.
+	//	It can be composed using other basic components of the SDK, e.g. get all the applications, get the latest block height, etc.
+	//	If this specific sequence of using basic components of the SDK occurs frequently enough that summarizing all the steps in
+	//		a single function call is desirable, one possible option could be defining helper functions.
+	allApplications, err := sdk.ApplicationLister.GetAllApplications(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +256,8 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ctx context.Context,
 	appAddress string,
 ) (addressRing *ring.Ring, err error) {
-	application, err := sdk.applicationClient.GetApplication(ctx, appAddress)
+	// DISCUSS: It may be a good idea to remove this call, and pass the application struct to this function, instead of an address.
+	application, err := sdk.ApplicationLister.GetApplication(ctx, appAddress)
 	if err != nil {
 		return nil, err
 	}
