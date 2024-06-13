@@ -33,18 +33,6 @@ type SharedParamsClient interface {
 	GetParams(ctx context.Context) (params *sharedtypes.Params, err error)
 }
 
-// BlockClient is the interface to interact with the on-chain block module.
-//
-// For example, it can be used to get the latest block height.
-//
-// The implementations of this interface could leverage websockets to get notified
-// about new blocks and cache the latest block height to avoid querying the blockchain
-// for it every time.
-type BlockClient interface {
-	// GetLatestBlockHeight returns the height of the latest block.
-	GetLatestBlockHeight(ctx context.Context) (height int64, err error)
-}
-
 // RelayClient is the interface used to send Relays to suppliers.
 //
 // It is transport agnostic and could be implemented using the required protocols.

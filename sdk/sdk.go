@@ -25,6 +25,13 @@ type ApplicationLister interface {
 	GetApplication(ctx context.Context, appAddress string) (apptypes.Application, error)
 }
 
+// HeightClient is used to fetch the latest block height.
+//
+//	In the future this could be scrapped in favor of passing the latest block height directly to functions that need it.
+type HeightClient interface {
+	LatestBlockHeight(ctx context.Context) (height int64, err error)
+}
+
 // ShannonSDK is the main struct for the SDK that will be used by the service
 // to interact with the Shannon network
 // TODO_TEST: Add unit tests for the ShannonSDK struct
@@ -33,9 +40,9 @@ type ShannonSDK struct {
 	sessionClient SessionClient
 	accountClient AccountClient
 	paramsClient  SharedParamsClient
-	blockClient   BlockClient
-	relayClient   RelayClient
-	signer        Signer
+	HeightClient
+	relayClient RelayClient
+	signer      Signer
 }
 
 // NewShannonSDK creates a new ShannonSDK instance with the given clients and signer.
@@ -46,7 +53,7 @@ func NewShannonSDK(
 	sessionClient SessionClient,
 	accountClient AccountClient,
 	paramsClient SharedParamsClient,
-	blockClient BlockClient,
+	heightClient HeightClient,
 	relayClient RelayClient,
 	signer Signer,
 ) (*ShannonSDK, error) {
@@ -55,7 +62,7 @@ func NewShannonSDK(
 		sessionClient:     sessionClient,
 		accountClient:     accountClient,
 		paramsClient:      paramsClient,
-		blockClient:       blockClient,
+		HeightClient:      heightClient,
 		relayClient:       relayClient,
 		signer:            signer,
 	}, nil
@@ -69,7 +76,7 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	appAddress string,
 	serviceId string,
 ) (sessionSuppliers *types.SessionSuppliers, err error) {
-	latestHeight, err := sdk.blockClient.GetLatestBlockHeight(ctx)
+	latestHeight, err := sdk.HeightClient.LatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +129,7 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 		return nil, err
 	}
 
-	currentHeight, err := sdk.blockClient.GetLatestBlockHeight(ctx)
+	currentHeight, err := sdk.HeightClient.LatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +269,7 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 		return nil, err
 	}
 
-	latestHeight, err := sdk.blockClient.GetLatestBlockHeight(ctx)
+	latestHeight, err := sdk.HeightClient.LatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
