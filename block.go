@@ -9,7 +9,7 @@ import (
 
 // NodeStatusFetcher returns the status of the node to which it is connected.
 //
-//	This status is used here in the BlockClient in order to get the latest block height.
+// This status is used here in the BlockClient in order to get the latest block height.
 type NodeStatusFetcher interface {
 	Status(ctx context.Context) (*ctypes.ResultStatus, error)
 }
