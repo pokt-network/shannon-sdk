@@ -123,10 +123,12 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
     // Example the appAddress and serviceId retrieval from the request
     serviceId := request.URL.Query().Get("serviceId")
     appAddress := request.URL.Query().Get("appAddress")
-    ...
 
     // Get the session supplier endpoints
-    sessionSupplierEndpoints := sdk.GetSessionSupplierEndpoints(ctx, appAddress, serviceId)
+    sessionSupplierEndpoints, err := sdk.GetSessionSupplierEndpoints(ctx, appAddress, serviceId)
+    if err != nil {
+        panic("TODO: handle error")
+    }
 
     // Chose a supplier endpoint
     selectedSupplier := sessionSupplierEndpoints.SuppliersEndpoints[0]
@@ -149,7 +151,7 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
     }
 
     // Set the response headers
-    CopyToHTTPHeader(httpResponse.Header, writer.Header())
+    httpResponse.CopyToHTTPHeader(writer.Header())
 
     // Set the response status code
     writer.WriteHeader(int(httpResponse.StatusCode))

@@ -29,9 +29,18 @@ type SingleSupplierEndpoint struct {
 	SessionHeader   *sessiontypes.SessionHeader
 }
 
-// CopyToHTTPHeader copies the poktHeader map to the httpHeader map.
-func CopyToHTTPHeader(poktHeader map[string]*Header, httpHeader http.Header) {
-	for key, header := range poktHeader {
+// CopyToHTTPHeader copies the POKTHTTPRequest header map to the httpHeader map.
+func (req *POKTHTTPRequest) CopyToHTTPHeader(httpHeader http.Header) {
+	for key, header := range req.Header {
+		for _, value := range header.Values {
+			httpHeader.Add(key, value)
+		}
+	}
+}
+
+// CopyToHTTPHeader copies the POKTHTTPResponse header map to the httpHeader map.
+func (req *POKTHTTPResponse) CopyToHTTPHeader(httpHeader http.Header) {
+	for key, header := range req.Header {
 		for _, value := range header.Values {
 			httpHeader.Add(key, value)
 		}
