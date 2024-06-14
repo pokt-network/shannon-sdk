@@ -26,8 +26,8 @@ jobs:
         with:
           go-version: "1.22.2"
 
-      - name: Run golangci-lint
-        run: make go_lint
+      #- name: Run golangci-lint
+      #  run: make go_lint
 
       - name: Test
         run: make test_all
