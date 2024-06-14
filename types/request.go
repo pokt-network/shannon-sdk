@@ -1,68 +1,61 @@
 package types
 
 import (
-	"bytes"
 	"io"
 	"net/http"
-	"net/url"
+	"slices"
 
 	"google.golang.org/protobuf/proto"
 )
 
 // SerializeHTTPRequest take an http.Request object and serializes it into a byte
 // slice that can be embedded into another struct, such as RelayRequest.Payload.
-func SerializeHTTPRequest(request *http.Request) (body []byte, err error) {
+func SerializeHTTPRequest(
+	request *http.Request,
+) (poktHTTPRequest *POKTHTTPRequest, poktHTTPRequestBz []byte, err error) {
 	requestBodyBz, err := io.ReadAll(request.Body)
 	request.Body.Close()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	headers := map[string]*Header{}
 	for key := range request.Header {
+		// Sort the header values to ensure that the order of the values is
+		// consistent and byte-for-byte equal when comparing the serialized
+		// request.
+		headerValues := request.Header.Values(key)
+		slices.Sort(headerValues)
 		headers[key] = &Header{
 			Key:    key,
-			Values: request.Header.Values(key),
+			Values: headerValues,
 		}
 	}
 
-	httpRequest := &POKTHTTPRequest{
+	poktHTTPRequest = &POKTHTTPRequest{
 		Method: request.Method,
 		Header: headers,
 		Url:    request.URL.String(),
 		BodyBz: requestBodyBz,
 	}
 
-	return proto.Marshal(httpRequest)
+	poktHTTPRequestBz, err = proto.Marshal(poktHTTPRequest)
+
+	return poktHTTPRequest, poktHTTPRequestBz, err
 }
 
 // DeserializeHTTPRequest takes a byte slice and deserializes it into a
-// SerializableHTTPRequest object.
-func DeserializeHTTPRequest(requestBz []byte) (request *http.Request, err error) {
+// POKTHTTPRequest object.
+func DeserializeHTTPRequest(requestBz []byte) (request *POKTHTTPRequest, err error) {
 	poktHTTPRequest := &POKTHTTPRequest{}
 
 	if err := proto.Unmarshal(requestBz, poktHTTPRequest); err != nil {
 		return nil, err
 	}
 
-	headers := make(http.Header)
-	for key, header := range poktHTTPRequest.Header {
-		for _, value := range header.Values {
-			headers.Add(key, value)
-		}
+	if poktHTTPRequest.Header == nil {
+		poktHTTPRequest.Header = map[string]*Header{}
 	}
 
-	requestUrl, err := url.Parse(poktHTTPRequest.Url)
-	if err != nil {
-		return nil, err
-	}
-
-	request = &http.Request{
-		Method: poktHTTPRequest.Method,
-		Header: headers,
-		URL:    requestUrl,
-		Body:   io.NopCloser(bytes.NewReader(poktHTTPRequest.BodyBz)),
-	}
-
-	return request, nil
+	return poktHTTPRequest, err
 }
