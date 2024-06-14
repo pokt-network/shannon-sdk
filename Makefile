@@ -4,7 +4,7 @@ proto_regen:
 	find proto -name "*.pb.go" | sed 's/proto\///' | xargs -I {} mv proto/{} {}
 
 .PHONY: test_all
-test_all: check_go_version ## Run all go tests showing detailed output only on failures
+test_all: ## Run all go tests showing detailed output only on failures
 	go test -count=1 -race -tags test ./...
 
 ###############
