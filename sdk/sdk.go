@@ -25,13 +25,6 @@ type ApplicationLister interface {
 	GetApplication(ctx context.Context, appAddress string) (apptypes.Application, error)
 }
 
-// HeightClient is used to fetch the latest block height.
-//
-// In the future this could be scrapped in favor of passing the latest block height directly to functions that need it.
-type HeightClient interface {
-	LatestBlockHeight(ctx context.Context) (height int64, err error)
-}
-
 // ShannonSDK is the main struct for the SDK that will be used by the service
 // to interact with the Shannon network
 // TODO_TEST: Add unit tests for the ShannonSDK struct
@@ -40,9 +33,8 @@ type ShannonSDK struct {
 	sessionClient SessionClient
 	accountClient AccountClient
 	paramsClient  SharedParamsClient
-	HeightClient
-	relayClient RelayClient
-	signer      Signer
+	relayClient   RelayClient
+	signer        Signer
 }
 
 // NewShannonSDK creates a new ShannonSDK instance with the given clients and signer.
@@ -53,7 +45,6 @@ func NewShannonSDK(
 	sessionClient SessionClient,
 	accountClient AccountClient,
 	paramsClient SharedParamsClient,
-	heightClient HeightClient,
 	relayClient RelayClient,
 	signer Signer,
 ) (*ShannonSDK, error) {
@@ -62,7 +53,6 @@ func NewShannonSDK(
 		sessionClient:     sessionClient,
 		accountClient:     accountClient,
 		paramsClient:      paramsClient,
-		HeightClient:      heightClient,
 		relayClient:       relayClient,
 		signer:            signer,
 	}, nil
@@ -75,12 +65,8 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 	ctx context.Context,
 	appAddress string,
 	serviceId string,
+	latestHeight int64,
 ) (sessionSuppliers *types.SessionSuppliers, err error) {
-	latestHeight, err := sdk.HeightClient.LatestBlockHeight(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	currentSession, err := sdk.sessionClient.GetSession(ctx, appAddress, serviceId, latestHeight)
 	if err != nil {
 		return nil, err
@@ -119,17 +105,13 @@ func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
 func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
+	currentHeight int64,
 ) ([]string, error) {
 	// TODO_DISCUSS: remove this call: pass to this function the list of Application structs, which can be obtained separately using the ApplicationClient.
 	// It can be composed using other basic components of the SDK, e.g. get all the applications, get the latest block height, etc.
 	// If this specific sequence of using basic components of the SDK occurs frequently enough that summarizing all the steps in
 	// a single function call is desirable, one possible option could be defining helper functions.
 	allApplications, err := sdk.ApplicationLister.GetAllApplications(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	currentHeight, err := sdk.HeightClient.LatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -262,14 +244,10 @@ func (sdk *ShannonSDK) signRelayRequest(
 func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ctx context.Context,
 	appAddress string,
+	latestHeight int64,
 ) (addressRing *ring.Ring, err error) {
 	// TODO_DISCUSS: It may be a good idea to remove this call, and pass the application struct to this function, instead of an address.
 	application, err := sdk.ApplicationLister.GetApplication(ctx, appAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	latestHeight, err := sdk.HeightClient.LatestBlockHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
