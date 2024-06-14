@@ -30,7 +30,8 @@ type BlockClient struct {
 
 // NewBlockClient creates a new block client with the provided RPC URL.
 func NewBlockClient(queryNodeRPCUrl string) (*BlockClient, error) {
-	// TODO: drop the cosmos dependency and directly use cometbft rpchttp.New, once the latter publishes a release that includes this functionality
+	// TODO_IMPROVE: drop the cosmos dependency and directly use cometbft rpchttp.New, once the latter publishes a release that includes this functionality.
+	// Directly using the cometbft will simplify the code by both reducing imported repos and removing the cosmos wrapper which we don't use.
 	statusFetcher, err := cosmos.NewClientFromNode(queryNodeRPCUrl)
 	if err != nil {
 		return nil, err
@@ -41,8 +42,8 @@ func NewBlockClient(queryNodeRPCUrl string) (*BlockClient, error) {
 	}, nil
 }
 
-// GetLatestBlockHeight returns the height of the latest committed block in the blockchain.
-func (bc *BlockClient) GetLatestBlockHeight(ctx context.Context) (height int64, err error) {
+// LatestBlockHeight returns the height of the latest committed block in the blockchain.
+func (bc *BlockClient) LatestBlockHeight(ctx context.Context) (height int64, err error) {
 	nodeStatus, err := bc.NodeStatusFetcher.Status(ctx)
 	if err != nil {
 		return 0, err
