@@ -7,7 +7,7 @@ import (
 	cosmos "github.com/cosmos/cosmos-sdk/client"
 )
 
-// NodeStatusFetcher returns the status of the node to which it is connected.
+// NodeStatusFetcher returns the status of the POKT full node to which it is connected.
 //
 // This status is used here in the BlockClient in order to get the latest block height.
 type NodeStatusFetcher interface {
