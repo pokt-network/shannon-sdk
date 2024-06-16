@@ -142,6 +142,7 @@ func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
 	sessionSupplierEndpoint *types.SingleSupplierEndpoint,
 	requestBz []byte,
+	latestHeight int64,
 ) (relayResponse *servicetypes.RelayResponse, err error) {
 	if err := sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
 		return nil, err
@@ -155,7 +156,7 @@ func (sdk *ShannonSDK) SendRelay(
 		Payload: requestBz,
 	}
 
-	relayRequestSig, err := sdk.signRelayRequest(ctx, relayRequest)
+	relayRequestSig, err := sdk.signRelayRequest(ctx, relayRequest, latestHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -207,10 +208,11 @@ func (sdk *ShannonSDK) SendRelay(
 func (sdk *ShannonSDK) signRelayRequest(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
+	latestHeight int64,
 ) (signature []byte, err error) {
 	appAddress := relayRequest.GetMeta().SessionHeader.GetApplicationAddress()
 
-	appRing, err := sdk.getRingForApplicationAddress(ctx, appAddress)
+	appRing, err := sdk.getRingForApplicationAddress(ctx, appAddress, latestHeight)
 	if err != nil {
 		return nil, err
 	}

@@ -192,6 +192,60 @@ serviceResponse, err := sdktypes.DeserializeHTTPResponse(relayResponse.Payload)
 
 ## ShannonSDK Internals
 
+### Organizaiotn
+
+The following is where the SDK repo is moving towards.
+
+Top-level structure:
+
+```
+application.go
+block.go
+relay.go
+session.go
+sign.go
+```
+
+#### Interfaces:
+
+Each file will have a client implemented and returned as a concrete struct , e.g. ApplicationClient, rather than an interface.
+Interfaces will not be something the SDK offers for consumption, instead they will only be used when the SDK needs to consume any functionality from other packages.
+See the following for more details: https://go.dev/wiki/CodeReviewComments#interfaces
+
+#### sdk.go:
+
+The sdk.go file needs to be split into the files above, with each functionality moved into the proper client, e.g. all application-related functionality should
+live in `application.go`. Having a ShannonSDK struct is not ideal: it forces the user/developer to construct the entire struct even if they need a small fraction
+of the functionality.
+
+Currently, sdk.go provides several functions that perform multiple tasks, e.g. GetSessionSupplierEndpoints gets the latest height, then gets the current session,
+and then performs some processing to extract the endpoints for a service ID. This means there are multiple ways to get a session and/or make calls to the nodes.
+These functions need to be split. For example, the above function should probably look like:
+
+```
+session, err := sessionClient.CurrentSession()
+if err != nil {
+   return nil, err
+}
+
+endpoints := sdk.Endpoints(session, serviceID)
+```
+
+#### Public Fields
+
+We plan to make public anything that the user could potentially want to set directly. It should be possible for the user to initialize any component of
+the SDK by simply creating a struct and setting the bare minimum necessary fields, e.g.:
+```
+c := SessionClient {
+     HttpClient:  myCustomHttpTransport
+}
+```
+
+The above is easier to write and read, as opposed to the following:
+```
+c := NewSessionClient(nil, nil, myCustomHttpTransport, nil, nil)
+```
+
 ### Implementation Details
 
 ShannonSDK relies on interfaces for its dependencies, which must be implemented
