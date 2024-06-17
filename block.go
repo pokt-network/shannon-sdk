@@ -58,7 +58,8 @@ func NewPoktNodeStatusFetcher(queryNodeRpcUrl string) (PoktNodeStatusFetcher, er
 // The BlokClient extracts the latest height from this status struct.
 //
 // Most users can rely on the default implementation provided by NewPoktNodeStatusFetcher function.
-// A custom implementation of this interface be used to customize the interactions of the BlockClient with the POKT full node.
+// A custom implementation of this interface can be used to gain more granular control over the interactions
+// of the BlockClient with the POKT full node.
 type PoktNodeStatusFetcher interface {
 	Status(ctx context.Context) (*ctypes.ResultStatus, error)
 }
