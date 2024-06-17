@@ -17,7 +17,12 @@ to [dev.poktroll.com/category/actors](https://dev.poktroll.com/category/actors).
   - [Get Gateway Delegating Applications](#get-gateway-delegating-applications)
   - [Send Relay](#send-relay)
   - [Helper functions](#helper-functions)
-- [ShannonSDK Internals](#shannonsdk-internals)
+- [ShannonSDK Internals \& Design (for developers only)](#shannonsdk-internals--design-for-developers-only)
+  - [Code Organization](#code-organization)
+    - [Interface Design](#interface-design)
+    - [Exposed Concrete Types](#exposed-concrete-types)
+    - [sdk.go](#sdkgo)
+    - [Public vs Private Fields](#public-vs-private-fields)
   - [Implementation Details](#implementation-details)
   - [Error Handling](#error-handling)
   - [Dependencies implementation](#dependencies-implementation)
@@ -188,15 +193,13 @@ poktHTTPRequest, requestBz, err := sdktypes.SerializeHTTPRequest(request)
 serviceResponse, err := sdktypes.DeserializeHTTPResponse(relayResponse.Payload)
 ```
 
-## ShannonSDK Internals
+## ShannonSDK Internals & Design (for developers only)
 
-### Organizaiotn
+### Code Organization
 
-The following is where the SDK repo is moving towards.
+The following is the top-level structure the SDK repo is moving towards:
 
-Top-level structure:
-
-```
+```bash
 application.go
 block.go
 relay.go
@@ -204,23 +207,39 @@ session.go
 sign.go
 ```
 
-#### Interfaces:
+_TODO_DOCUMENT: Add the output of `tree -L 2` once the above structure is implemented._
+_TODO_DOCUMENT: Add a mermaid diagram of the exposed types once complete._
 
-Each file will have a client implemented and returned as a concrete struct , e.g. ApplicationClient, rather than an interface.
-Interfaces will not be something the SDK offers for consumption, instead they will only be used when the SDK needs to consume any functionality from other packages.
-See the following for more details: https://go.dev/wiki/CodeReviewComments#interfaces
+#### Interface Design
 
-#### sdk.go:
+The `SDK` **IS NOT DESIGNED** to provide interfaces to the consumer.
 
-The sdk.go file needs to be split into the files above, with each functionality moved into the proper client, e.g. all application-related functionality should
-live in `application.go`. Having a ShannonSDK struct is not ideal: it forces the user/developer to construct the entire struct even if they need a small fraction
+The `SDK` **IS DESIGNED** to consume functionality from other packages via interfaces.
+
+This follows Golang's best practices for interfaces as described [here](https://go.dev/wiki/CodeReviewComments#interfaces).
+
+#### Exposed Concrete Types
+
+Each file (in the top level directory) will have a client implemented and returned
+as a concrete struct.
+
+For example, `ApplicationClient` is a `struct` that will be returned by `application.go`
+rather than an interface.
+
+#### sdk.go
+
+**NOTE: If you are reading this and the documentation is outdated, please update it!**
+
+The `sdk.go` is a **TEMPORARY** that needs to be split file needs to be split into
+`application.go`, `supplier.go`, etc...
+
+A `ShannonSDK` struct was defined initially but is non-ideal. It forces the
+user/developer to construct the entire struct even if they need a small fraction
 of the functionality.
 
-Currently, sdk.go provides several functions that perform multiple tasks, e.g. GetSessionSupplierEndpoints gets the latest height, then gets the current session,
-and then performs some processing to extract the endpoints for a service ID. This means there are multiple ways to get a session and/or make calls to the nodes.
-These functions need to be split. For example, the above function should probably look like:
+The following is an example of using a small subset of the SDK:
 
-```
+```go
 session, err := sessionClient.CurrentSession()
 if err != nil {
    return nil, err
@@ -229,18 +248,25 @@ if err != nil {
 endpoints := sdk.Endpoints(session, serviceID)
 ```
 
-#### Public Fields
+#### Public vs Private Fields
 
-We plan to make public anything that the user could potentially want to set directly. It should be possible for the user to initialize any component of
-the SDK by simply creating a struct and setting the bare minimum necessary fields, e.g.:
-```
+The goal of this `SDK` is to make all fields of concrete types public to the user
+if there is a potential need for the user to set them directly.
+
+**IT SHOULD** be possible for the user to initialize any component of the SDK by
+creating a struct and setting the bare minimum necessary fields.
+
+For example, the SDK biases towards the following design:
+
+```go
 c := SessionClient {
      HttpClient:  myCustomHttpTransport
 }
 ```
 
-The above is easier to write and read, as opposed to the following:
-```
+Instead of the following design:
+
+```go
 c := NewSessionClient(nil, nil, myCustomHttpTransport, nil, nil)
 ```
 
