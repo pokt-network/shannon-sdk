@@ -7,10 +7,10 @@ import (
 
 	ring_secp256k1 "github.com/athanorlabs/go-dleq/secp256k1"
 	ringtypes "github.com/athanorlabs/go-dleq/types"
-	"github.com/noot/ring-go"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	"github.com/pokt-network/ring-go"
 
 	"github.com/pokt-network/shannon-sdk/types"
 )
