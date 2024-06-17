@@ -1,19 +1,21 @@
 package types
 
 import (
-	"bytes"
 	"io"
 	"net/http"
+	"slices"
 
 	"google.golang.org/protobuf/proto"
 )
 
 // SerializeHTTPResponse take an http.Response object and serializes it into a byte
 // slice that can be embedded into another struct, such as RelayResponse.Payload.
-func SerializeHTTPResponse(response *http.Response) (body []byte, err error) {
+func SerializeHTTPResponse(
+	response *http.Response,
+) (poktHTTPResponse *POKTHTTPResponse, poktHTTPResponseBz []byte, err error) {
 	responseBodyBz, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	response.Body.Close()
 
@@ -23,43 +25,42 @@ func SerializeHTTPResponse(response *http.Response) (body []byte, err error) {
 	// We have to avoid using http.Header.Get(key) because it only returns the
 	// first value of the key.
 	for key := range response.Header {
+		// Sort the header values to ensure that the order of the values is
+		// consistent and byte-for-byte equal when comparing the serialized
+		// response.
+		headerValues := response.Header.Values(key)
+		slices.Sort(headerValues)
 		headers[key] = &Header{
 			Key:    key,
-			Values: response.Header.Values(key),
+			Values: headerValues,
 		}
 	}
 
-	poktHTTPResponse := &POKTHTTPResponse{
+	poktHTTPResponse = &POKTHTTPResponse{
 		StatusCode: uint32(response.StatusCode),
 		Header:     headers,
 		BodyBz:     responseBodyBz,
 	}
 
-	return proto.Marshal(poktHTTPResponse)
+	poktHTTPResponseBz, err = proto.Marshal(poktHTTPResponse)
+
+	return poktHTTPResponse, poktHTTPResponseBz, err
 }
 
 // DeserializeHTTPResponse takes a byte slice and deserializes it into a
 // SerializableHTTPResponse object.
-func DeserializeHTTPResponse(responseBz []byte) (response *http.Response, err error) {
+func DeserializeHTTPResponse(responseBz []byte) (response *POKTHTTPResponse, err error) {
 	poktHTTPResponse := &POKTHTTPResponse{}
 
 	if err := proto.Unmarshal(responseBz, poktHTTPResponse); err != nil {
 		return nil, err
 	}
 
-	headers := make(http.Header)
-	for key, header := range poktHTTPResponse.Header {
-		// Add each value of the header to the http.Header.
-		for _, value := range header.Values {
-			headers.Add(key, value)
-		}
+	// If the responseBz has no header, we need to initialize it to avoid nil
+	// pointer dereference.
+	if poktHTTPResponse.Header == nil {
+		poktHTTPResponse.Header = map[string]*Header{}
 	}
 
-	response = &http.Response{
-		StatusCode: int(poktHTTPResponse.StatusCode),
-		Header:     headers,
-		Body:       io.NopCloser(bytes.NewReader(poktHTTPResponse.BodyBz)),
-	}
-
-	return response, nil
+	return poktHTTPResponse, err
 }
