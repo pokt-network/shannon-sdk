@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"errors"
 
 	"github.com/cosmos/gogoproto/grpc"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
@@ -14,28 +15,7 @@ import (
 // For example, it can be used to get the current session for a given application
 // and service id at a given height.
 type SessionClient struct {
-	PoktrollSessionFetcher
-}
-
-// PoktrollSessionFetcher is used by the SessionClient to fetch sessions using poktroll request/response types.
-//
-// It is defined to allow customizing the interactions of SessionClient with poktroll, without affecting
-// the functionality/interface of SessionClient.
-type PoktrollSessionFetcher interface {
-	GetSession(
-		context.Context,
-		*sessiontypes.QueryGetSessionRequest,
-		...grpcoptions.CallOption,
-	) (*sessiontypes.QueryGetSessionResponse, error)
-}
-
-// NewSessionClient creates a new session client with the provided gRPC connection.
-//
-// It builds an instance of SessionClient that utilizes the gRPC query client of the session module.
-func NewSessionClient(grpcConn grpc.ClientConn) *SessionClient {
-	return &SessionClient{
-		PoktrollSessionFetcher: sessiontypes.NewQueryClient(grpcConn),
-	}
+	PoktNodeSessionFetcher
 }
 
 // GetSession returns the session with the given application address, service id and height.
@@ -45,6 +25,10 @@ func (s *SessionClient) GetSession(
 	serviceId string,
 	height int64,
 ) (session *sessiontypes.Session, err error) {
+	if s.PoktNodeSessionFetcher == nil {
+		return nil, errors.New("PoktNodeSessionFetcher not set")
+	}
+
 	req := &sessiontypes.QueryGetSessionRequest{
 		ApplicationAddress: appAddress,
 		Service:            &sharedtypes.Service{Id: serviceId},
@@ -56,7 +40,7 @@ func (s *SessionClient) GetSession(
 	// If this is a correct assumption, the aforementioned support from the protocol could simplify fetching the current session.
 	// In addition, the current session that is being returned could include the latest block height, reducing the number of
 	// SDK calls needed for sending relays.
-	res, err := s.PoktrollSessionFetcher.GetSession(ctx, req)
+	res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +50,6 @@ func (s *SessionClient) GetSession(
 
 // TODO_DISCUSS: ServiceEndpoints can be replaced by a method on the Session struct.
 // TODO_DISCUSS: Consider using a custom type, defined as a string, as supplier address.
-//
 // This can help enforce type safety by requiring explict type casting of a string before it can be used as a SupplierAddress.
 //
 // ServiceEndpoints returns the supplier endpoints assigned to a session for the given service id.
@@ -87,6 +70,8 @@ func ServiceEndpoints(
 		//   that there are duplicate service IDs under a supplier.
 		var endpoints []*sharedtypes.SupplierEndpoint
 		for _, service := range supplier.Services {
+			// TODO_DISCUSS: considering a service Id is required to get a session, does it make sense for the suppliers under the session
+			// to only contain endpoints for the (single) service covered by the session?
 			if service.Service.Id != serviceId {
 				continue
 			}
@@ -97,4 +82,23 @@ func ServiceEndpoints(
 	}
 
 	return supplierEndpoints
+}
+
+// NewPoktNodeSessionFetcher returns the default implementation of the PoktNodeSessionFetcher interface.
+// It connects to a POKT full node through the session module's query client to get session data.
+func NewPoktNodeSessionFetcher(grpcConn grpc.ClientConn) PoktNodeSessionFetcher {
+	return sessiontypes.NewQueryClient(grpcConn)
+}
+
+// PoktNodeSessionFetcher is used by the SessionClient to fetch sessions using poktroll request/response types.
+//
+// Most users can rely on the default implementation provided by NewPoktNodeSessionFetcher function.
+// A custom implementation of this interface can be used to gain more granular control over the interactions
+// of the SessionClient with the POKT full node.
+type PoktNodeSessionFetcher interface {
+	GetSession(
+		context.Context,
+		*sessiontypes.QueryGetSessionRequest,
+		...grpcoptions.CallOption,
+	) (*sessiontypes.QueryGetSessionResponse, error)
 }
