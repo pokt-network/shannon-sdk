@@ -2,11 +2,6 @@ module github.com/pokt-network/shannon-sdk
 
 go 1.22.2
 
-replace (
-// Uncomment to use a local copy of poktroll for development purposes.
-// github.com/pokt-network/poktroll => ../poktroll
-)
-
 require (
 	github.com/athanorlabs/go-dleq v0.1.0
 	github.com/cometbft/cometbft v0.38.5
