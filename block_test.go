@@ -16,11 +16,11 @@ func ExampleLatestBlockHeight() {
 		PoktNodeStatusFetcher: poktFullNode,
 	}
 
-	height, err := bc.LatestBlockHeight(context.Background())
+	queryHeight, err := bc.LatestBlockHeight(context.Background())
 	if err != nil {
 		fmt.Printf("Erorr fetching latest block height: %v\n", err)
 		return
 	}
 
-	fmt.Printf("Latest block height: %d\n", height)
+	fmt.Printf("Latest block height: %d\n", queryHeight)
 }
