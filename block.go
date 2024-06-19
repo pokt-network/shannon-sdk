@@ -11,18 +11,17 @@ import (
 )
 
 // TODO_IDEA: The BlockClient could leverage websockets to get notified about new blocks
-//   and cache the latest block height to avoid querying the blockchain for it every time.
+//  and cache the latest block height to avoid querying the blockchain for it every time.
 
-// A BlockClient is used to interact with the on-chain block module.
+// BlockClient is a concrete types used to interact with the on-chain block module.
 // For example, it can be used to get the latest block height.
 //
-// PoktNodeStatusFetcher specifies the functionality required by the
-// BlockClient to interact with a POKT full node.
-//
-// For obtaining the latest height, BlockClient uses a POKT full
-// node's status which contains the latest block height.
-// This is done to avoid fetching the entire latest block just to extract the block height.
+// For obtaining the latest height, BlockClient uses a POKT full node's status
+// which contains the latest block height. This is done to avoid fetching the
+// entire latest block just to extract the block height.
 type BlockClient struct {
+	// PoktNodeStatusFetcher specifies the functionality required by the
+	// BlockClient to interact with a POKT full node.
 	PoktNodeStatusFetcher
 }
 
