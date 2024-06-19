@@ -218,6 +218,34 @@ The `SDK` **IS DESIGNED** to consume functionality from other packages via inter
 
 This follows Golang's best practices for interfaces as described [here](https://go.dev/wiki/CodeReviewComments#interfaces).
 
+As a concrete example, the `Client` struct is exported directly from the `net/http` package
+
+```
+type Client struct {
+    // Transport specifies the mechanism by which individual
+    // HTTP requests are made.
+    // If nil, DefaultTransport is used.
+    Transport RoundTripper
+```
+
+Note that the above `Client` struct has multiple public methods, yet no code exists to force it to fulfill a specific interface.
+
+As a concrete example of keeping interfaces on the consumer side, the above `Client` consumes a `RoundTripper` interface.
+As the godoc page for `net/http` specifies: `For control over proxies, TLS configuration, keep-alives, compression, and other settings, create a Transport`:
+
+```
+tr := &http.Transport{
+    MaxIdleConns:       10,
+    IdleConnTimeout:    30 * time.Second,
+    DisableCompression: true,
+}
+client := &http.Client{Transport: tr}
+```
+
+Example of a helper function used for overriding the default `RoundTripper`:
+
+```func NewFileTransport(fs FileSystem) RoundTripper```
+
 #### Exposed Concrete Types
 
 Each file (in the top level directory) will have a client implemented and returned
