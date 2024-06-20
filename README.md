@@ -220,7 +220,7 @@ This follows Golang's best practices for interfaces as described [here](https://
 
 As a concrete example, the `Client` struct is exported directly from the `net/http` package
 
-```
+```go
 type Client struct {
     // Transport specifies the mechanism by which individual
     // HTTP requests are made.
