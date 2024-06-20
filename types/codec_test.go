@@ -42,7 +42,8 @@ func TestCodec_SerializeRequest_Success(t *testing.T) {
 	poktReq, poktReqBz, err := types.SerializeHTTPRequest(req)
 	require.NoError(t, err)
 
-	marshalledPOKTReqBz, err := proto.Marshal(poktReq)
+	opts := proto.MarshalOptions{Deterministic: true}
+	marshalledPOKTReqBz, err := opts.Marshal(poktReq)
 	require.NoError(t, err)
 
 	for key := range req.Header {
@@ -118,7 +119,8 @@ func TestCodec_SerializeResponse_Success(t *testing.T) {
 	poktRes, poktResBz, err := types.SerializeHTTPResponse(res)
 	require.NoError(t, err)
 
-	marshalledPOKTResBz, err := proto.Marshal(poktRes)
+	opts := proto.MarshalOptions{Deterministic: true}
+	marshalledPOKTResBz, err := opts.Marshal(poktRes)
 	require.NoError(t, err)
 
 	for key := range res.Header {

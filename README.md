@@ -17,7 +17,12 @@ to [dev.poktroll.com/category/actors](https://dev.poktroll.com/category/actors).
   - [Get Gateway Delegating Applications](#get-gateway-delegating-applications)
   - [Send Relay](#send-relay)
   - [Helper functions](#helper-functions)
-- [ShannonSDK Internals](#shannonsdk-internals)
+- [ShannonSDK Internals \& Design (for developers only)](#shannonsdk-internals--design-for-developers-only)
+  - [Code Organization](#code-organization)
+    - [Interface Design](#interface-design)
+    - [Exposed Concrete Types](#exposed-concrete-types)
+    - [sdk.go](#sdkgo)
+    - [Public vs Private Fields](#public-vs-private-fields)
   - [Implementation Details](#implementation-details)
   - [Error Handling](#error-handling)
   - [Dependencies implementation](#dependencies-implementation)
@@ -188,7 +193,110 @@ poktHTTPRequest, requestBz, err := sdktypes.SerializeHTTPRequest(request)
 serviceResponse, err := sdktypes.DeserializeHTTPResponse(relayResponse.Payload)
 ```
 
-## ShannonSDK Internals
+## ShannonSDK Internals & Design (for developers only)
+
+### Code Organization
+
+The following is the top-level structure the SDK repo is moving towards:
+
+```bash
+application.go
+block.go
+relay.go
+session.go
+sign.go
+```
+
+_TODO_DOCUMENT: Add the output of `tree -L 2` once the above structure is implemented._
+_TODO_DOCUMENT: Add a mermaid diagram of the exposed types once complete._
+
+#### Interface Design
+
+The `SDK` **IS NOT DESIGNED** to provide interfaces to the consumer.
+
+The `SDK` **IS DESIGNED** to consume functionality from other packages via interfaces.
+
+This follows Golang's best practices for interfaces as described [here](https://go.dev/wiki/CodeReviewComments#interfaces).
+
+As a concrete example, the `Client` struct is exported directly from the `net/http` package
+
+```go
+type Client struct {
+    // Transport specifies the mechanism by which individual
+    // HTTP requests are made.
+    // If nil, DefaultTransport is used.
+    Transport RoundTripper
+```
+
+Note that the above `Client` struct has multiple public methods, yet no code exists to force it to fulfill a specific interface.
+
+As a concrete example of keeping interfaces on the consumer side, the above `Client` consumes a `RoundTripper` interface.
+As the godoc page for `net/http` specifies: `For control over proxies, TLS configuration, keep-alives, compression, and other settings, create a Transport`:
+
+```go
+tr := &http.Transport{
+    MaxIdleConns:       10,
+    IdleConnTimeout:    30 * time.Second,
+    DisableCompression: true,
+}
+client := &http.Client{Transport: tr}
+```
+
+Example of a helper function used for overriding the default `RoundTripper`:
+
+```func NewFileTransport(fs FileSystem) RoundTripper```
+
+#### Exposed Concrete Types
+
+Each file (in the top level directory) will have a client implemented and returned
+as a concrete struct.
+
+For example, `ApplicationClient` is a `struct` that will be returned by `application.go`
+rather than an interface.
+
+#### sdk.go
+
+**NOTE: If you are reading this and the documentation is outdated, please update it!**
+
+The `sdk.go` is a **TEMPORARY** that needs to be split file needs to be split into
+`application.go`, `supplier.go`, etc...
+
+A `ShannonSDK` struct was defined initially but is non-ideal. It forces the
+user/developer to construct the entire struct even if they need a small fraction
+of the functionality.
+
+The following is an example of using a small subset of the SDK:
+
+```go
+session, err := sessionClient.CurrentSession()
+if err != nil {
+   return nil, err
+}
+
+endpoints := sdk.Endpoints(session, serviceID)
+```
+
+#### Public vs Private Fields
+
+The goal of this `SDK` is to make all fields of concrete types public to the user
+if there is a potential need for the user to set them directly.
+
+**IT SHOULD** be possible for the user to initialize any component of the SDK by
+creating a struct and setting the bare minimum necessary fields.
+
+For example, the SDK biases towards the following design:
+
+```go
+c := SessionClient {
+     HttpClient:  myCustomHttpTransport
+}
+```
+
+Instead of the following design:
+
+```go
+c := NewSessionClient(nil, nil, myCustomHttpTransport, nil, nil)
+```
 
 ### Implementation Details
 
