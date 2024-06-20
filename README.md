@@ -233,7 +233,7 @@ Note that the above `Client` struct has multiple public methods, yet no code exi
 As a concrete example of keeping interfaces on the consumer side, the above `Client` consumes a `RoundTripper` interface.
 As the godoc page for `net/http` specifies: `For control over proxies, TLS configuration, keep-alives, compression, and other settings, create a Transport`:
 
-```
+```go
 tr := &http.Transport{
     MaxIdleConns:       10,
     IdleConnTimeout:    30 * time.Second,
