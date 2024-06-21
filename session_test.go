@@ -21,7 +21,14 @@ func ExampleGetSession() {
 		return
 	}
 
-	for supplierId, endpoints := range ServiceEndpoints(session, "serviceId") {
+	fs := FilteredSession{Session: session}
+	serviceEndpoints, err := fs.ServiceEndpoints("serviceId")
+	if err != nil {
+		fmt.Printf("Error getting service endpoints: %v\n", err)
+		return
+	}
+
+	for supplierId, endpoints := range serviceEndpoints {
 		for _, e := range endpoints {
 			fmt.Printf("Supplier: %s, Endpoint URL: %s\n", supplierId, e.Url)
 		}
