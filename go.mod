@@ -7,8 +7,9 @@ require (
 	github.com/cometbft/cometbft v0.38.5
 	github.com/cosmos/cosmos-sdk v0.50.4
 	github.com/cosmos/gogoproto v1.4.11
-	github.com/noot/ring-go v0.0.0-20231019173746-6c4b33bcf03f
-	github.com/pokt-network/poktroll v0.0.3-0.20240531080249-488c0d2502c5
+	github.com/pokt-network/poktroll v0.0.3-0.20240615000642-ff0456568487
+	github.com/pokt-network/ring-go v0.1.0
+	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.32.0
 )
 
@@ -126,7 +127,6 @@ require (
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.2 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect

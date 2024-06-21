@@ -6,7 +6,7 @@ import (
 	"github.com/cosmos/gogoproto/grpc"
 )
 
-func ExampleLatestBlockHeight() {
+func ExampleGetSession() {
 	var grpcConn grpc.ClientConn
 	// setup the grpc connection
 	// ...

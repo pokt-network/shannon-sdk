@@ -7,11 +7,11 @@ import (
 
 	ring_secp256k1 "github.com/athanorlabs/go-dleq/secp256k1"
 	ringtypes "github.com/athanorlabs/go-dleq/types"
-	"github.com/noot/ring-go"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+	"github.com/pokt-network/ring-go"
 )
 
 // ApplicationLister returns all the applications or a single application with the specified address.
@@ -59,7 +59,7 @@ func NewShannonSDK(
 func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
-	currentHeight int64,
+	queryHeight int64,
 ) ([]string, error) {
 	// TODO_DISCUSS: remove this call: pass to this function the list of Application structs, which can be obtained separately using the ApplicationClient.
 	// It can be composed using other basic components of the SDK, e.g. get all the applications, get the latest block height, etc.
@@ -78,8 +78,8 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	gatewayDelegatingApplications := make([]string, 0)
 	for _, application := range allApplications {
 		// Get the gateways that are currently delegated to the application
-		// at the current height and check if the given gateway address is in the list.
-		gatewaysDelegatedTo := rings.GetRingAddressesAtBlock(params, &application, currentHeight)
+		// at the query height and check if the given gateway address is in the list.
+		gatewaysDelegatedTo := rings.GetRingAddressesAtBlock(params, &application, queryHeight)
 		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
 			// The application is delegating to the given gateway address, add it to the list.
 			gatewayDelegatingApplications = append(gatewayDelegatingApplications, application.Address)
@@ -99,6 +99,7 @@ func (sdk *ShannonSDK) SendRelay(
 	supplierAddress string,
 	endpointUrl string,
 	requestBz []byte,
+	queryHeight int64,
 ) (relayResponse *servicetypes.RelayResponse, err error) {
 	if err := header.ValidateBasic(); err != nil {
 		return nil, err
@@ -106,13 +107,14 @@ func (sdk *ShannonSDK) SendRelay(
 
 	relayRequest := &servicetypes.RelayRequest{
 		Meta: servicetypes.RelayRequestMetadata{
-			SessionHeader: header,
-			Signature:     nil,
+			SessionHeader:   header,
+			Signature:       nil,
+			SupplierAddress: supplierAddress,
 		},
 		Payload: requestBz,
 	}
 
-	relayRequestSig, err := sdk.signRelayRequest(ctx, relayRequest, latestHeight)
+	relayRequestSig, err := sdk.signRelayRequest(ctx, relayRequest, queryHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -164,11 +166,11 @@ func (sdk *ShannonSDK) SendRelay(
 func (sdk *ShannonSDK) signRelayRequest(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
-	latestHeight int64,
+	queryHeight int64,
 ) (signature []byte, err error) {
 	appAddress := relayRequest.GetMeta().SessionHeader.GetApplicationAddress()
 
-	appRing, err := sdk.getRingForApplicationAddress(ctx, appAddress, latestHeight)
+	appRing, err := sdk.getRingForApplicationAddress(ctx, appAddress, queryHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +204,7 @@ func (sdk *ShannonSDK) signRelayRequest(
 func (sdk *ShannonSDK) getRingForApplicationAddress(
 	ctx context.Context,
 	appAddress string,
-	latestHeight int64,
+	queryHeight int64,
 ) (addressRing *ring.Ring, err error) {
 	// TODO_DISCUSS: It may be a good idea to remove this call, and pass the application struct to this function, instead of an address.
 	application, err := sdk.ApplicationLister.GetApplication(ctx, appAddress)
@@ -217,7 +219,7 @@ func (sdk *ShannonSDK) getRingForApplicationAddress(
 
 	// Get the current gateway addresses that are delegated from the application
 	// at the latest height.
-	currentGatewayAddresses := rings.GetRingAddressesAtBlock(params, &application, latestHeight)
+	currentGatewayAddresses := rings.GetRingAddressesAtBlock(params, &application, queryHeight)
 
 	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, application.Address)

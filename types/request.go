@@ -3,7 +3,6 @@ package types
 import (
 	"io"
 	"net/http"
-	"slices"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -21,11 +20,7 @@ func SerializeHTTPRequest(
 
 	headers := map[string]*Header{}
 	for key := range request.Header {
-		// Sort the header values to ensure that the order of the values is
-		// consistent and byte-for-byte equal when comparing the serialized
-		// request.
 		headerValues := request.Header.Values(key)
-		slices.Sort(headerValues)
 		headers[key] = &Header{
 			Key:    key,
 			Values: headerValues,
@@ -39,7 +34,11 @@ func SerializeHTTPRequest(
 		BodyBz: requestBodyBz,
 	}
 
-	poktHTTPRequestBz, err = proto.Marshal(poktHTTPRequest)
+	// Use deterministic marshalling to ensure that the serialized request is
+	// byte-for-byte equal when comparing the serialized request.
+	opts := proto.MarshalOptions{Deterministic: true}
+
+	poktHTTPRequestBz, err = opts.Marshal(poktHTTPRequest)
 
 	return poktHTTPRequest, poktHTTPRequestBz, err
 }
