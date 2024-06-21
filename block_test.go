@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func ExampleBlockClient_LatestBlockHeight() {
+func ExampleLatestBlockHeight() {
 	poktFullNode, err := NewPoktNodeStatusFetcher("pokt-full-node-URL")
 	if err != nil {
 		fmt.Printf("Erorr creating a connection to POKT full node: %v\n", err)
