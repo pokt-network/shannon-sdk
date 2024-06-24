@@ -5,27 +5,23 @@ import (
 
 	"github.com/cosmos/gogoproto/grpc"
 	"github.com/pokt-network/poktroll/x/shared/types"
-
-	"github.com/pokt-network/shannon-sdk/sdk"
 )
-
-var _ sdk.SharedParamsClient = (*sharedParamsClient)(nil)
 
 // sharedParamsClient is a SharedParamsClient implementation that uses the gRPC
 // query client of the on-chain shared module.
-type sharedParamsClient struct {
+type SharedParamsClient struct {
 	queryClient types.QueryClient
 }
 
 // NewSharedParamsClient creates a new share params client with the provided gRPC connection.
-func NewSharedParamsClient(grpcConn grpc.ClientConn) (sdk.SharedParamsClient, error) {
-	return &sharedParamsClient{
+func NewSharedParamsClient(grpcConn grpc.ClientConn) (*SharedParamsClient, error) {
+	return &SharedParamsClient{
 		queryClient: types.NewQueryClient(grpcConn),
 	}, nil
 }
 
 // GetParams returns the params of the poktroll on-chain shared module.
-func (pc *sharedParamsClient) GetParams(
+func (pc *SharedParamsClient) GetParams(
 	ctx context.Context,
 ) (*types.Params, error) {
 	req := &types.QueryParamsRequest{}
