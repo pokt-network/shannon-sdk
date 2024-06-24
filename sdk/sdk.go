@@ -144,7 +144,7 @@ func (sdk *ShannonSDK) SendRelay(
 	requestBz []byte,
 	queryHeight int64,
 ) (relayResponse *servicetypes.RelayResponse, err error) {
-	if err := sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
+	if err = sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
 		return nil, err
 	}
 
@@ -179,11 +179,11 @@ func (sdk *ShannonSDK) SendRelay(
 	}
 
 	relayResponse = &servicetypes.RelayResponse{}
-	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
+	if err = relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err
 	}
 
-	if err := relayResponse.ValidateBasic(); err != nil {
+	if err = relayResponse.ValidateBasic(); err != nil {
 		// Even if the relay response is invalid, we still return it to the caller
 		// as it might contain the reason why it's failing basic validation.
 		return relayResponse, err
