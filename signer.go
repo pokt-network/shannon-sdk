@@ -1,10 +1,12 @@
 package sdk
 
 import (
+	"context"
+	"encoding/hex"
 	"fmt"
 
-	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	"github.com/pokt-network/ring-go"
 )
 
 // Signer is used to sign Relay Requests.
@@ -23,7 +25,7 @@ func (s *Signer) Sign(
 	relayRequest *servicetypes.RelayRequest,
 	// TODO_IMPROVE: this input argument should be changed to an interface.
 	app ApplicationRing,
-	queryHeight int64,
+	queryHeight uint64,
 ) (*servicetypes.RelayRequest, error) {
 	appRing, err := app.GetRing(ctx, queryHeight)
 	if err != nil {

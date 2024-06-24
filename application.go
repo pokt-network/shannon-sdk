@@ -2,6 +2,13 @@ package sdk
 
 import (
 	"context"
+	"fmt"
+	"slices"
+
+	ring_secp256k1 "github.com/athanorlabs/go-dleq/secp256k1"
+	ringtypes "github.com/athanorlabs/go-dleq/types"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/pokt-network/ring-go"
 
 	"github.com/cosmos/gogoproto/grpc"
 	"github.com/pokt-network/poktroll/x/application/types"
@@ -63,7 +70,7 @@ func (ac *ApplicationClient) GetApplication(
 func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
-	queryHeight int64,
+	queryHeight uint64,
 ) ([]string, error) {
 	allApplications, err := ac.GetAllApplications(ctx)
 	if err != nil {
@@ -95,7 +102,7 @@ type ApplicationRing struct {
 // the gateways that are currently delegated from the application.
 func (a ApplicationRing) GetRing(
 	ctx context.Context,
-	queryHeight int64,
+	queryHeight uint64,
 ) (addressRing *ring.Ring, err error) {
 	// Get the gateway addresses that are delegated from the application
 	// at the query height.
@@ -133,7 +140,7 @@ func (a ApplicationRing) GetRing(
 }
 
 func (a ApplicationRing) ringAddressesAtBlock(
-	queryHeight int64,
+	queryHeight uint64,
 ) []string {
 	// Get the current active delegations for the application and use them as a base.
 	activeDelegationsAtHeight := a.Application.DelegateeGatewayAddresses
@@ -148,7 +155,7 @@ func (a ApplicationRing) ringAddressesAtBlock(
 		// If the pending undelegation happened BEFORE the target session end height, skip it.
 		// The gateway is pending undelegation and simply has not been pruned yet.
 		// It will be pruned in the near future.
-		if pendingUndelegationHeight < sessionEndHeight {
+		if pendingUndelegationHeight < queryHeight {
 			continue
 		}
 		// Add back any gateway address  that was undelegated after the target session
@@ -172,5 +179,5 @@ func (a ApplicationRing) ringAddressesAtBlock(
 // It is used by the ApplicationRing struct to construct the Application's Ring for signing relay requests.
 // The AccountClient struct provides an implementation of this interface.
 type PublicKeyFetcher interface {
-	GetPubKeyFromAddress(context.Context, string) ([]byte, error)
+	GetPubKeyFromAddress(context.Context, string) (cryptotypes.PubKey, error)
 }

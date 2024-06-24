@@ -178,19 +178,33 @@ func (f *FilteredSession) AddEndpointToSelection(serviceId string, supplierAddre
 }
 
 // SelectedEndpoint returns the supplier address and the selected supplier endpoint.
-func (f *FilteredSession) SelectedEndpoint() (string, *sharedtypes.SupplierEndpoint, error) {
+func (f *FilteredSession) SelectedEndpoint() (*sharedtypes.SupplierEndpoint, error) {
 	if len(f.selectedEndpoints) == 0 {
-		return "", nil, errors.New("no endpoint has been marked as selected")
+		return nil, errors.New("no endpoint has been marked as selected")
+	}
+
+	for _, endpoints := range f.selectedEndpoints {
+		if len(endpoints) > 0 {
+			// TODO_IMPROVE: once FilteredSession supports ordering of the endpoints, this function needs to return the best endpoint.
+			return endpoints[0], nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find any selected endpoints for service ID: %s", f.selectedServiceId)
+}
+
+func (f *FilteredSession) SelectedSupplierAddress() (string, error) {
+	if len(f.selectedEndpoints) == 0 {
+		return "", errors.New("Error finding the selected supplier address: no endpoint has been marked as selected")
 	}
 
 	for supplierAddress, endpoints := range f.selectedEndpoints {
 		if len(endpoints) > 0 {
-			// TODO_IMPROVE: once FilteredSession supports ordering of the endpoints, this function needs to return the best endpoint.
-			return supplierAddress, endpoints[0], nil
+			return supplierAddress, nil
 		}
 	}
 
-	return "", nil, fmt.Errorf("could not find any selected endpoints for service ID: %s", f.selectedServiceId)
+	return "", fmt.Errorf("could not find any selected endpoints for service ID: %s", f.selectedServiceId)
 }
 
 func (f *FilteredSession) SessionHeader() (*sessiontypes.SessionHeader, error) {

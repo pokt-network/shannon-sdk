@@ -1,15 +1,25 @@
 package sdk
 
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
+)
+
 // The returned RelayRequest struct can be marshalled and delivered to a service endpoint through an HTTP POST request.
 func BuildRelayRequest(
-	endpointProvider EndpointProvider,
+	endpointSelector EndpointSelector,
 	requestBz []byte,
 ) (*servicetypes.RelayRequest, error) {
-	if endpointProvider == nil {
-		return nil, errors.New("BuildRelayRequest: endpointProvider not specified")
+	if endpointSelector == nil {
+		return nil, errors.New("BuildRelayRequest: endpointSelector not specified")
 	}
 
-	sessionHeader, err := endpointProvider.SessionHeader()
+	sessionHeader, err := endpointSelector.SessionHeader()
 	if err != nil {
 		return nil, fmt.Errorf("BuildRelayRequest: could not get session header: %w", err)
 	}
@@ -18,7 +28,7 @@ func BuildRelayRequest(
 		return nil, fmt.Errorf("BuildRelayRequest: error validating session header: %w", err)
 	}
 
-	supplierAddress, err := endpointProvider.SupplierAddress()
+	supplierAddress, err := endpointSelector.SelectedSupplierAddress()
 	if err != nil {
 		return nil, fmt.Errorf("BuildRelayRequest: error getting a supplier: %w", err)
 	}
@@ -33,6 +43,8 @@ func BuildRelayRequest(
 }
 
 func ValidateRelayResponse(
+	ctx context.Context,
+	relayRequest *servicetypes.RelayRequest,
 	relayResponseBz []byte,
 	publicKeyFetcher PublicKeyFetcher,
 ) (relayResponse *servicetypes.RelayResponse, err error) {
@@ -50,7 +62,7 @@ func ValidateRelayResponse(
 
 	supplierPubKey, err := publicKeyFetcher.GetPubKeyFromAddress(
 		ctx,
-		supplierAddress,
+		relayRequest.Meta.SupplierAddress,
 	)
 	if err != nil {
 		return nil, err
@@ -65,10 +77,10 @@ func ValidateRelayResponse(
 
 // TODO_IMPROVE: add a detailed example on how to use the FilteredSession struct to provide endpoints to relay builder.
 //
-// EndpointProvider is used by Relay utility functions to provide details on the target endpoint for a relay.
+// EndpointSelector is used by Relay utility functions to provide details on the target endpoint for a relay.
 // A basic implementation of this interface is fulfilled by the `FilteredSession` struct.
-type EndpointProvider interface {
+type EndpointSelector interface {
 	SessionHeader() (*sessiontypes.SessionHeader, error)
-	Endpoint() (*sharedtypes.SupplierEndpoint, error)
-	SupplierAddress() (string, error)
+	SelectedEndpoint() (*sharedtypes.SupplierEndpoint, error)
+	SelectedSupplierAddress() (string, error)
 }

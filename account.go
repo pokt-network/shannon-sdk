@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	accounttypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	grpc "github.com/cosmos/gogoproto/grpc"
+	grpcoptions "google.golang.org/grpc"
 )
 
 var queryCodec *codec.ProtoCodec
@@ -21,7 +22,8 @@ func init() {
 }
 
 // AccountClient is used to interact with the account module.
-// It uses an AccountClient implementation that uses the gRPC query client
+//
+// For example, it can be used to get the public key corresponding to an address.
 type AccountClient struct {
 	PoktNodeAccountFetcher
 }
@@ -33,7 +35,7 @@ func (ac *AccountClient) GetPubKeyFromAddress(
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
 	req := &accounttypes.QueryAccountRequest{Address: address}
-	res, err := ac.queryClient.Account(ctx, req)
+	res, err := ac.PoktNodeAccountFetcher.Account(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +50,7 @@ func (ac *AccountClient) GetPubKeyFromAddress(
 
 // NewPoktNodeAccountFetcher returns the default implementation of the PoktNodeAccountFetcher interfce.
 // It connects to a POKT full node, through the account module's query client, to get account data.
-func NewAccountClient(grpcConn grpc.ClientConn) PoktNodeAccountFetcher {
+func NewPoktNodeAccountFetcher(grpcConn grpc.ClientConn) PoktNodeAccountFetcher {
 	return accounttypes.NewQueryClient(grpcConn)
 }
 
@@ -61,5 +63,6 @@ type PoktNodeAccountFetcher interface {
 	Account(
 		context.Context,
 		*accounttypes.QueryAccountRequest,
+		...grpcoptions.CallOption,
 	) (*accounttypes.QueryAccountResponse, error)
 }
