@@ -27,7 +27,7 @@ func ExampleSendRelay() {
 		return
 	}
 
-	// 4. Sign the Relya Request
+	// 4. Sign the Relay Request
 	// 4.a. Create a signer
 	signer := Signer{PrivateKeyHex: "private key hex"}
 
