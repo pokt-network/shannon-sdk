@@ -51,7 +51,7 @@ func SerializeHTTPResponse(
 func DeserializeHTTPResponse(responseBz []byte) (response *POKTHTTPResponse, err error) {
 	poktHTTPResponse := &POKTHTTPResponse{}
 
-	if err := proto.Unmarshal(responseBz, poktHTTPResponse); err != nil {
+	if err = proto.Unmarshal(responseBz, poktHTTPResponse); err != nil {
 		return nil, err
 	}
 

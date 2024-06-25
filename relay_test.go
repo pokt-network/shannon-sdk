@@ -18,10 +18,19 @@ func ExampleSendRelay() {
 	var filteredSession *FilteredSession
 	// 1. Get the currnet session and set it on the filteredSession
 	// 2. Select Endpoint using FilteredSession
-	// ...
+	endpoints, err := filteredSession.FilteredEndpoints()
+	if err != nil {
+		fmt.Printf("error getting filtered endpoints: %v\n", err)
+		return
+	}
+
+	if len(endpoints) == 0 {
+		fmt.Println("no endpoints returned by the filter.")
+		return
+	}
 
 	// 3. Build a Relay Request
-	req, err := BuildRelayRequest(filteredSession, []byte("relay request payload"))
+	req, err := BuildRelayRequest(endpoints[0], []byte("relay request payload"))
 	if err != nil {
 		fmt.Printf("error building relay request: %v", err)
 		return
@@ -59,13 +68,7 @@ func ExampleSendRelay() {
 	}
 
 	// 4.f. Send the Signed Relay Request to the selected endpoint
-	endpoint, err := filteredSession.SelectedEndpoint()
-	if err != nil {
-		fmt.Errorf("error getting the selected endpoint for sending a relay: %v", err)
-		return
-	}
-
-	responseBz, err := SendHttpRelay(ctx, endpoint.Url, *req)
+	responseBz, err := SendHttpRelay(ctx, endpoints[0].Endpoint().Url, *req)
 	if err != nil {
 		fmt.Printf("error sending relay: %v", err)
 		return

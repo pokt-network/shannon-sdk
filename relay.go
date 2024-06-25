@@ -3,7 +3,6 @@ package sdk
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
@@ -12,31 +11,19 @@ import (
 
 // The returned RelayRequest struct can be marshalled and delivered to a service endpoint through an HTTP POST request.
 func BuildRelayRequest(
-	endpointSelector EndpointSelector,
+	endpoint Endpoint,
 	requestBz []byte,
 ) (*servicetypes.RelayRequest, error) {
-	if endpointSelector == nil {
+	if endpoint == nil {
 		return nil, errors.New("BuildRelayRequest: endpointSelector not specified")
 	}
 
-	sessionHeader, err := endpointSelector.SessionHeader()
-	if err != nil {
-		return nil, fmt.Errorf("BuildRelayRequest: could not get session header: %w", err)
-	}
-
-	if err := sessionHeader.ValidateBasic(); err != nil {
-		return nil, fmt.Errorf("BuildRelayRequest: error validating session header: %w", err)
-	}
-
-	supplierAddress, err := endpointSelector.SelectedSupplierAddress()
-	if err != nil {
-		return nil, fmt.Errorf("BuildRelayRequest: error getting a supplier: %w", err)
-	}
-
+	header := endpoint.Header()
+	// TODO_DISCUSS: the Header provided by the Endpoint is assumed to be valid, is this a reasonable assumption?
 	return &servicetypes.RelayRequest{
 		Meta: servicetypes.RelayRequestMetadata{
-			SessionHeader:   sessionHeader,
-			SupplierAddress: supplierAddress,
+			SessionHeader:   &header,
+			SupplierAddress: string(endpoint.Supplier()),
 		},
 		Payload: requestBz,
 	}, nil

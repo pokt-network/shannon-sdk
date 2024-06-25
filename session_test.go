@@ -3,10 +3,11 @@ package sdk
 import (
 	"context"
 	"fmt"
+
 	"github.com/cosmos/gogoproto/grpc"
 )
 
-func ExampleGetSession() {
+func ExampleSessionClient() {
 	var grpcConn grpc.ClientConn
 	// setup the grpc connection
 	// ...
@@ -22,7 +23,7 @@ func ExampleGetSession() {
 	}
 
 	fs := FilteredSession{Session: session}
-	serviceEndpoints, err := fs.ServiceEndpoints("serviceId")
+	serviceEndpoints, err := fs.AllEndpoints()
 	if err != nil {
 		fmt.Printf("Error getting service endpoints: %v\n", err)
 		return
@@ -30,7 +31,7 @@ func ExampleGetSession() {
 
 	for supplierId, endpoints := range serviceEndpoints {
 		for _, e := range endpoints {
-			fmt.Printf("Supplier: %s, Endpoint URL: %s\n", supplierId, e.Url)
+			fmt.Printf("Supplier: %s, Endpoint URL: %s\n", supplierId, e.Endpoint().Url)
 		}
 	}
 }

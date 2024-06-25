@@ -68,6 +68,13 @@ type PoktNodeSessionFetcher interface {
 	) (*sessiontypes.QueryGetSessionResponse, error)
 }
 
+// SupplierAddress captures the address for a supplier.
+// This is defined to help enforce type safety by requiring explict type casting of a string before it can be used as a Supplier's address.
+type SupplierAddress string
+
+// An EndpointFilter returns a boolean indicating whether the input endpoint should be filtered out.
+type EndpointFilter func(Endpoint) bool
+
 // TODO_IMPROVE: add a `FilterSupplier` method to drop a supplier from consideration when sending a relay.
 // TODO_IMPROVE: add a `FilterEndpoint` method to drop an endpoint from consideration when sending a relay.
 // TODO_IMPROVE: add an OrderEndpoints to allow ordering the list of available, i.e. not filtered out, endpoints.
@@ -78,29 +85,19 @@ type PoktNodeSessionFetcher interface {
 type FilteredSession struct {
 	*sessiontypes.Session
 
-	// selectedEndpoints is the set of a specific service's endpoints, from the underlying session, that are selected by the user of FilteredNodes.
-	// This selection can be for any purpose, e.g. sending relays.
-	// The set of selected endpoints is stored as a map of supplier addresses to a list of endpoints.
-	selectedEndpoints map[string][]*sharedtypes.SupplierEndpoint
-
-	// selectedServiceId stores the ID of the service selected by the user.
-	selectedServiceId string
+	EndpointFilters []EndpointFilter
+	// TODO_IMPROVE: add a slice of endpoint ordering functions
 }
 
-// TODO_DISCUSS: Consider using a custom type, defined as a string, as supplier address.
-// This can help enforce type safety by requiring explict type casting of a string before it can be used as a SupplierAddress.
-//
-// ServiceEndpoints returns the supplier endpoints assigned to a session for the given service id.
-//
-// The returned value is a map of supplierId to the list of endpoints.
-func (f *FilteredSession) ServiceEndpoints(
-	serviceId string,
-) (map[string][]*sharedtypes.SupplierEndpoint, error) {
+// AllEndpoints returns all the endpoints corresponding to a session for the service id specified by the session header.
+// The endpoints are not filtered.
+func (f *FilteredSession) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 	if f.Session == nil {
-		return nil, fmt.Errorf("ServiceEndpoints: Session not set on FilteredSession struct")
+		return nil, fmt.Errorf("AllEndpoints: Session not set on FilteredSession struct")
 	}
 
-	supplierEndpoints := make(map[string][]*sharedtypes.SupplierEndpoint)
+	header := f.Session.Header
+	supplierEndpoints := make(map[SupplierAddress][]Endpoint)
 	for _, supplier := range f.Session.Suppliers {
 		// TODO_DISCUSS: It may be a good idea to use a map[serviceID][]Endpoint under each supplier,
 		//   especially if service IDs under each supplier should be unique.
@@ -108,109 +105,79 @@ func (f *FilteredSession) ServiceEndpoints(
 		//   need to iterate through all the services.
 		//
 		// The endpoins slice is intentionally defined here to prevent any overwrites in the unlikely case
-		//   that there are duplicate service IDs under a supplier.
-		var endpoints []*sharedtypes.SupplierEndpoint
+		// that there are duplicate service IDs under a supplier.
+		var endpoints []Endpoint
 		for _, service := range supplier.Services {
 			// TODO_DISCUSS: considering a service Id is required to get a session, does it make sense for the suppliers under the session
 			// to only contain endpoints for the (single) service covered by the session?
-			if service.Service.Id != serviceId {
+			if service.Service.Id != f.Session.Header.Service.Id {
 				continue
 			}
 
-			endpoints = append(endpoints, service.Endpoints...)
+			var newEndpoints []Endpoint
+			for _, e := range service.Endpoints {
+				newEndpoints = append(newEndpoints, endpoint{
+					// TODO_TECHDEBT: need deep copying here.
+					header:           *header,
+					supplierEndpoint: *e,
+					supplier:         SupplierAddress(supplier.Address),
+				})
+			}
+			endpoints = append(endpoints, newEndpoints...)
 		}
-		supplierEndpoints[supplier.Address] = endpoints
+		supplierEndpoints[SupplierAddress(supplier.Address)] = endpoints
 	}
 
 	return supplierEndpoints, nil
 }
 
-// SelectEndpoint adds the specifed supplier+endpoint combination to the list of selected endpoints of a service, e.g. for sending relays.
-// This method is not safe to use concurrently by multiple goroutines.
-func (f *FilteredSession) AddEndpointToSelection(serviceId string, supplierAddress string, endpoint *sharedtypes.SupplierEndpoint) error {
-	if serviceId == "" {
-		return errors.New("Cannot add endpoint to selection without a service ID.")
+// TODO_DISCUSS: do we need a supplier-level filter to filter out all endpoints corresponding to a specific supplier?
+// TODO_TECHDEBT: add a unit test to cover this method.
+func (f *FilteredSession) FilteredEndpoints() ([]Endpoint, error) {
+	allEndpoints, err := f.AllEndpoints()
+	if err != nil {
+		return nil, fmt.Errorf("FilteredEndpoints: error getting all endpoints: %w", err)
 	}
 
-	if f.selectedServiceId != "" && serviceId != f.selectedServiceId {
-		return fmt.Errorf("Cannot add endpoint to selection: already selected service ID %s does not match supplied service ID %s",
-			f.selectedServiceId,
-			serviceId,
-		)
-	}
-
-	if supplierAddress == "" {
-		return errors.New("Cannot add endpoint to selection without a supplier ID.")
-	}
-
-	var supplier *sharedtypes.Supplier
-	for _, s := range f.Session.GetSuppliers() {
-		if s.Address == supplierAddress {
-			supplier = s
-			break
+	var filteredEndpoints []Endpoint
+	for _, endpoints := range allEndpoints {
+		for _, endpoint := range endpoints {
+			includePoint := true
+			for _, filter := range f.EndpointFilters {
+				if filter(endpoint) {
+					includePoint = false
+					break
+				}
+			}
+			if includePoint {
+				filteredEndpoints = append(filteredEndpoints, endpoint)
+			}
 		}
 	}
-	if supplier == nil {
-		return fmt.Errorf("Cannot add endpoint to selection: supplier %s not found.", supplierAddress)
-	}
 
-	var serviceIdMatched bool
-	for _, serviceConfig := range supplier.Services {
-		if serviceConfig.Service.GetId() == serviceId {
-			serviceIdMatched = true
-			break
-		}
-	}
-	if !serviceIdMatched {
-		return fmt.Errorf("Cannot add endpoint to selection: supplier %s does not provide service %s", supplier.Address, serviceId)
-	}
-
-	// TODO_TECHDEBT: verify the input endpoint is included in the session.
-
-	// Input passed all validation, add the input endpoint to selection
-	f.selectedServiceId = serviceId
-	if f.selectedEndpoints == nil {
-		f.selectedEndpoints = make(map[string][]*sharedtypes.SupplierEndpoint)
-	}
-
-	f.selectedEndpoints[supplier.Address] = append(f.selectedEndpoints[supplier.Address], endpoint)
-	return nil
+	return filteredEndpoints, nil
 }
 
-// SelectedEndpoint returns the supplier address and the selected supplier endpoint.
-func (f *FilteredSession) SelectedEndpoint() (*sharedtypes.SupplierEndpoint, error) {
-	if len(f.selectedEndpoints) == 0 {
-		return nil, errors.New("no endpoint has been marked as selected")
-	}
-
-	for _, endpoints := range f.selectedEndpoints {
-		if len(endpoints) > 0 {
-			// TODO_IMPROVE: once FilteredSession supports ordering of the endpoints, this function needs to return the best endpoint.
-			return endpoints[0], nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not find any selected endpoints for service ID: %s", f.selectedServiceId)
+type endpoint struct {
+	header           sessiontypes.SessionHeader
+	supplierEndpoint sharedtypes.SupplierEndpoint
+	supplier         SupplierAddress
 }
 
-func (f *FilteredSession) SelectedSupplierAddress() (string, error) {
-	if len(f.selectedEndpoints) == 0 {
-		return "", errors.New("Error finding the selected supplier address: no endpoint has been marked as selected")
-	}
-
-	for supplierAddress, endpoints := range f.selectedEndpoints {
-		if len(endpoints) > 0 {
-			return supplierAddress, nil
-		}
-	}
-
-	return "", fmt.Errorf("could not find any selected endpoints for service ID: %s", f.selectedServiceId)
+func (e endpoint) Endpoint() sharedtypes.SupplierEndpoint {
+	return e.supplierEndpoint
 }
 
-func (f *FilteredSession) SessionHeader() (*sessiontypes.SessionHeader, error) {
-	if f.Session == nil {
-		return nil, errors.New("SessionHeader: Supporting session not set on FilteredSession struct")
-	}
+func (e endpoint) Supplier() SupplierAddress {
+	return e.supplier
+}
 
-	return f.Session.GetHeader(), nil
+func (e endpoint) Header() sessiontypes.SessionHeader {
+	return e.header
+}
+
+type Endpoint interface {
+	Header() sessiontypes.SessionHeader
+	Supplier() SupplierAddress
+	Endpoint() sharedtypes.SupplierEndpoint
 }
