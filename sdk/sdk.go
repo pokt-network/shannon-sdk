@@ -107,7 +107,7 @@ func (sdk *ShannonSDK) SendRelay(
 	endpointProvider EndpointProvider,
 	requestBz []byte,
 	queryHeight int64,
-) (relayResponse *servicetypes.RelayResponse, err error) {
+) (*servicetypes.RelayResponse, error) {
 	if endpointProvider == nil {
 		return nil, errors.New("SendRelay: endpointProvider not specified")
 	}
@@ -156,7 +156,7 @@ func (sdk *ShannonSDK) SendRelay(
 		return nil, err
 	}
 
-	relayResponse = &servicetypes.RelayResponse{}
+	relayResponse := &servicetypes.RelayResponse{}
 	if err = relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err
 	}
