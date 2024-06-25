@@ -157,11 +157,11 @@ func (sdk *ShannonSDK) SendRelay(
 	}
 
 	relayResponse = &servicetypes.RelayResponse{}
-	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
+	if err = relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err
 	}
 
-	if err := relayResponse.ValidateBasic(); err != nil {
+	if err = relayResponse.ValidateBasic(); err != nil {
 		// Even if the relay response is invalid, we still return it to the caller
 		// as it might contain the reason why it's failing basic validation.
 		return relayResponse, err
