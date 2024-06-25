@@ -3,6 +3,8 @@ package sdk
 import (
 	"context"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"slices"
 
 	ring_secp256k1 "github.com/athanorlabs/go-dleq/secp256k1"
@@ -10,9 +12,9 @@ import (
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
 	"github.com/pokt-network/ring-go"
-
-	"github.com/pokt-network/shannon-sdk/types"
 )
 
 // ApplicationLister returns all the applications or a single application with the specified address.
@@ -30,7 +32,6 @@ type ApplicationLister interface {
 // TODO_TEST: Add unit tests for the ShannonSDK struct
 type ShannonSDK struct {
 	ApplicationLister
-	sessionClient SessionClient
 	accountClient AccountClient
 	paramsClient  SharedParamsClient
 	relayClient   RelayClient
@@ -42,7 +43,6 @@ type ShannonSDK struct {
 // The signer is used to sign the relay requests.
 func NewShannonSDK(
 	applicationLister ApplicationLister,
-	sessionClient SessionClient,
 	accountClient AccountClient,
 	paramsClient SharedParamsClient,
 	relayClient RelayClient,
@@ -50,54 +50,11 @@ func NewShannonSDK(
 ) (*ShannonSDK, error) {
 	return &ShannonSDK{
 		ApplicationLister: applicationLister,
-		sessionClient:     sessionClient,
 		accountClient:     accountClient,
 		paramsClient:      paramsClient,
 		relayClient:       relayClient,
 		signer:            signer,
 	}, nil
-}
-
-// GetSessionSupplierEndpoints returns the current session with its assigned
-// suppliers and their corresponding endpoints for the given application address
-// and service id.
-func (sdk *ShannonSDK) GetSessionSupplierEndpoints(
-	ctx context.Context,
-	appAddress string,
-	serviceId string,
-	queryHeight int64,
-) (sessionSuppliers *types.SessionSuppliers, err error) {
-	currentSession, err := sdk.sessionClient.GetSession(ctx, appAddress, serviceId, queryHeight)
-	if err != nil {
-		return nil, err
-	}
-
-	sessionSuppliers = &types.SessionSuppliers{
-		Session:            currentSession,
-		SuppliersEndpoints: make([]*types.SingleSupplierEndpoint, 0),
-	}
-
-	for _, supplier := range currentSession.Suppliers {
-		for _, service := range supplier.Services {
-			if service.Service.Id != serviceId {
-				continue
-			}
-
-			for _, endpoint := range service.Endpoints {
-				sessionSuppliers.SuppliersEndpoints = append(
-					sessionSuppliers.SuppliersEndpoints,
-					&types.SingleSupplierEndpoint{
-						RpcType:         endpoint.RpcType,
-						Url:             endpoint.Url,
-						SupplierAddress: supplier.Address,
-						SessionHeader:   currentSession.Header,
-					},
-				)
-			}
-		}
-	}
-
-	return sessionSuppliers, nil
 }
 
 // GetApplicationsDelegatingToGateway returns the application addresses that are
@@ -135,24 +92,45 @@ func (sdk *ShannonSDK) GetApplicationsDelegatingToGateway(
 	return gatewayDelegatingApplications, nil
 }
 
+// EndpointProvider is used by the SendRelay function to provide details on the target endpoint for a relay.
+// A basic implementation of this interface is fulfilled by the `FilteredSession` struct.
+type EndpointProvider interface {
+	SessionHeader() (*sessiontypes.SessionHeader, error)
+	SelectedEndpoint() (string, *sharedtypes.SupplierEndpoint, error)
+}
+
 // SendRelay signs and sends a relay request to the given supplier endpoint
 // with the given request body, method, and headers. It returns the relay
 // response after verifying the supplier's signature.
 func (sdk *ShannonSDK) SendRelay(
 	ctx context.Context,
-	sessionSupplierEndpoint *types.SingleSupplierEndpoint,
+	endpointProvider EndpointProvider,
 	requestBz []byte,
 	queryHeight int64,
-) (relayResponse *servicetypes.RelayResponse, err error) {
-	if err = sessionSupplierEndpoint.SessionHeader.ValidateBasic(); err != nil {
-		return nil, err
+) (*servicetypes.RelayResponse, error) {
+	if endpointProvider == nil {
+		return nil, errors.New("SendRelay: endpointProvider not specified")
+	}
+
+	sessionHeader, err := endpointProvider.SessionHeader()
+	if err != nil {
+		return nil, fmt.Errorf("SendRelay: could not get session header: %w", err)
+	}
+
+	if headerErr := sessionHeader.ValidateBasic(); headerErr != nil {
+		return nil, fmt.Errorf("SendRelay: error validating session header: %w", headerErr)
+	}
+
+	supplierAddress, endpoint, err := endpointProvider.SelectedEndpoint()
+	if err != nil {
+		return nil, fmt.Errorf("SendRelay: error getting the selected endpoint: %w", err)
 	}
 
 	relayRequest := &servicetypes.RelayRequest{
 		Meta: servicetypes.RelayRequestMetadata{
-			SessionHeader:   sessionSupplierEndpoint.SessionHeader,
+			SessionHeader:   sessionHeader,
 			Signature:       nil,
-			SupplierAddress: sessionSupplierEndpoint.SupplierAddress,
+			SupplierAddress: supplierAddress,
 		},
 		Payload: requestBz,
 	}
@@ -171,14 +149,14 @@ func (sdk *ShannonSDK) SendRelay(
 
 	relayResponseBz, err := sdk.relayClient.SendRequest(
 		ctx,
-		sessionSupplierEndpoint.Url,
+		endpoint.Url,
 		relayRequestBz,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	relayResponse = &servicetypes.RelayResponse{}
+	relayResponse := &servicetypes.RelayResponse{}
 	if err = relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err
 	}
@@ -189,9 +167,10 @@ func (sdk *ShannonSDK) SendRelay(
 		return relayResponse, err
 	}
 
+	// TODO_IMPROVE: consider moving the supplier signature verification to a separate function.
 	supplierPubKey, err := sdk.accountClient.GetPubKeyFromAddress(
 		ctx,
-		sessionSupplierEndpoint.SupplierAddress,
+		supplierAddress,
 	)
 	if err != nil {
 		return nil, err
