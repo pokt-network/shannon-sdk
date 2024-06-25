@@ -117,8 +117,8 @@ func (sdk *ShannonSDK) SendRelay(
 		return nil, fmt.Errorf("SendRelay: could not get session header: %w", err)
 	}
 
-	if err := sessionHeader.ValidateBasic(); err != nil {
-		return nil, fmt.Errorf("SendRelay: error validating session header: %w", err)
+	if headerErr := sessionHeader.ValidateBasic(); headerErr != nil {
+		return nil, fmt.Errorf("SendRelay: error validating session header: %w", headerErr)
 	}
 
 	supplierAddress, endpoint, err := endpointProvider.SelectedEndpoint()

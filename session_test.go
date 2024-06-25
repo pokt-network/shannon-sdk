@@ -7,7 +7,7 @@ import (
 	"github.com/cosmos/gogoproto/grpc"
 )
 
-func ExampleGetSession() {
+func ExampleSessionClient() {
 	var grpcConn grpc.ClientConn
 	// setup the grpc connection
 	// ...
