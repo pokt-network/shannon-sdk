@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"slices"
 
-	ring_secp256k1 "github.com/athanorlabs/go-dleq/secp256k1"
-	ringtypes "github.com/athanorlabs/go-dleq/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/pokt-network/poktroll/pkg/crypto/rings"
+	"github.com/pokt-network/poktroll/x/application/types"
 	"github.com/pokt-network/ring-go"
 
 	"github.com/cosmos/gogoproto/grpc"
-	"github.com/pokt-network/poktroll/x/application/types"
 )
 
 // ApplicationClient is the interface to interact with the on-chain application-module.
@@ -71,7 +70,7 @@ func (ac *ApplicationClient) GetApplication(
 func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
-	queryHeight uint64,
+	sessionEndHeight uint64,
 ) ([]string, error) {
 	allApplications, err := ac.GetAllApplications(ctx)
 	if err != nil {
@@ -80,10 +79,9 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 
 	gatewayDelegatingApplications := make([]string, 0)
 	for _, application := range allApplications {
-		appRing := ApplicationRing{Application: application}
 		// Get the gateways that are delegated to the application
 		// at the query height and check if the given gateway address is in the list.
-		gatewaysDelegatedTo := appRing.ringAddressesAtBlock(queryHeight)
+		gatewaysDelegatedTo := rings.GetRingAddressesAtSessionEndHeight(&application, sessionEndHeight)
 		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
 			// The application is delegating to the given gateway address, add it to the list.
 			gatewayDelegatingApplications = append(gatewayDelegatingApplications, application.Address)
@@ -105,19 +103,15 @@ type ApplicationRing struct {
 // TODO_IMPROVE: use a stateless ring constructor from poktroll once available.
 func (a ApplicationRing) GetRing(
 	ctx context.Context,
-	queryHeight uint64,
+	sessionEndHeight uint64,
 ) (addressRing *ring.Ring, err error) {
 	if a.PublicKeyFetcher == nil {
 		return nil, errors.New("GetRing: Public Key Fetcher not set")
 	}
 
-	if queryHeight <= 0 {
-		return nil, errors.New("GetRing: Query Height should be greater than zero")
-	}
-
 	// Get the gateway addresses that are delegated from the application
 	// at the query height.
-	currentGatewayAddresses := a.ringAddressesAtBlock(queryHeight)
+	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&a.Application, sessionEndHeight)
 
 	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, a.Application.Address)
@@ -129,62 +123,16 @@ func (a ApplicationRing) GetRing(
 		ringAddresses = append(ringAddresses, currentGatewayAddresses...)
 	}
 
-	curve := ring_secp256k1.NewCurve()
-	ringPoints := make([]ringtypes.Point, 0, len(ringAddresses))
-
-	// Create a ring point for each address.
+	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
 	for _, address := range ringAddresses {
 		pubKey, err := a.PublicKeyFetcher.GetPubKeyFromAddress(ctx, address)
 		if err != nil {
 			return nil, err
 		}
-
-		point, err := curve.DecodeToPoint(pubKey.Bytes())
-		if err != nil {
-			return nil, err
-		}
-
-		ringPoints = append(ringPoints, point)
+		ringPubKeys = append(ringPubKeys, pubKey)
 	}
 
-	return ring.NewFixedKeyRingFromPublicKeys(ring_secp256k1.NewCurve(), ringPoints)
-}
-
-func (a ApplicationRing) ringAddressesAtBlock(
-	queryHeight uint64,
-) []string {
-	// Get the current active delegations for the application and use them as a base.
-	activeDelegationsAtHeight := a.Application.DelegateeGatewayAddresses
-
-	// Use a map to keep track of the gateways addresses that have been added to
-	// the active delegations slice to avoid duplicates.
-	addedDelegations := make(map[string]struct{})
-
-	// Iterate over the pending undelegations recorded at their respective block
-	// height and check whether to add them back as active delegations.
-	for pendingUndelegationHeight, undelegatedGateways := range a.Application.PendingUndelegations {
-		// If the pending undelegation happened BEFORE the target session end height, skip it.
-		// The gateway is pending undelegation and simply has not been pruned yet.
-		// It will be pruned in the near future.
-		// TODO_DISCUSS: should we use the session's ending height instead?
-		if pendingUndelegationHeight < queryHeight {
-			continue
-		}
-		// Add back any gateway address  that was undelegated after the target session
-		// end height, as we consider it not happening yet relative to the target height.
-		for _, gatewayAddress := range undelegatedGateways.GatewayAddresses {
-			if _, ok := addedDelegations[gatewayAddress]; ok {
-				continue
-			}
-
-			activeDelegationsAtHeight = append(activeDelegationsAtHeight, gatewayAddress)
-			// Mark the gateway address as added to avoid duplicates.
-			addedDelegations[gatewayAddress] = struct{}{}
-		}
-
-	}
-
-	return activeDelegationsAtHeight
+	return rings.GetRingFromPubKeys(ringPubKeys)
 }
 
 // PublicKeyFetcher specifies an interface that allows getting the public key corresponding to an address.

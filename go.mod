@@ -7,7 +7,7 @@ require (
 	github.com/cometbft/cometbft v0.38.5
 	github.com/cosmos/cosmos-sdk v0.50.4
 	github.com/cosmos/gogoproto v1.4.11
-	github.com/pokt-network/poktroll v0.0.3-0.20240615000642-ff0456568487
+	github.com/pokt-network/poktroll v0.0.3-0.20240626124451-bd7b421860ac
 	github.com/pokt-network/ring-go v0.1.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.32.0
@@ -45,7 +45,7 @@ require (
 	github.com/cosmos/cosmos-proto v1.0.0-beta.4 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gogogateway v1.2.0 // indirect
-	github.com/cosmos/iavl v1.0.1 // indirect
+	github.com/cosmos/iavl v1.2.0 // indirect
 	github.com/cosmos/ics23/go v0.10.0 // indirect
 	github.com/cosmos/ledger-cosmos-go v0.13.3 // indirect
 	github.com/danieljoos/wincred v1.2.1 // indirect
@@ -109,7 +109,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20230904192822-1876fd5063bc // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/pokt-network/smt v0.10.2 // indirect
+	github.com/pokt-network/smt v0.11.1 // indirect
 	github.com/prometheus/client_golang v1.18.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.47.0 // indirect

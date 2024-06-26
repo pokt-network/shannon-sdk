@@ -27,7 +27,7 @@ func (s *Signer) Sign(
 	app ApplicationRing,
 	queryHeight uint64,
 ) (*servicetypes.RelayRequest, error) {
-	appRing, err := app.GetRing(ctx, queryHeight)
+	appRing, err := app.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
 		return nil, fmt.Errorf("Sign: error getting a ring for application address %s: %w", app.Address, err)
 	}
