@@ -55,13 +55,12 @@ func ExampleSendRelay() {
 	ring := ApplicationRing{
 		Application:      app,
 		PublicKeyFetcher: &accountClient,
+		SessionEndBlock:  uint64(req.Meta.SessionHeader.SessionEndBlockHeight),
 	}
 
 	ctx := context.Background()
 	// 4.e. Sign the Relay Request
-	var queryHeight uint64
-	// Set queryHeight to the desired block height
-	req, err = signer.Sign(ctx, req, ring, queryHeight)
+	req, err = signer.Sign(ctx, req, ring)
 	if err != nil {
 		fmt.Printf("error signing relay: %v", err)
 		return
