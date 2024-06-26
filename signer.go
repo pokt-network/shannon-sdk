@@ -25,7 +25,6 @@ func (s *Signer) Sign(
 	relayRequest *servicetypes.RelayRequest,
 	// TODO_IMPROVE: this input argument should be changed to an interface.
 	appRing ApplicationRing,
-	queryHeight uint64,
 ) (*servicetypes.RelayRequest, error) {
 	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
