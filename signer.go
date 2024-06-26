@@ -24,12 +24,12 @@ func (s *Signer) Sign(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
 	// TODO_IMPROVE: this input argument should be changed to an interface.
-	app ApplicationRing,
+	appRing ApplicationRing,
 	queryHeight uint64,
 ) (*servicetypes.RelayRequest, error) {
-	appRing, err := app.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error getting a ring for application address %s: %w", app.Address, err)
+		return nil, fmt.Errorf("Sign: error getting a ring for application address %s: %w", appRing.Address, err)
 	}
 
 	signableBz, err := relayRequest.GetSignableBytesHash()
@@ -49,14 +49,14 @@ func (s *Signer) Sign(
 		return nil, fmt.Errorf("Sign: error decoding private key to a scalar: %w", err)
 	}
 
-	ringSig, err := appRing.Sign(signableBz, signerPrivKey)
+	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error signing using the ring of application with address %s: %w", app.Address, err)
+		return nil, fmt.Errorf("Sign: error signing using the ring of application with address %s: %w", appRing.Address, err)
 	}
 
 	signature, err := ringSig.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error serializing the signature of application with address %s: %w", app.Address, err)
+		return nil, fmt.Errorf("Sign: error serializing the signature of application with address %s: %w", appRing.Address, err)
 	}
 
 	relayRequest.Meta.Signature = signature
