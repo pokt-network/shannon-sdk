@@ -28,7 +28,7 @@ func (s *Signer) Sign(
 ) (*servicetypes.RelayRequest, error) {
 	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error getting a ring for application address %s: %w", appRing.Address, err)
+		return nil, fmt.Errorf("Sign: error getting a ring for application address %s: %w", appRing.Application.Address, err)
 	}
 
 	signableBz, err := relayRequest.GetSignableBytesHash()
@@ -50,12 +50,12 @@ func (s *Signer) Sign(
 
 	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error signing using the ring of application with address %s: %w", appRing.Address, err)
+		return nil, fmt.Errorf("Sign: error signing using the ring of application with address %s: %w", appRing.Application.Address, err)
 	}
 
 	signature, err := ringSig.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error serializing the signature of application with address %s: %w", appRing.Address, err)
+		return nil, fmt.Errorf("Sign: error serializing the signature of application with address %s: %w", appRing.Application.Address, err)
 	}
 
 	relayRequest.Meta.Signature = signature
