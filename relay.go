@@ -31,7 +31,7 @@ func BuildRelayRequest(
 
 func ValidateRelayResponse(
 	ctx context.Context,
-	relayRequest *servicetypes.RelayRequest,
+	supplierAddress SupplierAddress,
 	relayResponseBz []byte,
 	publicKeyFetcher PublicKeyFetcher,
 ) (*servicetypes.RelayResponse, error) {
@@ -49,7 +49,7 @@ func ValidateRelayResponse(
 
 	supplierPubKey, err := publicKeyFetcher.GetPubKeyFromAddress(
 		ctx,
-		relayRequest.Meta.SupplierAddress,
+		string(supplierAddress),
 	)
 	if err != nil {
 		return nil, err
