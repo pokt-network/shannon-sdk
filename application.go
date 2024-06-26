@@ -101,6 +101,8 @@ type ApplicationRing struct {
 // GetRing returns the ring for the application.
 // The ring is created using the application's public key and the public keys of
 // the gateways that are currently delegated from the application.
+//
+// TODO_IMPROVE: use a stateless ring constructor from poktroll once available.
 func (a ApplicationRing) GetRing(
 	ctx context.Context,
 	queryHeight uint64,
