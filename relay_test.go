@@ -55,12 +55,12 @@ func ExampleSigner() {
 	ring := ApplicationRing{
 		Application:      app,
 		PublicKeyFetcher: &accountClient,
-		SessionEndBlock:  uint64(req.Meta.SessionHeader.SessionEndBlockHeight),
 	}
 
 	ctx := context.Background()
 	// 4.e. Sign the Relay Request
-	req, err = signer.Sign(ctx, req, ring)
+	queryHeight := uint64(req.Meta.SessionHeader.SessionEndBlockHeight)
+	req, err = signer.Sign(ctx, req, ring, queryHeight)
 	if err != nil {
 		fmt.Printf("error signing relay: %v", err)
 		return

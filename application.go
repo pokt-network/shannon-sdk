@@ -80,10 +80,10 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 
 	gatewayDelegatingApplications := make([]string, 0)
 	for _, application := range allApplications {
-		appRing := ApplicationRing{Application: application, SessionEndBlock: queryHeight}
+		appRing := ApplicationRing{Application: application}
 		// Get the gateways that are delegated to the application
 		// at the query height and check if the given gateway address is in the list.
-		gatewaysDelegatedTo := appRing.ringAddressesAtBlock()
+		gatewaysDelegatedTo := appRing.ringAddressesAtBlock(queryHeight)
 		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
 			// The application is delegating to the given gateway address, add it to the list.
 			gatewayDelegatingApplications = append(gatewayDelegatingApplications, application.Address)
@@ -96,7 +96,6 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 type ApplicationRing struct {
 	types.Application
 	PublicKeyFetcher
-	SessionEndBlock uint64
 }
 
 // GetRing returns the ring for the application.
@@ -104,18 +103,19 @@ type ApplicationRing struct {
 // the gateways that are currently delegated from the application.
 func (a ApplicationRing) GetRing(
 	ctx context.Context,
+	queryHeight uint64,
 ) (addressRing *ring.Ring, err error) {
 	if a.PublicKeyFetcher == nil {
 		return nil, errors.New("GetRing: Public Key Fetcher not set")
 	}
 
-	if a.SessionEndBlock <= 0 {
-		return nil, errors.New("GetRing: Current Height not set")
+	if queryHeight <= 0 {
+		return nil, errors.New("GetRing: Query Height should be greater than zero")
 	}
 
 	// Get the gateway addresses that are delegated from the application
 	// at the query height.
-	currentGatewayAddresses := a.ringAddressesAtBlock()
+	currentGatewayAddresses := a.ringAddressesAtBlock(queryHeight)
 
 	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, a.Application.Address)
@@ -148,7 +148,9 @@ func (a ApplicationRing) GetRing(
 	return ring.NewFixedKeyRingFromPublicKeys(ring_secp256k1.NewCurve(), ringPoints)
 }
 
-func (a ApplicationRing) ringAddressesAtBlock() []string {
+func (a ApplicationRing) ringAddressesAtBlock(
+	queryHeight uint64,
+) []string {
 	// Get the current active delegations for the application and use them as a base.
 	activeDelegationsAtHeight := a.Application.DelegateeGatewayAddresses
 
@@ -163,7 +165,7 @@ func (a ApplicationRing) ringAddressesAtBlock() []string {
 		// The gateway is pending undelegation and simply has not been pruned yet.
 		// It will be pruned in the near future.
 		// TODO_DISCUSS: should we use the session's ending height instead?
-		if pendingUndelegationHeight < a.SessionEndBlock {
+		if pendingUndelegationHeight < queryHeight {
 			continue
 		}
 		// Add back any gateway address  that was undelegated after the target session

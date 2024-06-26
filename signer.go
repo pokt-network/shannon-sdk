@@ -20,16 +20,14 @@ type Signer struct {
 //
 // Sign signs the given relay request using the signer's private key
 // and the application's ring signature.
-//
-// Session ending blockheigt is not an input argument here, because the relay requesy already contains it: relayRequest.Meta.SessionHeader.SessionEndBlockHeight,
-// i.e. the caller can construct the ApplicationRing struct using the SessionEngBlockHeight from the relay request.
 func (s *Signer) Sign(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
 	// TODO_IMPROVE: this input argument should be changed to an interface.
 	app ApplicationRing,
+	queryHeight uint64,
 ) (*servicetypes.RelayRequest, error) {
-	appRing, err := app.GetRing(ctx)
+	appRing, err := app.GetRing(ctx, queryHeight)
 	if err != nil {
 		return nil, fmt.Errorf("Sign: error getting a ring for application address %s: %w", app.Address, err)
 	}
