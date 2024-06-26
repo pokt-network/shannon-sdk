@@ -34,9 +34,9 @@ func ValidateRelayResponse(
 	relayRequest *servicetypes.RelayRequest,
 	relayResponseBz []byte,
 	publicKeyFetcher PublicKeyFetcher,
-) (relayResponse *servicetypes.RelayResponse, err error) {
+) (*servicetypes.RelayResponse, error) {
 	// ---> Verify Response
-	relayResponse = &servicetypes.RelayResponse{}
+	relayResponse := &servicetypes.RelayResponse{}
 	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err
 	}
@@ -55,8 +55,8 @@ func ValidateRelayResponse(
 		return nil, err
 	}
 
-	if err := relayResponse.VerifySupplierSignature(supplierPubKey); err != nil {
-		return nil, err
+	if signatureErr := relayResponse.VerifySupplierSignature(supplierPubKey); signatureErr != nil {
+		return nil, signatureErr
 	}
 
 	return relayResponse, nil
