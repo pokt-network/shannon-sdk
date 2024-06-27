@@ -647,6 +647,8 @@ github.com/pokt-network/poktroll v0.0.3-0.20240626124451-bd7b421860ac h1:l/kINNX
 github.com/pokt-network/poktroll v0.0.3-0.20240626124451-bd7b421860ac/go.mod h1:+O0y3mT8L9C6igO3EZHjLgBHTO7z+3VJWIxpZjqNsA4=
 github.com/pokt-network/poktroll v0.0.3-0.20240627050729-d3d73d95631a h1:iIx02alw6wEfytWR614Wbq0Ab+EjBmc/ImG9bMMyRuc=
 github.com/pokt-network/poktroll v0.0.3-0.20240627050729-d3d73d95631a/go.mod h1:PP8lLCUgvV1Bq/1tHcw22fpkJkfXNbP4qNN+/PIE9fo=
+github.com/pokt-network/poktroll v0.0.3-0.20240627055047-4208589342d7 h1:KvGtE+nPcHalIjjSkKByFPp5XSPjGISOkmyghiBUglk=
+github.com/pokt-network/poktroll v0.0.3-0.20240627055047-4208589342d7/go.mod h1:+O0y3mT8L9C6igO3EZHjLgBHTO7z+3VJWIxpZjqNsA4=
 github.com/pokt-network/ring-go v0.1.0 h1:hF7mDR4VVCIqqDAsrloP8azM9y1mprc99YgnTjKSSwk=
 github.com/pokt-network/ring-go v0.1.0/go.mod h1:8NHPH7H3EwrPX3XHfpyRI6bz4gApkE3+fd0XZRbMWP0=
 github.com/pokt-network/smt v0.10.2 h1:7OCimi2qN9kPwv+UDbUqaFYLaVMed3DYO8AbY8R0rNo=
