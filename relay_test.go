@@ -59,8 +59,7 @@ func ExampleSigner() {
 
 	ctx := context.Background()
 	// 4.e. Sign the Relay Request
-	queryHeight := uint64(req.Meta.SessionHeader.SessionEndBlockHeight)
-	req, err = signer.Sign(ctx, req, ring, queryHeight)
+	req, err = signer.Sign(ctx, req, ring)
 	if err != nil {
 		fmt.Printf("error signing relay: %v", err)
 		return
