@@ -10,8 +10,6 @@ import (
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/application/types"
 	"github.com/pokt-network/ring-go"
-
-	"github.com/cosmos/gogoproto/grpc"
 )
 
 // ApplicationClient is the interface to interact with the on-chain application-module.
@@ -27,14 +25,8 @@ import (
 // the blockchain for the same data multiple times, but such a cache would need to be invalidated by
 // listening to the relevant events such as MsgStakeApplication, MsgUnstakeApplication etc...
 type ApplicationClient struct {
+	// TODO_TECHDEBT: Replace QueryClient with a PoktNodeAccountFetcher interface.
 	types.QueryClient
-}
-
-// NewApplicationClient creates a new application client with the provided gRPC connection.
-func NewApplicationClient(grpcConn grpc.ClientConn) *ApplicationClient {
-	return &ApplicationClient{
-		QueryClient: types.NewQueryClient(grpcConn),
-	}
 }
 
 // GetAllApplications returns all applications in the network.

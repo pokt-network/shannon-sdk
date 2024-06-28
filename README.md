@@ -2,8 +2,8 @@
 
 ShannonSDK is a Software Development Kit designed to facilitate interaction with
 the POKT Network for developers of both `Gateway`s and sovereign `Application`s.
-It streamlines the process of building POKT compatible `RelayRequests`, verifying
-`RelayResponses` from RelayMiners, `Suppliers` co-processors, and abstracting out
+It streamlines the process of building POKT compatible RelayRequests, verifying
+`RelayResponses` from `RelayMine`rs, `Suppliers` co-processors, and abstracting out
 other protocol-specific details.
 
 To learn more about any of the actors or components mentioned above, please refer
@@ -13,312 +13,252 @@ to [dev.poktroll.com/category/actors](https://dev.poktroll.com/category/actors).
 - [Key Components](#key-components)
 - [Initialization](#initialization)
 - [Usage](#usage)
-  - [Get Session Supplier Endpoints](#get-session-supplier-endpoints)
-  - [Get Gateway Delegating Applications](#get-gateway-delegating-applications)
-  - [Send Relay](#send-relay)
-  - [Helper functions](#helper-functions)
-- [ShannonSDK Internals \& Design (for developers only)](#shannonsdk-internals--design-for-developers-only)
+  - [Get Session](#get-session)
+  - [Endpoint Selection](#endpoint-selection)
+  - [Build and Sign Relay Requests](#build-and-sign-relay-requests)
+  - [Send Relay Requests](#send-relay-requests)
+  - [Validate Relay Responses](#validate-relay-responses)
+  - [Get Applications Delegating To Gateway](#get-applications-delegating-to-gateway)
+- [ShannonSDK Internals \& Design](#shannonsdk-internals--design)
   - [Code Organization](#code-organization)
-    - [Interface Design](#interface-design)
-    - [Exposed Concrete Types](#exposed-concrete-types)
-    - [sdk.go](#sdkgo)
-    - [Public vs Private Fields](#public-vs-private-fields)
-  - [Implementation Details](#implementation-details)
-  - [Error Handling](#error-handling)
-  - [Dependencies implementation](#dependencies-implementation)
-  - [Poktroll dependencies](#poktroll-dependencies)
+  - [Interface Design](#interface-design)
+  - [ShannonSDK components](#shannonsdk-components)
+    - [Account Client](#account-client)
+    - [Application Client](#application-client)
+    - [Application Ring](#application-ring)
+    - [Block Client](#block-client)
+    - [Signer](#signer)
+    - [Session Client](#session-client)
+    - [Filtered Session](#filtered-session)
+    - [Relayer](#relayer)
 
 ## Overview
 
-ShannonSDK encapsulates various clients and a signer necessary for interacting
+ShannonSDK encapsulates various structures and a functions necessary for interacting
 with the `Poktroll` network. It provides an intuitive interface to manage `Sessions`,
-and `RelayRequests`.
-
-This document outlines the key components and functionalities of the SDK, along
-with detailed usage instructions.
+`Applications`, and `RelayRequests`.
 
 ## Key Components
 
 The SDK consists of the following core components:
 
-- **ApplicationClient**: Handles interactions related to applications on the network.
-- **SessionClient**: Manages session-related operations.
-- **AccountClient**: Deals with account-related queries and operations.
-- **SharedParamsClient**: Provides shared parameters such as various governance params to the SDK.
+- **Relay handling**: Building and validating RelayRequests and RelayResponses.
+- **AccountClient**: Handles account-related queries and operations.
+- **ApplicationClient**: Manages application-related operations and queries.
+- **ApplicationRing**: Manages the list of gateways delegations from applications
+and handling of ring signatures.
 - **BlockClient**: Fetches information about blocks on the network.
-- **RelayClient**: Sends relay requests to the network.
+- **SessionClient**: Manages session-related operations.
 - **Signer**: Signs relay requests to ensure authenticity and integrity.
 
 ## Initialization
 
-To create a new instance of ShannonSDK, you need to provide the implementations for
-the required clients and signer. Here is an example of how to initialize the SDK:
-
-```go
-applicationClient := NewApplicationClient(grpcConn)
-sessionClient := NewSessionClient(grpcConn)
-accountClient := NewAccountClient(grpcConn)
-sharedParamsClient := NewSharedParamsClient(grpcConn)
-blockClient := NewBlockClient(poktrollRPCURL)
-relayClient := NewRelayClient()
-signer := NewSigner(privateKeyHex)
-
-sdk, err := NewShannonSDK(
-  applicationClient,
-  sessionClient,
-  accountClient,
-  sharedParamsClient,
-  blockClient,
-  relayClient,
-  signer,
-)
-if err != nil {
-    log.Fatalf("failed to create ShannonSDK: %v", err)
-}
-```
-
 ## Usage
 
-### Get Session Supplier Endpoints
+For a given request, the main workflow for using the ShannonSDK is the following:
+1. Get the current block height.
+2. Get the session corresponding to the block height.
+3. Select a supplier endpoint from those available in the session.
+4. Build a relay request.
+5. Sign the relay request.
+6. Send the relay request to the selected endpoint.
+7. Validate the received relay response.
 
-The `GetSessionSupplierEndpoints` method retrieves the current `Session` and its
-assigned `Suppliers`' endpoints for a given `Application` address and `serviceId`.
-
-```go
-ctx := context.Background()
-appAddress := "your-app-address"
-serviceId := "your-service-id"
-
-sessionSuppliers, err := sdk.GetSessionSupplierEndpoints(ctx, appAddress, serviceId)
-if err != nil {
-    log.Fatalf("failed to get session supplier endpoints: %v", err)
-}
-
-for _, endpoint := range sessionSuppliers.SuppliersEndpoints {
-    fmt.Printf("Supplier: %s, URL: %s\n", endpoint.SupplierAddress, endpoint.Url)
-}
-```
-
-### Get Gateway Delegating Applications
-
-The `GetApplicationsDelegatingToGateway` method returns the `Application`s that are
-delegating to a given `Gateway` address.
+### Get Session
 
 ```go
-gatewayAddress := "your-gateway-address"
-
-delegatingApps, err := sdk.GetApplicationsDelegatingToGateway(ctx, gatewayAddress)
-if err != nil {
-    log.Fatalf("failed to get gateway delegating applications: %v", err)
-}
-
-for _, app := range delegatingApps {
-    fmt.Println("Delegating Application:", app)
-}
 ```
 
-### Send Relay
-
-The `SendRelay` method signs and sends a `RelayRequest` to the given `Supplier` endpoint,
-and verifies the `Supplier`'s signature on the `RelayResponse`.
+### Endpoint Selection
 
 ```go
-func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-    ctx := r.Context()
-    // Example the appAddress and serviceId retrieval from the request
-    serviceId := request.URL.Query().Get("serviceId")
-    appAddress := request.URL.Query().Get("appAddress")
-
-    // Get the session supplier endpoints
-    sessionSupplierEndpoints, err := sdk.GetSessionSupplierEndpoints(ctx, appAddress, serviceId)
-    if err != nil {
-        panic("TODO: handle error")
-    }
-
-    // Chose a supplier endpoint
-    selectedSupplier := sessionSupplierEndpoints.SuppliersEndpoints[0]
-
-    // Serialize the whole upstream request
-    _, requestBz, err := types.SerializeHTTPRequest(request)
-
-    // Forward the request to the selected supplier endpoint by using the same
-    // method and headers.
-    // The SDK will take care of signing the request and verifying the response.
-    relayResponse, err := sdk.SendRelay(ctx, selectedSupplier, requestBz)
-    if err != nil {
-        panic("TODO: handle error")
-    }
-
-    // Deserialize the http response from the relay response payload
-    httpResponse, err := types.DeserializeHTTPResponse(relayResponse.Payload)
-    if err != nil {
-        panic("TODO: handle error")
-    }
-
-    // Set the response headers
-    httpResponse.CopyToHTTPHeader(writer.Header())
-
-    // Set the response status code
-    writer.WriteHeader(int(httpResponse.StatusCode))
-
-    // Send back the response body to the client
-    if _, err := writer.Write(httpResponse.BodyBz); err != nil {
-        panic("TODO: handle error")
-    }
-}
 ```
 
-### Helper functions
-
-In order to transparently relay requests and responses between `Gateway`s/`Application`s
-and the `RelayMiner`s, the full request and response components must be transferred
-between the parties. This includes the request's method, headers, body, and the response's
-status code, headers, and body.
-
-Since the `http.Request` and `http.Response` types are not serializable, the SDK provides
-helper functions that return serializable representations of these types.
-
-SDK consumers can use them to serialize upstream requests and embed them in `RelayRequest`
-payloads, and deserialize `RelayResponse` payloads to obtain the original responses
+### Build and Sign Relay Requests
 
 ```go
-// Parse the http.Request to get the request components that will be sent
-// to the RelayMiner.
-poktHTTPRequest, requestBz, err := sdktypes.SerializeHTTPRequest(request)
-
-// SendRelay
-
-// Parse the RelayResponse payload to get the serviceResponse that will
-// be forwarded to the client.
-serviceResponse, err := sdktypes.DeserializeHTTPResponse(relayResponse.Payload)
 ```
 
-## ShannonSDK Internals & Design (for developers only)
+### Send Relay Requests
+
+```go
+```
+
+### Validate Relay Responses
+
+```go
+```
+
+### Get Applications Delegating To Gateway
+
+```go
+```
+
+## ShannonSDK Internals & Design
 
 ### Code Organization
 
-The following is the top-level structure the SDK repo is moving towards:
+The SDK is structured into several Go files, each dedicated to a specific aspect
+of the Poktroll network:
 
-```bash
-application.go
-block.go
-relay.go
-session.go
-sign.go
-```
+- `account.go`: Manages account-related operations.
+- `application.go`: Handles application-related queries and operations.
+- `block.go`: Deals with block information retrieval.
+- `relay.go`: Provides utilities for building and validating relay requests/responses.
+- `session.go`: Manages session-related operations.
+- `signer.go`: Handles the signing of relay requests.
 
-_TODO_DOCUMENT: Add the output of `tree -L 2` once the above structure is implemented._
-_TODO_DOCUMENT: Add a mermaid diagram of the exposed types once complete._
+### Interface Design
 
-#### Interface Design
+The SDK interfaces with functionality from other packages through Go interfaces,
+following Golang's best practices. For example, the `AccountClient` struct utilizes
+the `PoktNodeAccountFetcher` interface.
 
-The `SDK` **IS NOT DESIGNED** to provide interfaces to the consumer.
+For more details on Golang's best practices for interfaces, refer to
+[go official wiki](https://go.dev/wiki/CodeReviewComments#interfaces).
 
-The `SDK` **IS DESIGNED** to consume functionality from other packages via interfaces.
+### ShannonSDK components
 
-This follows Golang's best practices for interfaces as described [here](https://go.dev/wiki/CodeReviewComments#interfaces).
+#### Account Client
 
-As a concrete example, the `Client` struct is exported directly from the `net/http` package
+The `AccountClient` retrieves account information from the Pocket network.
+It provides the following method:
 
-```go
-type Client struct {
-    // Transport specifies the mechanism by which individual
-    // HTTP requests are made.
-    // If nil, DefaultTransport is used.
-    Transport RoundTripper
-```
+- `GetPubKeyFromAddress`: Retrieves the public key corresponding to a given address.
 
-Note that the above `Client` struct has multiple public methods, yet no code exists to force it to fulfill a specific interface.
+The `AccountClient` relies on the `PoktNodeAccountFetcher` interface, which mandates 
+implementations to fetch account information from the Pocket network.
 
-As a concrete example of keeping interfaces on the consumer side, the above `Client` consumes a `RoundTripper` interface.
-As the godoc page for `net/http` specifies: `For control over proxies, TLS configuration, keep-alives, compression, and other settings, create a Transport`:
+Refer to [account.go](https://github.com/pokt-network/shannon-sdk/blob/main/account.go)
+for detailed information.
 
-```go
-tr := &http.Transport{
-    MaxIdleConns:       10,
-    IdleConnTimeout:    30 * time.Second,
-    DisableCompression: true,
-}
-client := &http.Client{Transport: tr}
-```
+#### Application Client
 
-Example of a helper function used for overriding the default `RoundTripper`:
+The `ApplicationClient` fetches application information from the Pocket network.
 
-```func NewFileTransport(fs FileSystem) RoundTripper```
+It offers these methods:
 
-#### Exposed Concrete Types
+- `GetApplication`: Retrieves application information for a specified application address.
+- `GateAllApplications`: Retrieves all available applications on the network.
+- `GetApplicationsDelegatingToGateway`: Retrieves applications delegating to the gateway.
 
-Each file (in the top level directory) will have a client implemented and returned
-as a concrete struct.
+The `ApplicationClient` depends on the `poktroll` application query client,
+which provides methods to fetch corresponding information from the Pocket network.
 
-For example, `ApplicationClient` is a `struct` that will be returned by `application.go`
-rather than an interface.
+Refer to [application.go](https://github.com/pokt-network/shannon-sdk/blob/main/application.go)
+for detailed information.
 
-#### sdk.go
+#### Application Ring
 
-**NOTE: If you are reading this and the documentation is outdated, please update it!**
+The `ApplicationRing` retrieves delegated gateways from `Application`s and generates
+ring signatures from any actor in the ring.
 
-The `sdk.go` is a **TEMPORARY** that needs to be split file needs to be split into
-`application.go`, `supplier.go`, etc...
+It offers the following method:
 
-A `ShannonSDK` struct was defined initially but is non-ideal. It forces the
-user/developer to construct the entire struct even if they need a small fraction
-of the functionality.
+- `GetRing`: Retrieves the ring associated with the application.
 
-The following is an example of using a small subset of the SDK:
+The `ApplicationRing` relies on the `PublicKeyFetcher` interface, which requires
+implementations to fetch the public key of the associated application.
 
-```go
-session, err := sessionClient.CurrentSession()
-if err != nil {
-   return nil, err
-}
+**Note**: The `AccountClient` implements the `PublicKeyFetcher` interface and can
+be used as a default implementation.
 
-endpoints := sdk.Endpoints(session, serviceID)
-```
+Refer to [application.go](https://github.com/pokt-network/shannon-sdk/blob/main/application.go)
+for detailed information.
 
-#### Public vs Private Fields
+#### Block Client
 
-The goal of this `SDK` is to make all fields of concrete types public to the user
-if there is a potential need for the user to set them directly.
+The `BlockClient` fetches block information (e.g., block height) from the Pocket network.
 
-**IT SHOULD** be possible for the user to initialize any component of the SDK by
-creating a struct and setting the bare minimum necessary fields.
+It provides the following method:
 
-For example, the SDK biases towards the following design:
+- `LatestBlockHeight`: Retrieves the latest block height from the network.
 
-```go
-c := SessionClient {
-     HttpClient:  myCustomHttpTransport
-}
-```
+The `BlockClient` depends on the `PoktNodeStatusFetcher` interface, which requires
+implementations to fetch the latest block height from the Pocket network.
 
-Instead of the following design:
+Refer to [block.go](https://github.com/pokt-network/shannon-sdk/blob/main/block.go)
+for detailed information.
 
-```go
-c := NewSessionClient(nil, nil, myCustomHttpTransport, nil, nil)
-```
+The default implementation uses the `CosmosSDK`'s `http.HTTP` client to fetch the
+block height.
 
-### Implementation Details
+#### Signer
 
-ShannonSDK relies on interfaces for its dependencies, which must be implemented
-by the developer. This allows flexibility in how network access is handled,
-whether data is cached, and other implementation specifics.
+The `Signer` signs `RelayRequests` to ensure their authenticity and integrity.
 
-### Error Handling
+It provides the following method:
 
-The SDK does not define any custom error types. It relies on the errors returned
-by its dependencies. This design choice simplifies error handling by ensuring
-that errors are propagated directly from the underlying implementations.
+- `Sign`: Signs a given `RelayRequest` using the provided `ApplicationRing`.
 
-### Dependencies implementation
+The `Signer` must set its `PrivateKeyHex` field to the private key of the associated
+application or gateway.
 
-`./client` package contains example implementations of the clients required by
-the SDK. These implementations are based on the `grpc` and `http` packages in
-Go, and they can be used as a reference for building more complex ones.
+Refer to [signer.go](https://github.com/pokt-network/shannon-sdk/blob/main/signer.go)
+for detailed information.
 
-### Poktroll dependencies
+#### Session Client
 
-The SDK relies on the `poktroll` repository for the `types` package, which
-acts as a single source of truth for the data structures used by the SDK.
-This design choice ensures consistency across the various components of the
-POKT ecosystem.
+The `SessionClient` retrieves `Session` information from the Pocket network for a specified `Application` address, `Service.Id`, and block height.
+
+It provides the following method:
+
+- `GetSession`: Retrieves session information for a given `Application` address,
+`Service.Id`, and block height.
+
+
+The `SessionClient` relies on the `PoktNodeSessionFetcher` interface, which requires implementations to fetch session information from the Pocket network.
+
+Refer to [session.go](https://github.com/pokt-network/shannon-sdk/blob/main/session.go)
+for detailed information.
+
+#### Filtered Session
+
+To select the best supplier endpoint among available options, the SDK offers a
+`FilteredSession` struct that filters out endpoints that do not meet specified criteria.
+
+The `FilteredSession` requires an assigned `Session` in its `Session` field.
+It supports adding filter functions to its `EndpointFilters` field to select the
+best supplier endpoint.
+
+`FilteredSession` provides the following methods:
+
+- `AllEndpoints`: Retrieves all `Endpoints` from the `Session`, mapped to their
+respective `Supplier` addresses, allowing retrieval of all available supplier
+endpoints and performing custom filtering.
+- `FilteredEndpoints`: Retrieves filtered endpoints based on specified filter functions.
+Returned endpoints must pass all filter functions to be considered valid.
+
+Filtered endpoints adhere to the `Endpoint` interface, which provides:
+
+- `Header`: Retrieves the `Session` header corresponding to the `Supplier`'s endpoint.
+- `Supplier`: Retrieves the `Supplier` address corresponding to the `Endpoint`.
+- `Endpoint`: Retrieves the `url.URL` of the endpoint.
+
+Refer to [session.go](https://github.com/pokt-network/shannon-sdk/blob/main/session.go)
+for detailed information.
+
+#### Relayer
+
+To send a `RelayRequest`, `ShannonSDK` exposes the `BuildRelayRequest` and
+`ValidateRelayResponse` functions for building and validating `RelayRequests` and
+`RelayResponses`, respectively.
+
+- `BuildRelayRequest`: Constructs a `RelayRequest` to send to the specified `Endpoint`
+using a serialized `http.Request` (body and headers included).
+
+The `Endpoint` interface provides necessary information (`SessionHeader` and
+`Supplier` endpoint URL) for constructing the `RelayRequest`. Since the resulting
+RelayRequest is unsigned, the consumer must sign it (using `Signer.Sign`) before sending.
+
+SDK consumers can use any suitable HTTP client to send the `RelayRequest`.
+
+- `ValidateRelayResponse`: Validates a `RelayResponse` byte array against the
+selected `Supplier`'s address.
+
+To fetch the public key of the `Supplier`'s address, an implementation of
+`PublicKeyFetcher` must be provided. Successful validation returns the verified
+`RelayResponse`, which can then be processed to extract response headers and body.
+
+Refer to [relay.go](https://github.com/pokt-network/shannon-sdk/blob/main/relay.go)
+for detailed information.

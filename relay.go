@@ -5,8 +5,6 @@ import (
 	"errors"
 
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
-	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
 )
 
 // The returned RelayRequest struct can be marshalled and delivered to a service endpoint through an HTTP POST request.
@@ -60,14 +58,4 @@ func ValidateRelayResponse(
 	}
 
 	return relayResponse, nil
-}
-
-// TODO_IMPROVE: add a detailed example on how to use the FilteredSession struct to provide endpoints to relay builder.
-//
-// EndpointSelector is used by Relay utility functions to provide details on the target endpoint for a relay.
-// A basic implementation of this interface is fulfilled by the `FilteredSession` struct.
-type EndpointSelector interface {
-	SessionHeader() (*sessiontypes.SessionHeader, error)
-	SelectedEndpoint() (*sharedtypes.SupplierEndpoint, error)
-	SelectedSupplierAddress() (string, error)
 }
