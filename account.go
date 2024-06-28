@@ -6,6 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/types"
 	accounttypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	grpc "github.com/cosmos/gogoproto/grpc"
@@ -18,6 +19,7 @@ var queryCodec *codec.ProtoCodec
 func init() {
 	reg := cdctypes.NewInterfaceRegistry()
 	accounttypes.RegisterInterfaces(reg)
+	cryptocodec.RegisterInterfaces(reg)
 	queryCodec = codec.NewProtoCodec(reg)
 }
 
