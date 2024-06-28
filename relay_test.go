@@ -14,8 +14,8 @@ import (
 	grpc "github.com/cosmos/gogoproto/grpc"
 )
 
-func ExampleSigner() {
-	var filteredSession *FilteredSession
+func ExampleSendRelay() {
+	var filteredSession *SessionFilter
 	// 1. Get the currnet session and set it on the filteredSession
 	// 2. Select Endpoint using FilteredSession
 	endpoints, err := filteredSession.FilteredEndpoints()

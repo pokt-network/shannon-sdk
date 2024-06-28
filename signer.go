@@ -9,17 +9,19 @@ import (
 	"github.com/pokt-network/ring-go"
 )
 
-// Signer is used to sign Relay Requests.
+// Signer is a struct that holds the application or gateways private keys used
+// to sign Relay Requests.
 type Signer struct {
 	PrivateKeyHex string
 }
 
 // Note: Sign returns a pointer instead of directly setting the signature on the input relay request.
 // This is done to avoid having an implicit output.
-// Ideally, the function should accept a struct rather than a pointer, and also return an updated struct instead of a pointer.
+// Ideally, the function should accept a struct rather than a pointer,
+// and also return an updated struct instead of a pointer.
 //
-// Sign signs the given relay request using the signer's private key
-// and the application's ring signature.
+// Sign signs the given relay request using the signer's private key and the
+// application's ring.
 func (s *Signer) Sign(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
@@ -28,7 +30,11 @@ func (s *Signer) Sign(
 ) (*servicetypes.RelayRequest, error) {
 	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error getting a ring for application address %s: %w", appRing.Application.Address, err)
+		return nil, fmt.Errorf(
+			"Sign: error getting a ring for application address %s: %w",
+			appRing.Application.Address,
+			err,
+		)
 	}
 
 	signableBz, err := relayRequest.GetSignableBytesHash()
@@ -50,12 +56,20 @@ func (s *Signer) Sign(
 
 	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error signing using the ring of application with address %s: %w", appRing.Application.Address, err)
+		return nil, fmt.Errorf(
+			"Sign: error signing using the ring of application with address %s: %w",
+			appRing.Application.Address,
+			err,
+		)
 	}
 
 	signature, err := ringSig.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error serializing the signature of application with address %s: %w", appRing.Application.Address, err)
+		return nil, fmt.Errorf(
+			"Sign: error serializing the signature of application with address %s: %w",
+			appRing.Application.Address,
+			err,
+		)
 	}
 
 	relayRequest.Meta.Signature = signature

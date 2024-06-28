@@ -7,7 +7,10 @@ import (
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
 
-// The returned RelayRequest struct can be marshalled and delivered to a service endpoint through an HTTP POST request.
+// The returned RelayRequest struct can be marshalled and delivered to a service
+// endpoint through an HTTP POST request.
+// BuildRelayRequest creates a RelayRequest struct from the given endpoint and request bytes,
+// where requestBz is the serialized request (body and header) to be relayed.
 func BuildRelayRequest(
 	endpoint Endpoint,
 	requestBz []byte,
@@ -17,7 +20,6 @@ func BuildRelayRequest(
 	}
 
 	header := endpoint.Header()
-	// TODO_DISCUSS: the Header provided by the Endpoint is assumed to be valid, is this a reasonable assumption?
 	return &servicetypes.RelayRequest{
 		Meta: servicetypes.RelayRequestMetadata{
 			SessionHeader:   &header,
@@ -27,13 +29,13 @@ func BuildRelayRequest(
 	}, nil
 }
 
+// ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
 func ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddress SupplierAddress,
 	relayResponseBz []byte,
 	publicKeyFetcher PublicKeyFetcher,
 ) (*servicetypes.RelayResponse, error) {
-	// ---> Verify Response
 	relayResponse := &servicetypes.RelayResponse{}
 	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err

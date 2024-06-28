@@ -88,11 +88,9 @@ type ApplicationRing struct {
 	PublicKeyFetcher
 }
 
-// GetRing returns the ring for the application.
+// GetRing returns the ring for the application until the current session end height.
 // The ring is created using the application's public key and the public keys of
 // the gateways that are currently delegated from the application.
-//
-// TODO_IMPROVE: use a stateless ring constructor from poktroll once available.
 func (a ApplicationRing) GetRing(
 	ctx context.Context,
 	sessionEndHeight uint64,
@@ -101,8 +99,7 @@ func (a ApplicationRing) GetRing(
 		return nil, errors.New("GetRing: Public Key Fetcher not set")
 	}
 
-	// Get the gateway addresses that are delegated from the application
-	// at the query height.
+	// Get the gateway addresses that are delegated from the application at the query height.
 	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&a.Application, sessionEndHeight)
 
 	ringAddresses := make([]string, 0)
@@ -127,8 +124,10 @@ func (a ApplicationRing) GetRing(
 	return rings.GetRingFromPubKeys(ringPubKeys)
 }
 
-// PublicKeyFetcher specifies an interface that allows getting the public key corresponding to an address.
-// It is used by the ApplicationRing struct to construct the Application's Ring for signing relay requests.
+// PublicKeyFetcher specifies an interface that allows getting the public
+// key corresponding to an address.
+// It is used by the ApplicationRing struct to construct the Application's Ring
+// for signing relay requests.
 // The AccountClient struct provides an implementation of this interface.
 type PublicKeyFetcher interface {
 	GetPubKeyFromAddress(context.Context, string) (cryptotypes.PubKey, error)

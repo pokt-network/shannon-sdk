@@ -54,11 +54,12 @@ func NewPoktNodeAccountFetcher(grpcConn grpc.ClientConn) PoktNodeAccountFetcher 
 	return accounttypes.NewQueryClient(grpcConn)
 }
 
-// PoktNodeAccountFetcher is used by the AccountClient to fetch accounts using poktroll request/response types.
+// PoktNodeAccountFetcher is used by the AccountClient to fetch accounts using
+// poktroll request/response types.
 //
 // Most users can rely on the default implementation provided by NewPoktNodeAccountFetcher function.
-// A custom implementation of this interface can be used to gain more granular control over the interactions
-// of the AccountClient with the POKT full node.
+// A custom implementation of this interface can be used to gain more granular
+// control over the interactions of the AccountClient with the POKT full node.
 type PoktNodeAccountFetcher interface {
 	Account(
 		context.Context,
