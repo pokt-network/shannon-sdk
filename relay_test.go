@@ -14,7 +14,7 @@ import (
 	grpc "github.com/cosmos/gogoproto/grpc"
 )
 
-func ExampleSendRelay() {
+func ExampleRelay() {
 	var filteredSession *SessionFilter
 	// 1. Get the currnet session and set it on the filteredSession
 	// 2. Select Endpoint using FilteredSession

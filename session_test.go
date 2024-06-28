@@ -16,6 +16,7 @@ func ExampleSessionClient() {
 	// ...
 
 	sc := SessionClient{
+		// Use the default implementation of the PoktNodeSessionFetcher interface.
 		PoktNodeSessionFetcher: NewPoktNodeSessionFetcher(grpcConn),
 	}
 
@@ -27,11 +28,11 @@ func ExampleSessionClient() {
 	}
 
 	// Get all the endpoints for the session.
-	fs := SessionFilter{
+	sessionFilter := SessionFilter{
 		Session:         session,
 		EndpointFilters: []EndpointFilter{},
 	}
-	serviceEndpoints, err := fs.AllEndpoints()
+	serviceEndpoints, err := sessionFilter.AllEndpoints()
 	if err != nil {
 		fmt.Printf("Error getting service endpoints: %v\n", err)
 		return
@@ -48,9 +49,14 @@ func ExampleSessionClient() {
 		return e.Endpoint().RpcType == types.RPCType_JSON_RPC
 	}
 
-	fs.EndpointFilters = append(fs.EndpointFilters, filterEndpoints)
+	sessionFilter.EndpointFilters = append(sessionFilter.EndpointFilters, filterEndpoints)
 
-	filteredEndpoints, err := fs.FilteredEndpoints()
+	filteredEndpoints, err := sessionFilter.FilteredEndpoints()
+	if err != nil {
+		fmt.Printf("Error filtering service endpoints: %v\n", err)
+		return
+	}
+
 	for _, endpoint := range filteredEndpoints {
 		fmt.Printf(
 			"Supplier: %s, Endpoint URL: %s\n",
