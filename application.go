@@ -2,9 +2,14 @@ package sdk
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"slices"
 
-	"github.com/cosmos/gogoproto/grpc"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/application/types"
+	"github.com/pokt-network/ring-go"
 )
 
 // ApplicationClient is the interface to interact with the on-chain application-module.
@@ -20,14 +25,8 @@ import (
 // the blockchain for the same data multiple times, but such a cache would need to be invalidated by
 // listening to the relevant events such as MsgStakeApplication, MsgUnstakeApplication etc...
 type ApplicationClient struct {
+	// TODO_TECHDEBT: Replace QueryClient with a PoktNodeAccountFetcher interface.
 	types.QueryClient
-}
-
-// NewApplicationClient creates a new application client with the provided gRPC connection.
-func NewApplicationClient(grpcConn grpc.ClientConn) *ApplicationClient {
-	return &ApplicationClient{
-		QueryClient: types.NewQueryClient(grpcConn),
-	}
 }
 
 // GetAllApplications returns all applications in the network.
@@ -56,4 +55,80 @@ func (ac *ApplicationClient) GetApplication(
 	}
 
 	return res.Application, nil
+}
+
+// GetApplicationsDelegatingToGateway returns the application addresses that are
+// delegating to the given gateway address.
+func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
+	ctx context.Context,
+	gatewayAddress string,
+	sessionEndHeight uint64,
+) ([]string, error) {
+	allApplications, err := ac.GetAllApplications(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetApplicationsDelegatingToGateway: error getting all applications: %w", err)
+	}
+
+	gatewayDelegatingApplications := make([]string, 0)
+	for _, application := range allApplications {
+		// Get the gateways that are delegated to the application
+		// at the query height and check if the given gateway address is in the list.
+		gatewaysDelegatedTo := rings.GetRingAddressesAtSessionEndHeight(&application, sessionEndHeight)
+		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
+			// The application is delegating to the given gateway address, add it to the list.
+			gatewayDelegatingApplications = append(gatewayDelegatingApplications, application.Address)
+		}
+	}
+
+	return gatewayDelegatingApplications, nil
+}
+
+type ApplicationRing struct {
+	types.Application
+	PublicKeyFetcher
+}
+
+// GetRing returns the ring for the application until the current session end height.
+// The ring is created using the application's public key and the public keys of
+// the gateways that are currently delegated from the application.
+func (a ApplicationRing) GetRing(
+	ctx context.Context,
+	sessionEndHeight uint64,
+) (addressRing *ring.Ring, err error) {
+	if a.PublicKeyFetcher == nil {
+		return nil, errors.New("GetRing: Public Key Fetcher not set")
+	}
+
+	// Get the gateway addresses that are delegated from the application at the query height.
+	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&a.Application, sessionEndHeight)
+
+	ringAddresses := make([]string, 0)
+	ringAddresses = append(ringAddresses, a.Application.Address)
+
+	// If there are no current gateway addresses, use the application address as the ring address.
+	if len(currentGatewayAddresses) == 0 {
+		ringAddresses = append(ringAddresses, a.Application.Address)
+	} else {
+		ringAddresses = append(ringAddresses, currentGatewayAddresses...)
+	}
+
+	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
+	for _, address := range ringAddresses {
+		pubKey, err := a.PublicKeyFetcher.GetPubKeyFromAddress(ctx, address)
+		if err != nil {
+			return nil, err
+		}
+		ringPubKeys = append(ringPubKeys, pubKey)
+	}
+
+	return rings.GetRingFromPubKeys(ringPubKeys)
+}
+
+// PublicKeyFetcher specifies an interface that allows getting the public
+// key corresponding to an address.
+// It is used by the ApplicationRing struct to construct the Application's Ring
+// for signing relay requests.
+// The AccountClient struct provides an implementation of this interface.
+type PublicKeyFetcher interface {
+	GetPubKeyFromAddress(context.Context, string) (cryptotypes.PubKey, error)
 }
