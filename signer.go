@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	"github.com/pokt-network/poktroll/proto/types/service"
 	"github.com/pokt-network/ring-go"
 )
 
@@ -24,10 +24,10 @@ type Signer struct {
 // application's ring.
 func (s *Signer) Sign(
 	ctx context.Context,
-	relayRequest *servicetypes.RelayRequest,
+	relayRequest *service.RelayRequest,
 	// TODO_IMPROVE: this input argument should be changed to an interface.
 	appRing ApplicationRing,
-) (*servicetypes.RelayRequest, error) {
+) (*service.RelayRequest, error) {
 	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
 		return nil, fmt.Errorf(

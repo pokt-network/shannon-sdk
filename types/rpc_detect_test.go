@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
+	"github.com/pokt-network/poktroll/proto/types/shared"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/shannon-sdk/types"
@@ -25,7 +25,7 @@ func TestRPCType_DetectRPC(t *testing.T) {
 	tests := []struct {
 		desc            string
 		inputRequest    *types.POKTHTTPRequest
-		expectedRPCType sharedtypes.RPCType
+		expectedRPCType shared.RPCType
 	}{
 		{
 			desc: "Detect JSON-RPC",
@@ -40,7 +40,7 @@ func TestRPCType_DetectRPC(t *testing.T) {
 				Url:    requestUrl,
 				BodyBz: jsonRPCContentBz,
 			},
-			expectedRPCType: sharedtypes.RPCType_JSON_RPC,
+			expectedRPCType: shared.RPCType_JSON_RPC,
 		},
 		{
 			desc: "Detect REST",
@@ -55,7 +55,7 @@ func TestRPCType_DetectRPC(t *testing.T) {
 				Url:    requestUrl,
 				BodyBz: restContentBz,
 			},
-			expectedRPCType: sharedtypes.RPCType_REST,
+			expectedRPCType: shared.RPCType_REST,
 		},
 		{
 			desc: "Unknown RPC",
@@ -70,7 +70,7 @@ func TestRPCType_DetectRPC(t *testing.T) {
 				Url:    "",
 				BodyBz: restContentBz,
 			},
-			expectedRPCType: sharedtypes.RPCType_UNKNOWN_RPC,
+			expectedRPCType: shared.RPCType_UNKNOWN_RPC,
 		},
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	service "github.com/pokt-network/poktroll/proto/types/service"
 )
 
 // The returned RelayRequest struct can be marshalled and delivered to a service
@@ -14,14 +14,14 @@ import (
 func BuildRelayRequest(
 	endpoint Endpoint,
 	requestBz []byte,
-) (*servicetypes.RelayRequest, error) {
+) (*service.RelayRequest, error) {
 	if endpoint == nil {
 		return nil, errors.New("BuildRelayRequest: endpointSelector not specified")
 	}
 
 	header := endpoint.Header()
-	return &servicetypes.RelayRequest{
-		Meta: servicetypes.RelayRequestMetadata{
+	return &service.RelayRequest{
+		Meta: service.RelayRequestMetadata{
 			SessionHeader:   &header,
 			SupplierAddress: string(endpoint.Supplier()),
 		},
@@ -35,8 +35,8 @@ func ValidateRelayResponse(
 	supplierAddress SupplierAddress,
 	relayResponseBz []byte,
 	publicKeyFetcher PublicKeyFetcher,
-) (*servicetypes.RelayResponse, error) {
-	relayResponse := &servicetypes.RelayResponse{}
+) (*service.RelayResponse, error) {
+	relayResponse := &service.RelayResponse{}
 	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
 		return nil, err
 	}

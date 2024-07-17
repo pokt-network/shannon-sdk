@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cosmos/gogoproto/grpc"
-	"github.com/pokt-network/poktroll/x/shared/types"
+	shared "github.com/pokt-network/poktroll/proto/types/shared"
 )
 
 func ExampleSessionClient() {
@@ -46,7 +46,7 @@ func ExampleSessionClient() {
 
 	// Use a filter to get only the endpoints that satisfy the filter.
 	filterEndpoints := func(e Endpoint) bool {
-		return e.Endpoint().RpcType == types.RPCType_JSON_RPC
+		return e.Endpoint().RpcType == shared.RPCType_JSON_RPC
 	}
 
 	sessionFilter.EndpointFilters = append(sessionFilter.EndpointFilters, filterEndpoints)

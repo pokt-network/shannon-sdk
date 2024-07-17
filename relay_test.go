@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"net/url"
 
-	apptypes "github.com/pokt-network/poktroll/x/application/types"
-	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	application "github.com/pokt-network/poktroll/proto/types/application"
+	service "github.com/pokt-network/poktroll/proto/types/service"
 
 	grpc "github.com/cosmos/gogoproto/grpc"
 )
@@ -50,7 +50,7 @@ func ExampleRelay() {
 	}
 
 	// 4.d. Create an application ring
-	var app apptypes.Application
+	var app application.Application
 	// Load/Set app to the target application
 	ring := ApplicationRing{
 		Application:      app,
@@ -86,7 +86,7 @@ func ExampleRelay() {
 func SendHttpRelay(
 	ctx context.Context,
 	supplierUrlStr string,
-	relayRequest servicetypes.RelayRequest,
+	relayRequest service.RelayRequest,
 ) (relayResponseBz []byte, err error) {
 	supplierUrl, err := url.Parse(supplierUrlStr)
 	if err != nil {

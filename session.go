@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/cosmos/gogoproto/grpc"
-	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
+	"github.com/pokt-network/poktroll/proto/types/session"
+	"github.com/pokt-network/poktroll/proto/types/shared"
 	grpcoptions "google.golang.org/grpc"
 )
 
@@ -25,14 +25,14 @@ func (s *SessionClient) GetSession(
 	appAddress string,
 	serviceId string,
 	height int64,
-) (session *sessiontypes.Session, err error) {
+) (*session.Session, error) {
 	if s.PoktNodeSessionFetcher == nil {
 		return nil, errors.New("PoktNodeSessionFetcher not set")
 	}
 
-	req := &sessiontypes.QueryGetSessionRequest{
+	req := &session.QueryGetSessionRequest{
 		ApplicationAddress: appAddress,
-		Service:            &sharedtypes.Service{Id: serviceId},
+		Service:            &shared.Service{Id: serviceId},
 		BlockHeight:        height,
 	}
 
@@ -55,7 +55,7 @@ func (s *SessionClient) GetSession(
 // It connects to a POKT full node through the session module's query client
 // to get session data.
 func NewPoktNodeSessionFetcher(grpcConn grpc.ClientConn) PoktNodeSessionFetcher {
-	return sessiontypes.NewQueryClient(grpcConn)
+	return session.NewQueryClient(grpcConn)
 }
 
 // PoktNodeSessionFetcher is an interface used by the SessionClient to fetch
@@ -67,9 +67,9 @@ func NewPoktNodeSessionFetcher(grpcConn grpc.ClientConn) PoktNodeSessionFetcher 
 type PoktNodeSessionFetcher interface {
 	GetSession(
 		context.Context,
-		*sessiontypes.QueryGetSessionRequest,
+		*session.QueryGetSessionRequest,
 		...grpcoptions.CallOption,
-	) (*sessiontypes.QueryGetSessionResponse, error)
+	) (*session.QueryGetSessionResponse, error)
 }
 
 // SupplierAddress captures the address for a supplier.
@@ -86,7 +86,7 @@ type EndpointFilter func(Endpoint) bool
 // This is needed so functions that enable sending relays can be provided with a
 // struct that contains both session data and the endpoint(s) selected for receiving relays.
 type SessionFilter struct {
-	*sessiontypes.Session
+	*session.Session
 
 	EndpointFilters []EndpointFilter
 	// TODO_IMPROVE: Add a slice of endpoint ordering functions
@@ -162,13 +162,13 @@ func (f *SessionFilter) FilteredEndpoints() ([]Endpoint, error) {
 // supplier and session that contains the endpoint.
 // It implements the Endpoint interface.
 type endpoint struct {
-	header           sessiontypes.SessionHeader
-	supplierEndpoint sharedtypes.SupplierEndpoint
+	header           session.SessionHeader
+	supplierEndpoint shared.SupplierEndpoint
 	supplier         SupplierAddress
 }
 
 // Endpoint returns the supplier endpoint for the endpoint.
-func (e endpoint) Endpoint() sharedtypes.SupplierEndpoint {
+func (e endpoint) Endpoint() shared.SupplierEndpoint {
 	return e.supplierEndpoint
 }
 
@@ -178,7 +178,7 @@ func (e endpoint) Supplier() SupplierAddress {
 }
 
 // Header returns the session header on which the supplier's endpoint was retrieved.
-func (e endpoint) Header() sessiontypes.SessionHeader {
+func (e endpoint) Header() session.SessionHeader {
 	return e.header
 }
 
@@ -187,7 +187,7 @@ func (e endpoint) Header() sessiontypes.SessionHeader {
 // Endpoint is an interface that represents an endpoint with its corresponding
 // supplier and session that contains the endpoint.
 type Endpoint interface {
-	Header() sessiontypes.SessionHeader
+	Header() session.SessionHeader
 	Supplier() SupplierAddress
-	Endpoint() sharedtypes.SupplierEndpoint
+	Endpoint() shared.SupplierEndpoint
 }

@@ -8,7 +8,7 @@ import (
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
-	"github.com/pokt-network/poktroll/x/application/types"
+	"github.com/pokt-network/poktroll/proto/types/application"
 	"github.com/pokt-network/ring-go"
 )
 
@@ -26,18 +26,18 @@ import (
 // listening to the relevant events such as MsgStakeApplication, MsgUnstakeApplication etc...
 type ApplicationClient struct {
 	// TODO_TECHDEBT: Replace QueryClient with a PoktNodeAccountFetcher interface.
-	types.QueryClient
+	application.QueryClient
 }
 
 // GetAllApplications returns all applications in the network.
 // TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
 func (ac *ApplicationClient) GetAllApplications(
 	ctx context.Context,
-) ([]types.Application, error) {
-	req := &types.QueryAllApplicationsRequest{}
+) ([]application.Application, error) {
+	req := &application.QueryAllApplicationsRequest{}
 	res, err := ac.QueryClient.AllApplications(ctx, req)
 	if err != nil {
-		return []types.Application{}, err
+		return []application.Application{}, err
 	}
 
 	return res.Applications, nil
@@ -47,11 +47,11 @@ func (ac *ApplicationClient) GetAllApplications(
 func (ac *ApplicationClient) GetApplication(
 	ctx context.Context,
 	appAddress string,
-) (types.Application, error) {
-	req := &types.QueryGetApplicationRequest{Address: appAddress}
+) (application.Application, error) {
+	req := &application.QueryGetApplicationRequest{Address: appAddress}
 	res, err := ac.QueryClient.Application(ctx, req)
 	if err != nil {
-		return types.Application{}, err
+		return application.Application{}, err
 	}
 
 	return res.Application, nil
@@ -84,7 +84,7 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 }
 
 type ApplicationRing struct {
-	types.Application
+	application.Application
 	PublicKeyFetcher
 }
 

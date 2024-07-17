@@ -3,7 +3,7 @@ package types
 import (
 	"net/http"
 
-	sharedtypes "github.com/pokt-network/poktroll/x/shared/types"
+	"github.com/pokt-network/poktroll/proto/types/shared"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -28,15 +28,15 @@ func init() {
 }
 
 // GetRPCType returns the RPC type of a POKTHTTPRequest.
-func (poktRequest *POKTHTTPRequest) GetRPCType() sharedtypes.RPCType {
+func (poktRequest *POKTHTTPRequest) GetRPCType() shared.RPCType {
 	if poktRequest.isJSONRPC() {
-		return sharedtypes.RPCType_JSON_RPC
+		return shared.RPCType_JSON_RPC
 	}
 	if poktRequest.isREST() {
-		return sharedtypes.RPCType_REST
+		return shared.RPCType_REST
 	}
 
-	return sharedtypes.RPCType_UNKNOWN_RPC
+	return shared.RPCType_UNKNOWN_RPC
 }
 
 // FormatError formats the given error into a POKTHTTPResponse and its
@@ -48,9 +48,9 @@ func (request *POKTHTTPRequest) FormatError(
 	rpcType := request.GetRPCType()
 
 	switch rpcType {
-	case sharedtypes.RPCType_JSON_RPC:
+	case shared.RPCType_JSON_RPC:
 		return request.formatJSONRPCError(err, isInternal)
-	case sharedtypes.RPCType_REST:
+	case shared.RPCType_REST:
 		return request.formatRESTError(err, isInternal)
 	default:
 		return unsupportedRPCTypeErrorReply, unsupportedRPCTypeErrorReplyBz
