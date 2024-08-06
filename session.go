@@ -119,12 +119,12 @@ func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 					// TODO_TECHDEBT: Need deep copying here.
 					header:           *header,
 					supplierEndpoint: *e,
-					supplier:         SupplierAddress(supplier.Address),
+					supplier:         SupplierAddress(supplier.OperatorAddress),
 				})
 			}
 			endpoints = append(endpoints, newEndpoints...)
 		}
-		supplierEndpoints[SupplierAddress(supplier.Address)] = endpoints
+		supplierEndpoints[SupplierAddress(supplier.OperatorAddress)] = endpoints
 	}
 
 	return supplierEndpoints, nil
