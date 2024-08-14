@@ -22,8 +22,8 @@ func BuildRelayRequest(
 	header := endpoint.Header()
 	return &servicetypes.RelayRequest{
 		Meta: servicetypes.RelayRequestMetadata{
-			SessionHeader:   &header,
-			SupplierAddress: string(endpoint.Supplier()),
+			SessionHeader:           &header,
+			SupplierOperatorAddress: string(endpoint.Supplier()),
 		},
 		Payload: requestBz,
 	}, nil
@@ -55,7 +55,7 @@ func ValidateRelayResponse(
 		return nil, err
 	}
 
-	if signatureErr := relayResponse.VerifySupplierSignature(supplierPubKey); signatureErr != nil {
+	if signatureErr := relayResponse.VerifySupplierOperatorSignature(supplierPubKey); signatureErr != nil {
 		return nil, signatureErr
 	}
 

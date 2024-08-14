@@ -73,7 +73,7 @@ func ExampleRelay() {
 	}
 
 	// 4.g. Verify the returned response against supplier's public key
-	validatedResponse, err := ValidateRelayResponse(ctx, SupplierAddress(req.Meta.SupplierAddress), responseBz, &accountClient)
+	validatedResponse, err := ValidateRelayResponse(ctx, SupplierAddress(req.Meta.SupplierOperatorAddress), responseBz, &accountClient)
 	if err != nil {
 		fmt.Printf("response failed validation: %v", err)
 		return
