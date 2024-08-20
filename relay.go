@@ -3,9 +3,40 @@ package sdk
 import (
 	"context"
 	"errors"
+	"sync"
 
+	cosmossdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/pokt-network/poktroll/app"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
+
+var once sync.Once
+
+func init() {
+	once.Do(func() {
+		initCosmosSDKConfig()
+	})
+}
+
+// initCosmosSDKConfig sets the prefix for application address to "pokt"
+// This is necessary as otherwise the relay response validation would fail
+// while validating the session header which should contain an application
+// address in the expected format, i.e. Bech32 format with a "pokt" prefix.
+func initCosmosSDKConfig() {
+	// Set prefixes
+	accountPubKeyPrefix := app.AccountAddressPrefix + "pub"
+	validatorAddressPrefix := app.AccountAddressPrefix + "valoper"
+	validatorPubKeyPrefix := app.AccountAddressPrefix + "valoperpub"
+	consNodeAddressPrefix := app.AccountAddressPrefix + "valcons"
+	consNodePubKeyPrefix := app.AccountAddressPrefix + "valconspub"
+
+	// Set and seal config
+	config := cosmossdk.GetConfig()
+	config.SetBech32PrefixForAccount(app.AccountAddressPrefix, accountPubKeyPrefix)
+	config.SetBech32PrefixForValidator(validatorAddressPrefix, validatorPubKeyPrefix)
+	config.SetBech32PrefixForConsensusNode(consNodeAddressPrefix, consNodePubKeyPrefix)
+	config.Seal()
+}
 
 // The returned RelayRequest struct can be marshalled and delivered to a service
 // endpoint through an HTTP POST request.
