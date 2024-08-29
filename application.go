@@ -57,6 +57,14 @@ func (ac *ApplicationClient) GetApplication(
 	return res.Application, nil
 }
 
+// TODO_TECHDEBT: Use a more efficient logic based on a filtering query of onchain applications,
+// once the following enhancement on poktroll is implemented:
+// https://github.com/pokt-network/poktroll/issues/767
+//
+// This is an inefficient implementation, as there can be a very large number
+// of onchain applications, only a few of which are likely to be delegating to a specific gateway.
+// But this can only be fixed once the above proposed enhancement on poktroll is completed.
+//
 // GetApplicationsDelegatingToGateway returns the application addresses that are
 // delegating to the given gateway address.
 func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
