@@ -32,7 +32,7 @@ func (s *SessionClient) GetSession(
 
 	req := &sessiontypes.QueryGetSessionRequest{
 		ApplicationAddress: appAddress,
-		Service:            &sharedtypes.Service{Id: serviceId},
+		ServiceId:          serviceId,
 		BlockHeight:        height,
 	}
 
@@ -109,7 +109,7 @@ func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 		for _, service := range supplier.Services {
 			// TODO_TECHDEBT: Remove this check once the session module ensures that
 			// oly the services corresponding to the session header is returned.
-			if service.Service.Id != f.Session.Header.Service.Id {
+			if service.ServiceId != f.Session.Header.ServiceId {
 				continue
 			}
 
