@@ -1,12 +1,12 @@
 module github.com/pokt-network/shannon-sdk
 
-go 1.22.2
+go 1.23.0
 
 require (
-	github.com/cometbft/cometbft v0.38.7
-	github.com/cosmos/cosmos-sdk v0.50.7
+	github.com/cometbft/cometbft v0.38.10
+	github.com/cosmos/cosmos-sdk v0.50.9
 	github.com/cosmos/gogoproto v1.5.0
-	github.com/pokt-network/poktroll v0.0.6-0.20240814062301-5a10fba6cfac
+	github.com/pokt-network/poktroll v0.0.8-0.20240907012614-853407e03086
 	github.com/pokt-network/ring-go v0.1.0
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.65.0
@@ -20,8 +20,8 @@ require (
 	cloud.google.com/go/storage v1.38.0 // indirect
 	cosmossdk.io/api v0.7.5 // indirect
 	cosmossdk.io/collections v0.4.0 // indirect
-	cosmossdk.io/core v0.11.0 // indirect
-	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
+	cosmossdk.io/core v0.11.1 // indirect
+	cosmossdk.io/depinject v1.0.0 // indirect
 	cosmossdk.io/errors v1.0.1 // indirect
 	cosmossdk.io/log v1.3.1 // indirect
 	cosmossdk.io/math v1.3.0 // indirect
@@ -29,7 +29,7 @@ require (
 	cosmossdk.io/x/circuit v0.1.0 // indirect
 	cosmossdk.io/x/evidence v0.1.0 // indirect
 	cosmossdk.io/x/feegrant v0.1.0 // indirect
-	cosmossdk.io/x/tx v0.13.3 // indirect
+	cosmossdk.io/x/tx v0.13.4 // indirect
 	cosmossdk.io/x/upgrade v0.1.1 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
@@ -48,9 +48,10 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cockroachdb/apd/v2 v2.0.2 // indirect
-	github.com/cockroachdb/errors v1.11.1 // indirect
+	github.com/cockroachdb/errors v1.11.3 // indirect
+	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v1.1.0 // indirect
+	github.com/cockroachdb/pebble v1.1.2 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/cometbft/cometbft-db v0.9.1 // indirect
@@ -113,6 +114,7 @@ require (
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/hdevalence/ed25519consensus v0.1.0 // indirect
@@ -126,7 +128,6 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.7 // indirect
-	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/linxGnu/grocksdb v1.8.14 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/manifoldco/promptui v0.9.0 // indirect
@@ -143,7 +144,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20231207134359-e60b3f734c67 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/pokt-network/smt v0.12.0 // indirect
+	github.com/pokt-network/smt v0.13.0 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.52.2 // indirect
