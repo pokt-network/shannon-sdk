@@ -6,7 +6,7 @@ require (
 	github.com/cometbft/cometbft v0.38.10
 	github.com/cosmos/cosmos-sdk v0.50.9
 	github.com/cosmos/gogoproto v1.5.0
-	github.com/pokt-network/poktroll v0.0.8-0.20240907012614-853407e03086
+	github.com/pokt-network/poktroll v0.0.8-0.20240911114212-ecf74ced63cc
 	github.com/pokt-network/ring-go v0.1.0
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.65.0

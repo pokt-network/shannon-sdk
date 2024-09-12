@@ -911,6 +911,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pokt-network/poktroll v0.0.8-0.20240907012614-853407e03086 h1:fh5XA3BDyY362vUuXAqdFIWGYhe6myH80sDfJHkok3Q=
 github.com/pokt-network/poktroll v0.0.8-0.20240907012614-853407e03086/go.mod h1:9dfzEFypvOW10Unfpce9kDu+k13o/CtLmA1Ynm0whmI=
+github.com/pokt-network/poktroll v0.0.8-0.20240911114212-ecf74ced63cc h1:VcIe5ca0UZSYwuDtj1qX+uu1h/bgwdXx8dSFl760lOc=
+github.com/pokt-network/poktroll v0.0.8-0.20240911114212-ecf74ced63cc/go.mod h1:iNF1RtZ4876hxeSpYA07ZjpA+/7xyYBRgZlTCa2mqWU=
 github.com/pokt-network/ring-go v0.1.0 h1:hF7mDR4VVCIqqDAsrloP8azM9y1mprc99YgnTjKSSwk=
 github.com/pokt-network/ring-go v0.1.0/go.mod h1:8NHPH7H3EwrPX3XHfpyRI6bz4gApkE3+fd0XZRbMWP0=
 github.com/pokt-network/smt v0.13.0 h1:C2F8FlJh34aU+DVeRU/Bt8BOkFXn4QjWMK+nbT9PUj4=
