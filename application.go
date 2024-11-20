@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	query "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/application/types"
 	"github.com/pokt-network/ring-go"
@@ -29,12 +30,20 @@ type ApplicationClient struct {
 	types.QueryClient
 }
 
+// TODO_FUTURE(@adshmh): support pagination if/when the number of onchain applications grows enough to cause a performance issue
+// with returning all applications at-once.
+//
 // GetAllApplications returns all applications in the network.
 // TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
 func (ac *ApplicationClient) GetAllApplications(
 	ctx context.Context,
 ) ([]types.Application, error) {
-	req := &types.QueryAllApplicationsRequest{}
+	req := &types.QueryAllApplicationsRequest{
+		Pagination: &query.PageRequest{
+			Limit: query.PaginationMaxLimit,
+		},
+	}
+
 	res, err := ac.QueryClient.AllApplications(ctx, req)
 	if err != nil {
 		return []types.Application{}, err
