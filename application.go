@@ -30,6 +30,9 @@ type ApplicationClient struct {
 	types.QueryClient
 }
 
+// TODO_FUTURE(@adshmh): support pagination if/when the number of onchain applications grows enough to cause a performance issue
+// with returning all applications at-once.
+//
 // GetAllApplications returns all applications in the network.
 // TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
 func (ac *ApplicationClient) GetAllApplications(
