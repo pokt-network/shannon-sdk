@@ -44,11 +44,11 @@ func (ac *ApplicationClient) GetApplication(
 }
 
 // GetAllApplications returns all applications in the network.
-// TODO_FUTURE: support pagination if/when it becomes a performance issue.
 func (ac *ApplicationClient) GetAllApplications(
 	ctx context.Context,
 ) ([]types.Application, error) {
 	req := &types.QueryAllApplicationsRequest{
+		// TODO_FUTURE: support pagination if/when it becomes a performance issue.
 		Pagination: &query.PageRequest{
 			Limit: query.PaginationMaxLimit,
 		},
@@ -62,10 +62,6 @@ func (ac *ApplicationClient) GetAllApplications(
 	return res.Applications, nil
 }
 
-// This is an inefficient implementation, as there can be a very large number
-// of onchain applications, only a few of which are likely to be delegating to a specific gateway.
-// But this can only be fixed once the above proposed enhancement on poktroll is completed.
-//
 // GetApplicationsDelegatingToGateway returns the application addresses that are
 // delegating to the given gateway address.
 func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
@@ -76,10 +72,11 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 	gatewayDelegatingApplications := make([]string, 0)
 
 	req := &types.QueryAllApplicationsRequest{
+		GatewayAddressDelegatedTo: gatewayAddress,
+		// TODO_FUTURE: support pagination if/when it becomes a performance issue.
 		Pagination: &query.PageRequest{
 			Limit: query.PaginationMaxLimit,
 		},
-		GatewayAddressDelegatedTo: gatewayAddress,
 	}
 
 	res, err := ac.QueryClient.AllApplications(ctx, req)
