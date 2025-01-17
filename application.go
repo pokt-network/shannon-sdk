@@ -3,7 +3,6 @@ package sdk
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -26,30 +25,8 @@ import (
 // the blockchain for the same data multiple times, but such a cache would need to be invalidated by
 // listening to the relevant events such as MsgStakeApplication, MsgUnstakeApplication etc...
 type ApplicationClient struct {
-	// TODO_TECHDEBT: Replace QueryClient with a PoktNodeAccountFetcher interface.
+	// TODO_TECHDEBT(@adshmh): Replace QueryClient with a PoktNodeAccountFetcher interface.
 	types.QueryClient
-}
-
-// TODO_FUTURE(@adshmh): support pagination if/when the number of onchain applications grows enough to cause a performance issue
-// with returning all applications at-once.
-//
-// GetAllApplications returns all applications in the network.
-// TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
-func (ac *ApplicationClient) GetAllApplications(
-	ctx context.Context,
-) ([]types.Application, error) {
-	req := &types.QueryAllApplicationsRequest{
-		Pagination: &query.PageRequest{
-			Limit: query.PaginationMaxLimit,
-		},
-	}
-
-	res, err := ac.QueryClient.AllApplications(ctx, req)
-	if err != nil {
-		return []types.Application{}, err
-	}
-
-	return res.Applications, nil
 }
 
 // GetApplication returns the details of the application with the given address.
@@ -66,14 +43,25 @@ func (ac *ApplicationClient) GetApplication(
 	return res.Application, nil
 }
 
-// TODO_TECHDEBT: Use a more efficient logic based on a filtering query of onchain applications,
-// once the following enhancement on poktroll is implemented:
-// https://github.com/pokt-network/poktroll/issues/767
-//
-// This is an inefficient implementation, as there can be a very large number
-// of onchain applications, only a few of which are likely to be delegating to a specific gateway.
-// But this can only be fixed once the above proposed enhancement on poktroll is completed.
-//
+// GetAllApplications returns all applications in the network.
+func (ac *ApplicationClient) GetAllApplications(
+	ctx context.Context,
+) ([]types.Application, error) {
+	req := &types.QueryAllApplicationsRequest{
+		// TODO_FUTURE: support pagination if/when it becomes a performance issue.
+		Pagination: &query.PageRequest{
+			Limit: query.PaginationMaxLimit,
+		},
+	}
+
+	res, err := ac.QueryClient.AllApplications(ctx, req)
+	if err != nil {
+		return []types.Application{}, err
+	}
+
+	return res.Applications, nil
+}
+
 // GetApplicationsDelegatingToGateway returns the application addresses that are
 // delegating to the given gateway address.
 func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
@@ -81,15 +69,23 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 	gatewayAddress string,
 	sessionEndHeight uint64,
 ) ([]string, error) {
-	allApplications, err := ac.GetAllApplications(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("GetApplicationsDelegatingToGateway: error getting all applications: %w", err)
+	gatewayDelegatingApplications := make([]string, 0)
+
+	req := &types.QueryAllApplicationsRequest{
+		GatewayAddressDelegatedTo: gatewayAddress,
+		// TODO_FUTURE: support pagination if/when it becomes a performance issue.
+		Pagination: &query.PageRequest{
+			Limit: query.PaginationMaxLimit,
+		},
 	}
 
-	gatewayDelegatingApplications := make([]string, 0)
-	for _, application := range allApplications {
-		// Get the gateways that are delegated to the application
-		// at the query height and check if the given gateway address is in the list.
+	res, err := ac.QueryClient.AllApplications(ctx, req)
+	if err != nil {
+		return gatewayDelegatingApplications, err
+	}
+
+	for _, application := range res.Applications {
+		// Get the gateways the application delegated to at the specified query height.
 		gatewaysDelegatedTo := rings.GetRingAddressesAtSessionEndHeight(&application, sessionEndHeight)
 		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
 			// The application is delegating to the given gateway address, add it to the list.
