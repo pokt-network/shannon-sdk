@@ -36,12 +36,15 @@ func (s *SessionClient) GetSession(
 		BlockHeight:        height,
 	}
 
-	// TODO_DISCUSS: Would it be feasible to add a GetCurrentSession, supported by the underlying protocol?
+	// TODO_IMPROVE: Would it be feasible to add a GetCurrentSession, supported by the underlying protocol?
+	//
 	// It seems likely that GetSession will almost always be used to get the session
 	// matching the latest height.
-	// In addition, the current session that is being returned could include the
-	// latest block height, reducing the number of SDK calls needed for sending relays
-	// and removes the need for the BlockClient.
+	//
+	// In addition, the current session that is being returned could:
+	// - Include the latest block height
+	// - Reduce the number of SDK calls needed for sending relays
+	// - Remove the need for the BlockClient
 	res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
 	if err != nil {
 		return nil, err
@@ -89,7 +92,6 @@ type SessionFilter struct {
 	*sessiontypes.Session
 
 	EndpointFilters []EndpointFilter
-	// TODO_IMPROVE: Add a slice of endpoint ordering functions
 }
 
 // AllEndpoints returns all the endpoints corresponding to a session for the
@@ -108,7 +110,7 @@ func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 		var endpoints []Endpoint
 		for _, service := range supplier.Services {
 			// TODO_TECHDEBT: Remove this check once the session module ensures that
-			// oly the services corresponding to the session header is returned.
+			// only the services corresponding to the session header are returned.
 			if service.ServiceId != f.Session.Header.ServiceId {
 				continue
 			}
@@ -116,7 +118,7 @@ func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 			var newEndpoints []Endpoint
 			for _, e := range service.Endpoints {
 				newEndpoints = append(newEndpoints, endpoint{
-					// TODO_TECHDEBT: Need deep copying here.
+					// TODO_TECHDEBT: Investigate whether we need to do deep copying here and why.
 					header:           *header,
 					supplierEndpoint: *e,
 					supplier:         SupplierAddress(supplier.OperatorAddress),
@@ -130,7 +132,6 @@ func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 	return supplierEndpoints, nil
 }
 
-// TODO_TECHDEBT: add a unit test to cover this method.
 // FilteredEndpoints returns the endpoints that pass all the filters set of
 // the FilteredSession.
 func (f *SessionFilter) FilteredEndpoints() ([]Endpoint, error) {
@@ -182,11 +183,10 @@ func (e endpoint) Header() sessiontypes.SessionHeader {
 	return e.header
 }
 
-// TODO_CONSIDERATION: Prefix the Endpoint methods with `Get` to make it clear
-// that they are getters.
 // Endpoint is an interface that represents an endpoint with its corresponding
 // supplier and session that contains the endpoint.
 type Endpoint interface {
+	// TODO_REFACTOR: Prefix the Endpoint methods with `Get` to make it clear that they are getters.
 	Header() sessiontypes.SessionHeader
 	Supplier() SupplierAddress
 	Endpoint() sharedtypes.SupplierEndpoint
