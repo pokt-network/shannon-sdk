@@ -25,8 +25,7 @@ type Signer struct {
 func (s *Signer) Sign(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
-	// TODO_IMPROVE: this input argument should be changed to an interface.
-	appRing ApplicationRing,
+	appRing ApplicationRing, // TODO_IMPROVE: this input argument should be changed to an interface.
 ) (*servicetypes.RelayRequest, error) {
 	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
@@ -42,8 +41,8 @@ func (s *Signer) Sign(
 		return nil, fmt.Errorf("Sign: error getting signable bytes hash from the relay request: %w", err)
 	}
 
-	// TODO_DISCUSS: should the Signer struct store the private key as scalar instead?
-	// This would reduce the number of steps required for processing each Relay Request.
+	// TODO_IMPROVE: make the Signer struct store the private key as scalar instead.
+	// This will reduce the number of steps required for processing each Relay Request.
 	signerPrivKeyBz, err := hex.DecodeString(s.PrivateKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("Sign: error decoding private key to a string: %w", err)
