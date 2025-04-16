@@ -39,18 +39,38 @@ type ApplicationClient struct {
 func (ac *ApplicationClient) GetAllApplications(
 	ctx context.Context,
 ) ([]types.Application, error) {
-	req := &types.QueryAllApplicationsRequest{
-		Pagination: &query.PageRequest{
-			Limit: query.PaginationMaxLimit,
-		},
+	// Enforce any deadlines specified on the supplied context.
+	// Create channel for result
+	type result struct {
+		apps []types.Application
+		err  error
 	}
 
-	res, err := ac.QueryClient.AllApplications(ctx, req)
-	if err != nil {
-		return []types.Application{}, err
-	}
+	resultCh := make(chan result, 1)
+	// Launch AllApplications in goroutine
+	go func() {
+		req := &types.QueryAllApplicationsRequest{
+			Pagination: &query.PageRequest{
+				Limit: query.PaginationMaxLimit,
+			},
+		}
 
-	return res.Applications, nil
+		res, err := ac.QueryClient.AllApplications(ctx, req)
+		if err != nil {
+			resultCh <- result{apps: []types.Application{}, err: err}
+			return
+		}
+
+		resultCh <- result{apps: res.Applications}
+	}()
+
+	// Wait for either result or context deadline
+	select {
+	case res := <-resultCh:
+		return res.apps, res.err
+	case <-ctx.Done():
+		return []types.Application{}, ctx.Err()
+	}
 }
 
 // GetApplication returns the details of the application with the given address.
@@ -58,13 +78,35 @@ func (ac *ApplicationClient) GetApplication(
 	ctx context.Context,
 	appAddress string,
 ) (types.Application, error) {
-	req := &types.QueryGetApplicationRequest{Address: appAddress}
-	res, err := ac.QueryClient.Application(ctx, req)
-	if err != nil {
-		return types.Application{}, err
+	// Enforce any deadlines specified on the supplied context.
+	// Create channel for result
+	type result struct {
+		app types.Application
+		err error
 	}
 
-	return res.Application, nil
+	resultCh := make(chan result, 1)
+	// Launch GetApplication in goroutine
+	go func() {
+		req := &types.QueryGetApplicationRequest{Address: appAddress}
+		// TODO_TECHDEBT(@adshmh): consider increasing the default response size:
+		// e.g. using google.golang.org/grpc's MaxCallRecvMsgSize CallOption.
+		res, err := ac.QueryClient.Application(ctx, req)
+		if err != nil {
+			resultCh <- result{types.Application{}, err}
+			return
+		}
+
+		resultCh <- result{app: res.Application}
+	}()
+
+	// Wait for either result or context deadline
+	select {
+	case res := <-resultCh:
+		return res.app, res.err
+	case <-ctx.Done():
+		return types.Application{}, ctx.Err()
+	}
 }
 
 // TODO_TECHDEBT: Use a more efficient logic based on a filtering query of onchain applications,

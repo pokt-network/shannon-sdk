@@ -30,27 +30,49 @@ func (s *SessionClient) GetSession(
 		return nil, errors.New("PoktNodeSessionFetcher not set")
 	}
 
-	req := &sessiontypes.QueryGetSessionRequest{
-		ApplicationAddress: appAddress,
-		ServiceId:          serviceId,
-		BlockHeight:        height,
+	// Enforce any deadlines specified on the supplied context.
+	// Create channel for result
+	type result struct {
+		session *sessiontypes.Session
+		err     error
 	}
 
-	// TODO_IMPROVE: Would it be feasible to add a GetCurrentSession, supported by the underlying protocol?
-	//
-	// It seems likely that GetSession will almost always be used to get the session
-	// matching the latest height.
-	//
-	// In addition, the current session that is being returned could:
-	// - Include the latest block height
-	// - Reduce the number of SDK calls needed for sending relays
-	// - Remove the need for the BlockClient
-	res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+	resultCh := make(chan result, 1)
+	// Launch GetApplication in goroutine
+	go func() {
+		req := &sessiontypes.QueryGetSessionRequest{
+			ApplicationAddress: appAddress,
+			ServiceId:          serviceId,
+			BlockHeight:        height,
+		}
 
-	return res.Session, nil
+		// TODO_TECHDEBT(@adshmh): consider increasing the default response size:
+		// e.g. using google.golang.org/grpc's MaxCallRecvMsgSize CallOption.
+		//
+		// TODO_IMPROVE: Would it be feasible to add a GetCurrentSession, supported by the underlying protocol?
+		//
+		// It seems likely that GetSession will almost always be used to get the session
+		// matching the latest height.
+		//
+		// In addition, the current session that is being returned could:
+		// - Include the latest block height
+		// - Reduce the number of SDK calls needed for sending relays
+		// - Remove the need for the BlockClient
+		res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
+		if err != nil {
+			resultCh <- result{err: err}
+			return
+		}
+		resultCh <- result{session: res.Session}
+	}()
+
+	// Wait for either result or context deadline
+	select {
+	case res := <-resultCh:
+		return res.session, res.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 // NewPoktNodeSessionFetcher returns the default implementation of the
