@@ -20,6 +20,7 @@ type SessionClient struct {
 }
 
 // GetSession returns the session with the given application address, service id and height.
+// It returns an error if the context deadline is exceeded while fetching the requested session.
 func (s *SessionClient) GetSession(
 	ctx context.Context,
 	appAddress string,
@@ -30,27 +31,42 @@ func (s *SessionClient) GetSession(
 		return nil, errors.New("PoktNodeSessionFetcher not set")
 	}
 
-	req := &sessiontypes.QueryGetSessionRequest{
-		ApplicationAddress: appAddress,
-		ServiceId:          serviceId,
-		BlockHeight:        height,
-	}
+	var (
+		fetchedSession *sessiontypes.Session
+		fetchErr       error
+		// Will be closed to signal that fetch is completed.
+		doneCh = make(chan struct{})
+	)
 
-	// TODO_IMPROVE: Would it be feasible to add a GetCurrentSession, supported by the underlying protocol?
-	//
-	// It seems likely that GetSession will almost always be used to get the session
-	// matching the latest height.
-	//
-	// In addition, the current session that is being returned could:
-	// - Include the latest block height
-	// - Reduce the number of SDK calls needed for sending relays
-	// - Remove the need for the BlockClient
-	res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+	// Launch QueryGetSessionRequest in goroutine
+	go func() {
+		// Close the channel to signal completion of fetch.
+		defer close(doneCh)
 
-	return res.Session, nil
+		req := &sessiontypes.QueryGetSessionRequest{
+			ApplicationAddress: appAddress,
+			ServiceId:          serviceId,
+			BlockHeight:        height,
+		}
+
+		// TODO_TECHDEBT(@adshmh): consider increasing the default response size:
+		// e.g. using google.golang.org/grpc's MaxCallRecvMsgSize CallOption.
+		//
+		res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
+		if err != nil {
+			fetchErr = err
+			return
+		}
+		fetchedSession = res.Session
+	}()
+
+	// Wait for either result or context deadline
+	select {
+	case <-doneCh:
+		return fetchedSession, fetchErr
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 // NewPoktNodeSessionFetcher returns the default implementation of the
