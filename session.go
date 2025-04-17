@@ -38,7 +38,7 @@ func (s *SessionClient) GetSession(
 	}
 
 	resultCh := make(chan result, 1)
-	// Launch GetApplication in goroutine
+	// Launch QueryGetSessionRequest in goroutine
 	go func() {
 		req := &sessiontypes.QueryGetSessionRequest{
 			ApplicationAddress: appAddress,
