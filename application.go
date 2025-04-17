@@ -93,7 +93,7 @@ func (ac *ApplicationClient) GetApplication(
 		// e.g. using google.golang.org/grpc's MaxCallRecvMsgSize CallOption.
 		res, err := ac.QueryClient.Application(ctx, req)
 		if err != nil {
-			resultCh <- result{types.Application{}, err}
+			resultCh <- result{app: types.Application{}, err: err}
 			return
 		}
 
