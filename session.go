@@ -49,15 +49,6 @@ func (s *SessionClient) GetSession(
 		// TODO_TECHDEBT(@adshmh): consider increasing the default response size:
 		// e.g. using google.golang.org/grpc's MaxCallRecvMsgSize CallOption.
 		//
-		// TODO_IMPROVE: Would it be feasible to add a GetCurrentSession, supported by the underlying protocol?
-		//
-		// It seems likely that GetSession will almost always be used to get the session
-		// matching the latest height.
-		//
-		// In addition, the current session that is being returned could:
-		// - Include the latest block height
-		// - Reduce the number of SDK calls needed for sending relays
-		// - Remove the need for the BlockClient
 		res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
 		if err != nil {
 			resultCh <- result{err: err}
