@@ -36,19 +36,22 @@ type ApplicationClient struct {
 // TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
 //
 // GetAllApplications returns all applications in the network.
+// It returns an error if the context deadline is exceeded while fetching the requested session.
 func (ac *ApplicationClient) GetAllApplications(
 	ctx context.Context,
 ) ([]types.Application, error) {
-	// Enforce any deadlines specified on the supplied context.
-	// Create channel for result
-	type result struct {
-		apps []types.Application
-		err  error
-	}
+	var (
+		fetchedApps []types.Application
+		fetchErr    error
+		// Will be closed to signal the completion of app fetch.
+		doneCh = make(chan struct{})
+	)
 
-	resultCh := make(chan result, 1)
 	// Launch AllApplications in goroutine
 	go func() {
+		// Close the channel to signal completion of fetch.
+		defer close(doneCh)
+
 		req := &types.QueryAllApplicationsRequest{
 			Pagination: &query.PageRequest{
 				Limit: query.PaginationMaxLimit,
@@ -57,53 +60,56 @@ func (ac *ApplicationClient) GetAllApplications(
 
 		res, err := ac.QueryClient.AllApplications(ctx, req)
 		if err != nil {
-			resultCh <- result{apps: []types.Application{}, err: err}
+			fetchErr = err
 			return
 		}
 
-		resultCh <- result{apps: res.Applications}
+		fetchedApps = res.Applications
 	}()
 
 	// Wait for either result or context deadline
 	select {
-	case res := <-resultCh:
-		return res.apps, res.err
+	case <-doneCh:
+		return fetchedApps, fetchErr
 	case <-ctx.Done():
 		return []types.Application{}, ctx.Err()
 	}
 }
 
 // GetApplication returns the details of the application with the given address.
+// It returns an error if the context deadline is exceeded while fetching the requested session.
 func (ac *ApplicationClient) GetApplication(
 	ctx context.Context,
 	appAddress string,
 ) (types.Application, error) {
-	// Enforce any deadlines specified on the supplied context.
-	// Create channel for result
-	type result struct {
-		app types.Application
-		err error
-	}
+	var (
+		fetchedApp types.Application
+		fetchErr   error
+		// Will be closed to signal the completion of app fetch.
+		doneCh = make(chan struct{})
+	)
 
-	resultCh := make(chan result, 1)
 	// Launch GetApplication in goroutine
 	go func() {
+		// Close the channel to signal completion
+		defer close(doneCh)
+
 		req := &types.QueryGetApplicationRequest{Address: appAddress}
 		// TODO_TECHDEBT(@adshmh): consider increasing the default response size:
 		// e.g. using google.golang.org/grpc's MaxCallRecvMsgSize CallOption.
 		res, err := ac.QueryClient.Application(ctx, req)
 		if err != nil {
-			resultCh <- result{app: types.Application{}, err: err}
+			fetchErr = err
 			return
 		}
 
-		resultCh <- result{app: res.Application}
+		fetchedApp = res.Application
 	}()
 
-	// Wait for either result or context deadline
+	// Wait for either completion of fetch or context deadline
 	select {
-	case res := <-resultCh:
-		return res.app, res.err
+	case <-doneCh:
+		return fetchedApp, fetchErr
 	case <-ctx.Done():
 		return types.Application{}, ctx.Err()
 	}

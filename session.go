@@ -20,6 +20,7 @@ type SessionClient struct {
 }
 
 // GetSession returns the session with the given application address, service id and height.
+// It returns an error if the context deadline is exceeded while fetching the requested session.
 func (s *SessionClient) GetSession(
 	ctx context.Context,
 	appAddress string,
@@ -30,16 +31,18 @@ func (s *SessionClient) GetSession(
 		return nil, errors.New("PoktNodeSessionFetcher not set")
 	}
 
-	// Enforce any deadlines specified on the supplied context.
-	// Create channel for result
-	type result struct {
-		session *sessiontypes.Session
-		err     error
-	}
+	var (
+		fetchedSession *sessiontypes.Session
+		fetchErr       error
+		// Will be closed to signal that fetch is completed.
+		doneCh = make(chan struct{})
+	)
 
-	resultCh := make(chan result, 1)
 	// Launch QueryGetSessionRequest in goroutine
 	go func() {
+		// Close the channel to signal completion of fetch.
+		defer close(doneCh)
+
 		req := &sessiontypes.QueryGetSessionRequest{
 			ApplicationAddress: appAddress,
 			ServiceId:          serviceId,
@@ -51,16 +54,16 @@ func (s *SessionClient) GetSession(
 		//
 		res, err := s.PoktNodeSessionFetcher.GetSession(ctx, req)
 		if err != nil {
-			resultCh <- result{err: err}
+			fetchErr = err
 			return
 		}
-		resultCh <- result{session: res.Session}
+		fetchedSession = res.Session
 	}()
 
 	// Wait for either result or context deadline
 	select {
-	case res := <-resultCh:
-		return res.session, res.err
+	case <-doneCh:
+		return fetchedSession, fetchErr
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
