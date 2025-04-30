@@ -13,14 +13,6 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
   - [Relay Request Workflow](#relay-request-workflow)
   - [Example Code](#example-code)
 - [API Reference](#api-reference)
-  - [Account Client](#account-client)
-  - [Application Client](#application-client)
-  - [ApplicationRing](#applicationring)
-  - [Block Client](#block-client)
-  - [Session Client](#session-client)
-  - [Session Filter](#session-filter)
-  - [Signer](#signer)
-  - [Relayer](#relayer)
 - [Project Structure](#project-structure)
 
 ## Overview
@@ -236,135 +228,16 @@ func main() {
 
 ## API Reference
 
-### Account Client
-
-```go
-type AccountClient struct {
-    PoktNodeAccountFetcher
-}
-
-// GetPubKeyFromAddress returns the public key for a given address
-func (ac *AccountClient) GetPubKeyFromAddress(
-    ctx context.Context,
-    address string,
-) (pubKey cryptotypes.PubKey, err error)
-```
-
-### Application Client
-
-```go
-type ApplicationClient struct {
-    QueryClient
-}
-
-// GetApplication retrieves a specific application by address
-func (ac *ApplicationClient) GetApplication(
-    ctx context.Context,
-    appAddress string,
-) (types.Application, error)
-
-// GetAllApplications returns all applications in the network
-func (ac *ApplicationClient) GetAllApplications(
-    ctx context.Context,
-) ([]types.Application, error)
-
-// GetApplicationsDelegatingToGateway returns applications delegating to a gateway
-func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
-    ctx context.Context,
-    gatewayAddress string,
-    sessionEndHeight uint64,
-) ([]string, error)
-```
-
-### ApplicationRing
-
-```go
-type ApplicationRing struct {
-    types.Application
-    PublicKeyFetcher
-}
-
-// GetRing returns the ring for the application
-func (a ApplicationRing) GetRing(
-    ctx context.Context,
-    sessionEndHeight uint64,
-) (addressRing *ring.Ring, err error)
-```
-
-### Block Client
-
-```go
-type BlockClient struct {
-    PoktNodeStatusFetcher
-}
-
-// LatestBlockHeight returns the height of the latest block
-func (bc *BlockClient) LatestBlockHeight(ctx context.Context) (height int64, err error)
-```
-
-### Session Client
-
-```go
-type SessionClient struct {
-    PoktNodeSessionFetcher
-}
-
-// GetSession returns the session for an application, service, and height
-func (s *SessionClient) GetSession(
-    ctx context.Context,
-    appAddress string,
-    serviceId string,
-    height int64,
-) (session *sessiontypes.Session, err error)
-```
-
-### Session Filter
-
-```go
-type SessionFilter struct {
-    *sessiontypes.Session
-    EndpointFilters []EndpointFilter
-}
-
-// AllEndpoints returns all endpoints in the session
-func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error)
-
-// FilteredEndpoints returns endpoints that pass all filters
-func (f *SessionFilter) FilteredEndpoints() ([]Endpoint, error)
-```
-
-### Signer
-
-```go
-type Signer struct {
-    PrivateKeyHex string
-}
-
-// Sign signs a relay request using the application's ring
-func (s *Signer) Sign(
-    ctx context.Context,
-    relayRequest *servicetypes.RelayRequest,
-    appRing ApplicationRing,
-) (*servicetypes.RelayRequest, error)
-```
-
-### Relayer
-
-```go
-// BuildRelayRequest creates a relay request from an endpoint and payload
-func BuildRelayRequest(
-    endpoint Endpoint,
-    requestBz []byte,
-) (*servicetypes.RelayRequest, error)
-
-// ValidateRelayResponse validates a relay response signature
-func ValidateRelayResponse(
-    ctx context.Context,
-    supplierAddress SupplierAddress,
-    relayResponseBz []byte,
-    publicKeyFetcher PublicKeyFetcher,
-) (*servicetypes.RelayResponse, error)
-```
+| Component             | Description                                       | Key Method                                                                         |
+| --------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **AccountClient**     | Fetches account information including public keys | `GetPubKeyFromAddress()`                                                           |
+| **ApplicationClient** | Manages application operations and queries        | `GetApplication()`, `GetAllApplications()`, `GetApplicationsDelegatingToGateway()` |
+| **ApplicationRing**   | Handles gateway delegations and ring signatures   | `GetRing()`                                                                        |
+| **BlockClient**       | Retrieves blockchain information                  | `LatestBlockHeight()`                                                              |
+| **SessionClient**     | Manages session operations                        | `GetSession()`                                                                     |
+| **SessionFilter**     | Filters and selects supplier endpoints            | `AllEndpoints()`, `FilteredEndpoints()`                                            |
+| **Signer**            | Signs relay requests with private keys            | `Sign()`                                                                           |
+| **Relayer Functions** | Builds and validates relay requests/responses     | `BuildRelayRequest()`, `ValidateRelayResponse()`                                   |
 
 ## Project Structure
 
