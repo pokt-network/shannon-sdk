@@ -1,28 +1,27 @@
-# ShannonSDK
+# ShannonSDK <!-- omit in toc -->
 
 ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed for developers building `Gateway`s and sovereign `Application`s.
 
-## Table of Contents
+## Table of Contents <!-- omit in toc -->
 
-- [ShannonSDK](#shannonsdk)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Key Features](#key-features)
-  - [Core Components](#core-components)
-  - [Installation](#installation)
-  - [Quick Start](#quick-start)
-    - [Relay Request Workflow](#relay-request-workflow)
-    - [Example Code](#example-code)
-  - [API Reference](#api-reference)
-    - [Account Client](#account-client)
-    - [Application Client](#application-client)
-    - [ApplicationRing](#applicationring)
-    - [Block Client](#block-client)
-    - [Session Client](#session-client)
-    - [Session Filter](#session-filter)
-    - [Signer](#signer)
-    - [Relayer](#relayer)
-  - [Project Structure](#project-structure)
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Complete working integration example](#complete-working-integration-example)
+- [Core Components](#core-components)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [Relay Request Workflow](#relay-request-workflow)
+  - [Example Code](#example-code)
+- [API Reference](#api-reference)
+  - [Account Client](#account-client)
+  - [Application Client](#application-client)
+  - [ApplicationRing](#applicationring)
+  - [Block Client](#block-client)
+  - [Session Client](#session-client)
+  - [Session Filter](#session-filter)
+  - [Signer](#signer)
+  - [Relayer](#relayer)
+- [Project Structure](#project-structure)
 
 ## Overview
 
@@ -42,6 +41,11 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 - Robust error handling and validation
 - Protocol-specific serialization for HTTP requests/responses
 - Go-idiomatic API design
+
+## Complete working integration example
+
+A complete and working example of how to use the ShannonSDK can be found in `PATH`'s
+implementation of the `signer`. See [signer.go](https://github.com/buildwithgrove/path/blob/53d0f84cc0321c25d1e28b2ffb9b70714918870b/protocol/shannon/signer.go#L9).
 
 ## Core Components
 
