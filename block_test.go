@@ -8,7 +8,7 @@ import (
 func ExampleBlockClient_LatestBlockHeight() {
 	poktFullNode, err := NewPoktNodeStatusFetcher("pokt-full-node-URL")
 	if err != nil {
-		fmt.Printf("Erorr creating a connection to POKT full node: %v\n", err)
+		fmt.Printf("Error creating a connection to POKT full node: %v\n", err)
 		return
 	}
 
@@ -18,7 +18,7 @@ func ExampleBlockClient_LatestBlockHeight() {
 
 	queryHeight, err := bc.LatestBlockHeight(context.Background())
 	if err != nil {
-		fmt.Printf("Erorr fetching latest block height: %v\n", err)
+		fmt.Printf("Error fetching latest block height: %v\n", err)
 		return
 	}
 

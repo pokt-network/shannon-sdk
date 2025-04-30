@@ -11,16 +11,67 @@ import (
 	grpcoptions "google.golang.org/grpc"
 )
 
-// SessionClient is the interface to interact with the on-chain session module.
+// --- Interfaces ---
+
+// PoktNodeSessionFetcher is used by SessionClient to fetch sessions using poktroll session type.
 //
-// For example, it can be used to get the current session for a given application
-// and service id at a given height.
+// - Most users can rely on the default implementation (see NewPoktNodeSessionFetcher).
+// - Custom implementations allow granular control over SessionClient interactions with the POKT full node.
+type PoktNodeSessionFetcher interface {
+	GetSession(
+		context.Context,
+		*sessiontypes.QueryGetSessionRequest,
+		...grpcoptions.CallOption,
+	) (*sessiontypes.QueryGetSessionResponse, error)
+}
+
+// Endpoint is an interface representing an endpoint with its supplier and session.
+//
+// TODO_REFACTOR: Prefix Endpoint methods with `Get` to clarify they are getters.
+type Endpoint interface {
+	Header() sessiontypes.SessionHeader
+	Supplier() SupplierAddress
+	Endpoint() sharedtypes.SupplierEndpoint
+}
+
+// --- Structs ---
+
+// SessionClient interacts with the on-chain session module.
+//
+// - Used to get the current session for a given application and service id at a given height.
 type SessionClient struct {
 	PoktNodeSessionFetcher
 }
 
-// GetSession returns the session with the given application address, service id and height.
-// It returns an error if the context deadline is exceeded while fetching the requested session.
+// SupplierAddress captures the address for a supplier.
+//
+// - Enforces type safety by requiring explicit type casting of a string before use as a Supplier's address.
+type SupplierAddress string
+
+// EndpointFilter is a function type used by SessionFilter to return a boolean indicating whether the input endpoint should be filtered out.
+type EndpointFilter func(Endpoint) bool
+
+// SessionFilter wraps a Session, allowing node selection by filtering out endpoints based on the filters set on the struct.
+//
+// - Needed so relay-sending functions can be provided with a struct containing both session data and the selected endpoint(s).
+type SessionFilter struct {
+	*sessiontypes.Session
+	EndpointFilters []EndpointFilter
+}
+
+// endpoint represents an endpoint with its corresponding supplier and session.
+// Implements the Endpoint interface.
+type endpoint struct {
+	header           sessiontypes.SessionHeader
+	supplierEndpoint sharedtypes.SupplierEndpoint
+	supplier         SupplierAddress
+}
+
+// --- Functions ---
+
+// GetSession returns the session with the given application address, service id, and height.
+//
+// - Returns an error if the context deadline is exceeded while fetching the session.
 func (s *SessionClient) GetSession(
 	ctx context.Context,
 	appAddress string,
@@ -77,42 +128,9 @@ func NewPoktNodeSessionFetcher(grpcConn grpc.ClientConn) PoktNodeSessionFetcher 
 	return sessiontypes.NewQueryClient(grpcConn)
 }
 
-// PoktNodeSessionFetcher is an interface used by the SessionClient to fetch
-// sessions using poktroll session type.
+// AllEndpoints returns all endpoints corresponding to a session for the service id specified by the session header.
 //
-// Most users can rely on the default implementation provided by NewPoktNodeSessionFetcher function.
-// A custom implementation of this interface can be used to gain more granular
-// control over the interactions of the SessionClient with the POKT full node.
-type PoktNodeSessionFetcher interface {
-	GetSession(
-		context.Context,
-		*sessiontypes.QueryGetSessionRequest,
-		...grpcoptions.CallOption,
-	) (*sessiontypes.QueryGetSessionResponse, error)
-}
-
-// SupplierAddress captures the address for a supplier.
-// This is defined to help enforce type safety by requiring explicit type casting
-// of a string before it can be used as a Supplier's address.
-type SupplierAddress string
-
-// EndpointFilter is a function type used by SessionFilter to return a boolean
-// indicating whether the input endpoint should be filtered out.
-type EndpointFilter func(Endpoint) bool
-
-// SessionFilter wraps a Session, allowing node selection by filtering out endpoints
-// based on the filters set on the struct.
-// This is needed so functions that enable sending relays can be provided with a
-// struct that contains both session data and the endpoint(s) selected for receiving relays.
-type SessionFilter struct {
-	*sessiontypes.Session
-
-	EndpointFilters []EndpointFilter
-}
-
-// AllEndpoints returns all the endpoints corresponding to a session for the
-// service id specified by the session header.
-// The endpoints are not filtered.
+// - Endpoints are not filtered.
 func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 	if f.Session == nil {
 		return nil, fmt.Errorf("AllEndpoints: Session not set on FilteredSession struct")
@@ -175,15 +193,10 @@ func (f *SessionFilter) FilteredEndpoints() ([]Endpoint, error) {
 	return filteredEndpoints, nil
 }
 
+
 // Endpoint is a struct that represents an endpoint with its corresponding
 // supplier and session that contains the endpoint.
 // It implements the Endpoint interface.
-type endpoint struct {
-	header           sessiontypes.SessionHeader
-	supplierEndpoint sharedtypes.SupplierEndpoint
-	supplier         SupplierAddress
-}
-
 // Endpoint returns the supplier endpoint for the endpoint.
 func (e endpoint) Endpoint() sharedtypes.SupplierEndpoint {
 	return e.supplierEndpoint
@@ -199,11 +212,4 @@ func (e endpoint) Header() sessiontypes.SessionHeader {
 	return e.header
 }
 
-// Endpoint is an interface that represents an endpoint with its corresponding
-// supplier and session that contains the endpoint.
-type Endpoint interface {
-	// TODO_REFACTOR: Prefix the Endpoint methods with `Get` to make it clear that they are getters.
-	Header() sessiontypes.SessionHeader
-	Supplier() SupplierAddress
-	Endpoint() sharedtypes.SupplierEndpoint
-}
+

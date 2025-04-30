@@ -5,7 +5,7 @@ proto_regen:
 
 .PHONY: test_all
 test_all: ## Run all go tests showing detailed output only on failures
-	go test -count=1 -race -tags test ./...
+	go test -v -count=1 -race -tags test ./...
 
 ###############
 ### Linting ###

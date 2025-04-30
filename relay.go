@@ -10,6 +10,11 @@ import (
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
 
+// =======================
+// Interfaces & Structs
+// =======================
+// (No interfaces or structs defined in this file. If you add any, group them here.)
+
 var once sync.Once
 
 func init() {
@@ -19,18 +24,17 @@ func init() {
 }
 
 // initCosmosSDKConfig sets the prefix for application address to "pokt"
-// This is necessary as otherwise the relay response validation would fail
-// while validating the session header which should contain an application
-// address in the expected format, i.e. Bech32 format with a "pokt" prefix.
+//
+// - Required for relay response validation, specifically for validating the session header.
+// - Ensures application addresses are in the expected Bech32 format with a "pokt" prefix.
 func initCosmosSDKConfig() {
-	// Set prefixes
+	// Set Bech32 prefixes
 	accountPubKeyPrefix := app.AccountAddressPrefix + "pub"
 	validatorAddressPrefix := app.AccountAddressPrefix + "valoper"
 	validatorPubKeyPrefix := app.AccountAddressPrefix + "valoperpub"
 	consNodeAddressPrefix := app.AccountAddressPrefix + "valcons"
 	consNodePubKeyPrefix := app.AccountAddressPrefix + "valconspub"
 
-	// Set and seal config
 	config := cosmossdk.GetConfig()
 	config.SetBech32PrefixForAccount(app.AccountAddressPrefix, accountPubKeyPrefix)
 	config.SetBech32PrefixForValidator(validatorAddressPrefix, validatorPubKeyPrefix)
@@ -38,10 +42,10 @@ func initCosmosSDKConfig() {
 	config.Seal()
 }
 
-// The returned RelayRequest struct can be marshalled and delivered to a service
-// endpoint through an HTTP POST request.
-// BuildRelayRequest creates a RelayRequest struct from the given endpoint and request bytes,
-// where requestBz is the serialized request (body and header) to be relayed.
+// BuildRelayRequest creates a RelayRequest struct from the given endpoint and request bytes.
+//
+// - The returned RelayRequest can be marshalled and delivered to a service endpoint via HTTP POST.
+// - requestBz: serialized request (body and header) to be relayed.
 func BuildRelayRequest(
 	endpoint Endpoint,
 	requestBz []byte,
@@ -61,6 +65,9 @@ func BuildRelayRequest(
 }
 
 // ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
+//
+// - Returns the RelayResponse, even if basic validation fails (may contain error reason).
+// - Verifies supplier's signature with the provided publicKeyFetcher.
 func ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddress SupplierAddress,
@@ -73,8 +80,7 @@ func ValidateRelayResponse(
 	}
 
 	if err := relayResponse.ValidateBasic(); err != nil {
-		// Even if the relay response is invalid, we still return it to the caller
-		// as it might contain the reason why it's failing basic validation.
+		// Even if the relay response is invalid, return it (may contain failure reason)
 		return relayResponse, err
 	}
 

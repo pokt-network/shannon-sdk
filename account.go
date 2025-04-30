@@ -15,7 +15,35 @@ import (
 
 var queryCodec *codec.ProtoCodec
 
-// init initializes the codec for the account module
+// -----------------------------
+// Interfaces and Structs
+// -----------------------------
+
+// PoktNodeAccountFetcher is used by the AccountClient to fetch accounts using poktroll request/response types.
+//
+// - Most users can rely on the default implementation provided by NewPoktNodeAccountFetcher.
+// - A custom implementation of this interface can be used to gain more granular control over the interactions of the AccountClient with the POKT full node.
+type PoktNodeAccountFetcher interface {
+	Account(
+		context.Context,
+		*accounttypes.QueryAccountRequest,
+		...grpcoptions.CallOption,
+	) (*accounttypes.QueryAccountResponse, error)
+}
+
+// AccountClient is used to interact with the account module.
+//
+// Example usage:
+//   - Get the public key corresponding to an address.
+type AccountClient struct {
+	PoktNodeAccountFetcher
+}
+
+// -----------------------------
+// Functions
+// -----------------------------
+
+// init initializes the codec for the account module.
 func init() {
 	reg := cdctypes.NewInterfaceRegistry()
 	accounttypes.RegisterInterfaces(reg)
@@ -23,15 +51,9 @@ func init() {
 	queryCodec = codec.NewProtoCodec(reg)
 }
 
-// AccountClient is used to interact with the account module.
-//
-// For example, it can be used to get the public key corresponding to an address.
-type AccountClient struct {
-	PoktNodeAccountFetcher
-}
-
 // GetPubKeyFromAddress returns the public key of the account with the given address.
-// It queries the account module using the gRPC query client.
+//
+// - Queries the account module using the gRPC query client.
 func (ac *AccountClient) GetPubKeyFromAddress(
 	ctx context.Context,
 	address string,
@@ -50,22 +72,9 @@ func (ac *AccountClient) GetPubKeyFromAddress(
 	return fetchedAccount.GetPubKey(), nil
 }
 
-// NewPoktNodeAccountFetcher returns the default implementation of the PoktNodeAccountFetcher interfce.
-// It connects to a POKT full node, through the account module's query client, to get account data.
+// NewPoktNodeAccountFetcher returns the default implementation of the PoktNodeAccountFetcher interface.
+//
+// - Connects to a POKT full node through the account module's query client to get account data.
 func NewPoktNodeAccountFetcher(grpcConn grpc.ClientConn) PoktNodeAccountFetcher {
 	return accounttypes.NewQueryClient(grpcConn)
-}
-
-// PoktNodeAccountFetcher is used by the AccountClient to fetch accounts using
-// poktroll request/response types.
-//
-// Most users can rely on the default implementation provided by NewPoktNodeAccountFetcher function.
-// A custom implementation of this interface can be used to gain more granular
-// control over the interactions of the AccountClient with the POKT full node.
-type PoktNodeAccountFetcher interface {
-	Account(
-		context.Context,
-		*accounttypes.QueryAccountRequest,
-		...grpcoptions.CallOption,
-	) (*accounttypes.QueryAccountResponse, error)
 }
