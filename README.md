@@ -82,6 +82,9 @@ The standard workflow for using ShannonSDK:
 
 ### Example Code
 
+<details>
+<summary>Example Code</summary>
+
 ```go
 package main
 
@@ -228,6 +231,8 @@ func main() {
   fmt.Printf("Relay successful: %v\n", validatedResp.Result)
 }
 ```
+
+</details>
 
 ## API Reference
 
