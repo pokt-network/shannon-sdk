@@ -193,7 +193,6 @@ func (f *SessionFilter) FilteredEndpoints() ([]Endpoint, error) {
 	return filteredEndpoints, nil
 }
 
-
 // Endpoint is a struct that represents an endpoint with its corresponding
 // supplier and session that contains the endpoint.
 // It implements the Endpoint interface.
@@ -211,5 +210,3 @@ func (e endpoint) Supplier() SupplierAddress {
 func (e endpoint) Header() sessiontypes.SessionHeader {
 	return e.header
 }
-
-
