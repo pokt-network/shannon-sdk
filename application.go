@@ -13,61 +13,70 @@ import (
 	"github.com/pokt-network/ring-go"
 )
 
+// ------------------------- Interfaces -------------------------
+
+// PublicKeyFetcher specifies an interface that allows getting the public
+// key corresponding to an address.
+//
+// - Used by the ApplicationRing struct to construct the Application's Ring for signing relay requests
+// - The AccountClient struct provides an implementation of this interface
+//
+// Implements sdk.PublicKeyFetcher interface.
+type PublicKeyFetcher interface {
+	GetPubKeyFromAddress(context.Context, string) (cryptotypes.PubKey, error)
+}
+
+// ------------------------- Structs -------------------------
+
+type ApplicationRing struct {
+	types.Application
+	PublicKeyFetcher
+}
+
 // ApplicationClient is the interface to interact with the on-chain application-module.
 //
-// For example, it can be used to get the list of applications and the details of a specific application.
+// - Used to get the list of applications and the details of a specific application
+// - Uses the gRPC query client of the application module
+// - QueryClient is public for future interface abstraction (see: https://go.dev/wiki/CodeReviewComments#interfaces)
+// - Could be extended to use caching, but cache must be invalidated by events (e.g. MsgStakeApplication, MsgUnstakeApplication)
 //
-// The ApplicationClient uses the gRPC query client of the application module.
-// QueryClient is made public because it should eventually become an interface, as it is being consumed here.
-//
-//	More details in the following link: https://go.dev/wiki/CodeReviewComments#interfaces
-//
-// This implementation could be extended in the future to leverage caching to avoid querying
-// the blockchain for the same data multiple times, but such a cache would need to be invalidated by
-// listening to the relevant events such as MsgStakeApplication, MsgUnstakeApplication etc...
+// Implements sdk.ApplicationClient interface.
 type ApplicationClient struct {
 	// TODO_TECHDEBT: Replace QueryClient with a PoktNodeAccountFetcher interface.
 	types.QueryClient
 }
 
-// TODO_TECHDEBT(@adshmh): support pagination if/when the number of onchain applications
-// grows enough to cause a performance issue with returning all applications at-once.
-//
-// TODO_TECHDEBT: Add filtering options to this method once they are supported by the on-chain module.
-//
+// ------------------------- Methods -------------------------
+
 // GetAllApplications returns all applications in the network.
-// It returns an error if the context deadline is exceeded while fetching the requested session.
+//
+// - Returns error if context deadline is exceeded
+// - TODO_TECHDEBT(@adshmh): Support pagination if/when onchain application count grows
+// - TODO_TECHDEBT: Add filtering options when supported by on-chain module
 func (ac *ApplicationClient) GetAllApplications(
 	ctx context.Context,
 ) ([]types.Application, error) {
 	var (
 		fetchedApps []types.Application
 		fetchErr    error
-		// Will be closed to signal the completion of app fetch.
-		doneCh = make(chan struct{})
+		doneCh      = make(chan struct{}) // Signals completion of app fetch
 	)
 
-	// Launch AllApplications in goroutine
 	go func() {
-		// Close the channel to signal completion of fetch.
 		defer close(doneCh)
-
 		req := &types.QueryAllApplicationsRequest{
 			Pagination: &query.PageRequest{
 				Limit: query.PaginationMaxLimit,
 			},
 		}
-
 		res, err := ac.QueryClient.AllApplications(ctx, req)
 		if err != nil {
 			fetchErr = err
 			return
 		}
-
 		fetchedApps = res.Applications
 	}()
 
-	// Wait for either result or context deadline
 	select {
 	case <-doneCh:
 		return fetchedApps, fetchErr
@@ -77,7 +86,8 @@ func (ac *ApplicationClient) GetAllApplications(
 }
 
 // GetApplication returns the details of the application with the given address.
-// It returns an error if the context deadline is exceeded while fetching the requested session.
+//
+// - Returns error if context deadline is exceeded
 func (ac *ApplicationClient) GetApplication(
 	ctx context.Context,
 	appAddress string,
@@ -85,28 +95,21 @@ func (ac *ApplicationClient) GetApplication(
 	var (
 		fetchedApp types.Application
 		fetchErr   error
-		// Will be closed to signal the completion of app fetch.
-		doneCh = make(chan struct{})
+		doneCh     = make(chan struct{}) // Signals completion of app fetch
 	)
 
-	// Launch GetApplication in goroutine
 	go func() {
-		// Close the channel to signal completion
 		defer close(doneCh)
-
 		req := &types.QueryGetApplicationRequest{Address: appAddress}
-		// TODO_TECHDEBT(@adshmh): consider increasing the default response size:
-		// e.g. using google.golang.org/grpc's MaxCallRecvMsgSize CallOption.
+		// TODO_TECHDEBT(@adshmh): Consider increasing default response size (e.g. grpc MaxCallRecvMsgSize)
 		res, err := ac.QueryClient.Application(ctx, req)
 		if err != nil {
 			fetchErr = err
 			return
 		}
-
 		fetchedApp = res.Application
 	}()
 
-	// Wait for either completion of fetch or context deadline
 	select {
 	case <-doneCh:
 		return fetchedApp, fetchErr
@@ -115,16 +118,11 @@ func (ac *ApplicationClient) GetApplication(
 	}
 }
 
-// TODO_TECHDEBT: Use a more efficient logic based on a filtering query of onchain applications,
-// once the following enhancement on poktroll is implemented:
-// https://github.com/pokt-network/poktroll/issues/767
-//
-// This is an inefficient implementation, as there can be a very large number
-// of onchain applications, only a few of which are likely to be delegating to a specific gateway.
-// But this can only be fixed once the above proposed enhancement on poktroll is completed.
-//
 // GetApplicationsDelegatingToGateway returns the application addresses that are
 // delegating to the given gateway address.
+//
+// - Inefficient: fetches all applications, then filters by delegation
+// - TODO_TECHDEBT: Use filtering query once https://github.com/pokt-network/poktroll/issues/767 is implemented
 func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 	ctx context.Context,
 	gatewayAddress string,
@@ -137,11 +135,8 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 
 	gatewayDelegatingApplications := make([]string, 0)
 	for _, application := range allApplications {
-		// Get the gateways that are delegated to the application
-		// at the query height and check if the given gateway address is in the list.
 		gatewaysDelegatedTo := rings.GetRingAddressesAtSessionEndHeight(&application, sessionEndHeight)
 		if slices.Contains(gatewaysDelegatedTo, gatewayAddress) {
-			// The application is delegating to the given gateway address, add it to the list.
 			gatewayDelegatingApplications = append(gatewayDelegatingApplications, application.Address)
 		}
 	}
@@ -149,14 +144,10 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 	return gatewayDelegatingApplications, nil
 }
 
-type ApplicationRing struct {
-	types.Application
-	PublicKeyFetcher
-}
-
 // GetRing returns the ring for the application until the current session end height.
-// The ring is created using the application's public key and the public keys of
-// the gateways that are currently delegated from the application.
+//
+// - Ring is created using the application's public key and the public keys of gateways currently delegated from the application
+// - Returns error if PublicKeyFetcher is not set or any pubkey fetch fails
 func (a ApplicationRing) GetRing(
 	ctx context.Context,
 	sessionEndHeight uint64,
@@ -165,13 +156,11 @@ func (a ApplicationRing) GetRing(
 		return nil, errors.New("GetRing: Public Key Fetcher not set")
 	}
 
-	// Get the gateway addresses that are delegated from the application at the query height.
 	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&a.Application, sessionEndHeight)
 
 	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, a.Application.Address)
 
-	// If there are no current gateway addresses, use the application address as the ring address.
 	if len(currentGatewayAddresses) == 0 {
 		ringAddresses = append(ringAddresses, a.Application.Address)
 	} else {
@@ -188,13 +177,4 @@ func (a ApplicationRing) GetRing(
 	}
 
 	return rings.GetRingFromPubKeys(ringPubKeys)
-}
-
-// PublicKeyFetcher specifies an interface that allows getting the public
-// key corresponding to an address.
-// It is used by the ApplicationRing struct to construct the Application's Ring
-// for signing relay requests.
-// The AccountClient struct provides an implementation of this interface.
-type PublicKeyFetcher interface {
-	GetPubKeyFromAddress(context.Context, string) (cryptotypes.PubKey, error)
 }

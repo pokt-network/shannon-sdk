@@ -23,7 +23,7 @@ func ExampleSessionClient() {
 	// Get the session.
 	session, err := sc.GetSession(context.Background(), "appId", "serviceId", 1)
 	if err != nil {
-		fmt.Printf("Erorr fetching session: %v\n", err)
+		fmt.Printf("Error fetching session: %v\n", err)
 		return
 	}
 
