@@ -1,6 +1,6 @@
 module github.com/pokt-network/shannon-sdk
 
-go 1.23.0
+go 1.24.3
 
 // DEV_NOTE: Uncomment the line below to use a local version of poktroll if there's
 // a need to use new gRPC methods or protobufs that have not been released yet.
