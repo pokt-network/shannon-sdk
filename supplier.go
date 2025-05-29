@@ -8,11 +8,6 @@ import (
 	"github.com/pokt-network/poktroll/x/supplier/types"
 )
 
-type SupplierRing struct {
-	sharedtypes.Supplier
-	PublicKeyFetcher
-}
-
 // SupplierClient is the interface to interact with the on-chain Supplier-module.
 //
 // - Used to get the list of Suppliers and the details of a specific Supplier

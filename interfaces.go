@@ -10,7 +10,6 @@ import (
 // key corresponding to an address.
 //
 // - Used by the ApplicationRing struct to construct the Application's Ring for signing relay requests
-// - The AccountClient struct provides an implementation of this interface
 //
 // Implements sdk.PublicKeyFetcher interface.
 type PublicKeyFetcher interface {
