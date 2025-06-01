@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	cosmossdk "github.com/cosmos/cosmos-sdk/types"
@@ -90,6 +91,9 @@ func ValidateRelayResponse(
 	)
 	if err != nil {
 		return nil, err
+	}
+	if supplierPubKey == nil {
+		return nil, fmt.Errorf("ValidateRelayResponse: supplier public key is nil for address %s", string(supplierAddress))
 	}
 
 	if signatureErr := relayResponse.VerifySupplierOperatorSignature(supplierPubKey); signatureErr != nil {
