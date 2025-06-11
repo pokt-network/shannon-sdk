@@ -11,11 +11,11 @@ import (
 	sdk "github.com/pokt-network/shannon-sdk"
 )
 
-// DelegatedGatewayClient implements the GatewayClient interface for delegated gateway mode.
+// delegatedGatewayClient implements the GatewayClient interface for delegated gateway mode.
 // In delegated mode:
 //   - Each relay request is signed by the gateway key and sent on behalf of an app selected by the user.
 //   - Users must select a specific app for each relay request (currently via HTTP request headers).
-type DelegatedGatewayClient struct {
+type delegatedGatewayClient struct {
 	logger polylog.Logger
 
 	sdk.FullNode
@@ -27,15 +27,15 @@ type DelegatedGatewayClient struct {
 // httpHeaderAppAddress is the HTTP header name for specifying the target application address.
 const httpHeaderAppAddress = "X-App-Address"
 
-// NewDelegatedGatewayClient creates a new DelegatedGatewayClient instance.
+// NewDelegatedGatewayClient creates a new delegatedGatewayClient instance.
 func NewDelegatedGatewayClient(
 	fullNode sdk.FullNode,
 	logger polylog.Logger,
 	config GatewayConfig,
-) (*DelegatedGatewayClient, error) {
+) (*delegatedGatewayClient, error) {
 	logger = logger.With("client_type", "delegated")
 
-	return &DelegatedGatewayClient{
+	return &delegatedGatewayClient{
 		FullNode:             fullNode,
 		logger:               logger,
 		gatewayAddr:          config.GatewayAddress,
@@ -45,7 +45,7 @@ func NewDelegatedGatewayClient(
 
 // GetSessions implements GatewayClient interface.
 // Returns the permitted session under Delegated gateway mode, for the supplied HTTP request.
-func (d *DelegatedGatewayClient) GetSessions(
+func (d *delegatedGatewayClient) GetSessions(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	httpReq *http.Request,
@@ -92,7 +92,7 @@ func (d *DelegatedGatewayClient) GetSessions(
 
 // GetRelaySigner implements GatewayClient interface.
 // Returns the relay request signer for delegated mode.
-func (d *DelegatedGatewayClient) GetRelaySigner(ctx context.Context, serviceID sdk.ServiceID, httpReq *http.Request) (*sdk.Signer, error) {
+func (d *delegatedGatewayClient) GetRelaySigner(ctx context.Context, serviceID sdk.ServiceID, httpReq *http.Request) (*sdk.Signer, error) {
 	return &sdk.Signer{
 		PrivateKeyHex:    d.gatewayPrivateKeyHex,
 		PublicKeyFetcher: d.FullNode,
@@ -101,7 +101,7 @@ func (d *DelegatedGatewayClient) GetRelaySigner(ctx context.Context, serviceID s
 
 // GetConfiguredServiceIDs is a no-op for delegated mode because
 // the service an app is staked for is known only at request time.
-func (d *DelegatedGatewayClient) GetConfiguredServiceIDs() map[sdk.ServiceID]struct{} {
+func (d *delegatedGatewayClient) GetConfiguredServiceIDs() map[sdk.ServiceID]struct{} {
 	return nil
 }
 

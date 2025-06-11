@@ -11,14 +11,14 @@ import (
 	"github.com/pokt-network/shannon-sdk/crypto"
 )
 
-// CentralizedGatewayClient implements the GatewayClient interface for centralized gateway mode.
+// centralizedGatewayClient implements the GatewayClient interface for centralized gateway mode.
 // In centralized mode:
 //   - PATH (Shannon instance) holds private keys for gateway operator's apps
 //   - All apps are owned by the gateway (PATH) operator
 //   - All apps delegate (onchain) to the gateway address
 //   - Each relay request is sent for one of these apps (owned by the gateway operator)
 //   - Each relay is signed by the gateway's private key (via Shannon ring signatures)
-type CentralizedGatewayClient struct {
+type centralizedGatewayClient struct {
 	logger polylog.Logger
 
 	sdk.FullNode
@@ -28,12 +28,12 @@ type CentralizedGatewayClient struct {
 	ownedApps            map[sdk.ServiceID][]string
 }
 
-// NewCentralizedGatewayClient creates a new CentralizedGatewayClient instance.
+// NewCentralizedGatewayClient creates a new centralizedGatewayClient instance.
 func NewCentralizedGatewayClient(
 	fullNode sdk.FullNode,
 	logger polylog.Logger,
 	config GatewayConfig,
-) (*CentralizedGatewayClient, error) {
+) (*centralizedGatewayClient, error) {
 	logger = logger.With("client_type", "centralized")
 
 	// Build the owned apps map from the provided private keys
@@ -42,7 +42,7 @@ func NewCentralizedGatewayClient(
 		return nil, fmt.Errorf("failed to build owned apps: %w", err)
 	}
 
-	return &CentralizedGatewayClient{
+	return &centralizedGatewayClient{
 		FullNode:             fullNode,
 		logger:               logger,
 		gatewayAddr:          config.GatewayAddress,
@@ -53,7 +53,7 @@ func NewCentralizedGatewayClient(
 
 // GetSessions implements GatewayClient interface.
 // Returns the set of permitted sessions under the Centralized gateway mode.
-func (c *CentralizedGatewayClient) GetSessions(
+func (c *centralizedGatewayClient) GetSessions(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	httpReq *http.Request,
@@ -110,7 +110,7 @@ func (c *CentralizedGatewayClient) GetSessions(
 
 // GetRelaySigner implements GatewayClient interface.
 // Returns the relay request signer for centralized mode.
-func (c *CentralizedGatewayClient) GetRelaySigner(ctx context.Context, serviceID sdk.ServiceID, httpReq *http.Request) (*sdk.Signer, error) {
+func (c *centralizedGatewayClient) GetRelaySigner(ctx context.Context, serviceID sdk.ServiceID, httpReq *http.Request) (*sdk.Signer, error) {
 	return &sdk.Signer{
 		PrivateKeyHex:    c.gatewayPrivateKeyHex,
 		PublicKeyFetcher: c.FullNode,
@@ -118,7 +118,7 @@ func (c *CentralizedGatewayClient) GetRelaySigner(ctx context.Context, serviceID
 }
 
 // GetConfiguredServiceIDs returns the service IDs configured for the gateway.
-func (c *CentralizedGatewayClient) GetConfiguredServiceIDs() map[sdk.ServiceID]struct{} {
+func (c *centralizedGatewayClient) GetConfiguredServiceIDs() map[sdk.ServiceID]struct{} {
 	servicesIDs := make(map[sdk.ServiceID]struct{})
 	for serviceID := range c.ownedApps {
 		servicesIDs[serviceID] = struct{}{}
