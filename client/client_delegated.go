@@ -105,6 +105,11 @@ func (d *delegatedGatewayClient) GetConfiguredServiceIDs() map[sdk.ServiceID]str
 	return nil
 }
 
+// GetGatewayMode returns the gateway mode.
+func (d *delegatedGatewayClient) GetGatewayMode() GatewayMode {
+	return GatewayModeDelegated
+}
+
 // appIsStakedForService returns true if the supplied application is staked for the supplied service ID.
 func appIsStakedForService(serviceID sdk.ServiceID, app *apptypes.Application) bool {
 	for _, svcCfg := range app.ServiceConfigs {

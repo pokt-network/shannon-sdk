@@ -126,6 +126,11 @@ func (c *centralizedGatewayClient) GetConfiguredServiceIDs() map[sdk.ServiceID]s
 	return servicesIDs
 }
 
+// GetGatewayMode returns the gateway mode.
+func (c *centralizedGatewayClient) GetGatewayMode() GatewayMode {
+	return GatewayModeCentralized
+}
+
 // getOwnedApps returns list of apps owned by the gateway, built from supplied private keys.
 //
 // Supplied private keys are ONLY used to build app addresses for relay signing.
