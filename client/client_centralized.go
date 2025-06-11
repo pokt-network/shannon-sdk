@@ -21,7 +21,7 @@ import (
 type CentralizedGatewayClient struct {
 	logger polylog.Logger
 
-	FullNode
+	sdk.FullNode
 
 	gatewayAddr          string
 	gatewayPrivateKeyHex string
@@ -30,7 +30,7 @@ type CentralizedGatewayClient struct {
 
 // NewCentralizedGatewayClient creates a new CentralizedGatewayClient instance.
 func NewCentralizedGatewayClient(
-	fullNode FullNode,
+	fullNode sdk.FullNode,
 	logger polylog.Logger,
 	config GatewayConfig,
 ) (*CentralizedGatewayClient, error) {
@@ -140,7 +140,7 @@ func (c *CentralizedGatewayClient) GetConfiguredServiceIDs() map[sdk.ServiceID]s
 //	  "anvil": ["pokt1...", "pokt2..."],
 //	  "eth": ["pokt3...", "pokt4..."],
 //	}
-func getOwnedApps(logger polylog.Logger, ownedAppsPrivateKeysHex []string, fullNode FullNode) (map[sdk.ServiceID][]string, error) {
+func getOwnedApps(logger polylog.Logger, ownedAppsPrivateKeysHex []string, fullNode sdk.FullNode) (map[sdk.ServiceID][]string, error) {
 	logger = logger.With("method", "getCentralizedModeOwnedApps")
 	logger.Debug().Msg("Building the list of owned apps.")
 
@@ -160,8 +160,9 @@ func getOwnedApps(logger polylog.Logger, ownedAppsPrivateKeysHex []string, fullN
 			return nil, err
 		}
 
-		// Retrieve the app's onchain data using the full node to ensure the request
-		// is a remote request and not attempting to use cached data.
+		// Retrieve the app's onchain data.
+		// GetApp delegates to the underlying full node to ensure the request is
+		// a remote request and not attempting to use cached data.
 		app, err := fullNode.GetApp(context.Background(), appAddr)
 		if err != nil {
 			logger.Error().Err(err).Msgf("error getting onchain data for app with address %s", appAddr)

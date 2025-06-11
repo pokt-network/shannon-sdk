@@ -18,7 +18,7 @@ import (
 type DelegatedGatewayClient struct {
 	logger polylog.Logger
 
-	FullNode
+	sdk.FullNode
 
 	gatewayAddr          string
 	gatewayPrivateKeyHex string
@@ -29,7 +29,7 @@ const httpHeaderAppAddress = "X-App-Address"
 
 // NewDelegatedGatewayClient creates a new DelegatedGatewayClient instance.
 func NewDelegatedGatewayClient(
-	fullNode FullNode,
+	fullNode sdk.FullNode,
 	logger polylog.Logger,
 	config GatewayConfig,
 ) (*DelegatedGatewayClient, error) {

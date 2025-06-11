@@ -1,4 +1,4 @@
-package client
+package sdk
 
 import (
 	"context"
@@ -7,8 +7,6 @@ import (
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-
-	sdk "github.com/pokt-network/shannon-sdk"
 )
 
 type FullNode interface {
@@ -18,14 +16,14 @@ type FullNode interface {
 	// GetSession returns the latest session matching the supplied service+app combination.
 	// Sessions are solely used for sending relays, and therefore only the latest session for any service+app combination is needed.
 	// Note: Shannon returns the latest session for a service+app combination if no blockHeight is provided.
-	GetSession(ctx context.Context, serviceID sdk.ServiceID, appAddr string) (sessiontypes.Session, error)
+	GetSession(ctx context.Context, serviceID ServiceID, appAddr string) (sessiontypes.Session, error)
 
 	// GetAccountPubKey returns the account public key for the given address.
 	// The cache has no TTL, so the public key is cached indefinitely.
 	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
 
 	// ValidateRelayResponse validates the raw bytes returned from an endpoint (in response to a relay request) and returns the parsed response.
-	ValidateRelayResponse(ctx context.Context, supplierAddr sdk.SupplierAddress, responseBz []byte) (*servicetypes.RelayResponse, error)
+	ValidateRelayResponse(ctx context.Context, supplierAddr SupplierAddress, responseBz []byte) (*servicetypes.RelayResponse, error)
 
 	// IsHealthy returns true if the FullNode instance is healthy.
 	// A LazyFullNode will always return true.
