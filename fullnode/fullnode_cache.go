@@ -90,7 +90,7 @@ const (
 	accountPubKeyCacheKeyPrefix = "pubkey"
 )
 
-// cachingFullNode implements the FullNode interface by wrapping a LazyFullNode
+// fullNodeWithCache implements the FullNode interface by wrapping a fullNode
 // and caching results to improve performance with automatic refresh-ahead.
 //
 // Early Refresh Strategy:
@@ -104,12 +104,12 @@ const (
 // automatic load balancing, and graceful degradation.
 //
 // Docs reference: https://github.com/viccon/sturdyc
-type cachingFullNode struct {
+type fullNodeWithCache struct {
 	logger polylog.Logger
 
 	// Use a LazyFullNode as the underlying node
 	// for fetching data from the protocol.
-	lazyFullNode *LazyFullNode
+	underlyingFullNode *fullNode
 
 	// As of #275, on Beta TestNet, sessions are 5 minutes.
 	//
@@ -122,7 +122,7 @@ type cachingFullNode struct {
 	accountPubKeyCache *sturdyc.Client[cryptotypes.PubKey]
 }
 
-// NewCachingFullNode creates a new CachingFullNode that wraps a LazyFullNode with caching layers.
+// NewCachingFullNode creates a new fullNodeWithCache that wraps a LazyFullNode with caching layers.
 //
 // The caching layers are:
 //   - Session cache: Gets sessions from the cache or calls the lazyFullNode.GetSession()
@@ -130,18 +130,18 @@ type cachingFullNode struct {
 //   - Account cache: Used in the `cachingPoktNodeAccountFetcher` to cache account data indefinitely.
 //
 // The caching layers are configured with early refreshes to prevent thundering herd and eliminate latency spikes.
-func NewCachingFullNode(
+func NewFullNodeWithCache(
 	logger polylog.Logger,
-	lazyFullNode *LazyFullNode,
+	underlyingFullNode *fullNode,
 	cacheConfig CacheConfig,
-) (*cachingFullNode, error) {
+) (*fullNodeWithCache, error) {
 	// Set default session TTL if not set
 	cacheConfig.hydrateDefaults()
 
 	// Log cache configuration
 	logger.Debug().
 		Str("cache_config_session_ttl", cacheConfig.SessionTTL.String()).
-		Msgf("cachingFullNode - Cache Configuration")
+		Msgf("fullNodeWithCache - Cache Configuration")
 
 	// Configure session cache with early refreshes
 	sessionMinRefreshDelay, sessionMaxRefreshDelay := getCacheDelays(cacheConfig.SessionTTL)
@@ -171,25 +171,23 @@ func NewCachingFullNode(
 		evictionPercentage,
 	)
 
-	// Initialize the caching full node with the modified lazy full node
-	return &cachingFullNode{
+	return &fullNodeWithCache{
 		logger:             logger,
-		lazyFullNode:       lazyFullNode,
+		underlyingFullNode: underlyingFullNode,
 		sessionCache:       sessionCache,
 		accountPubKeyCache: accountPubKeyCache,
 	}, nil
 }
 
-// GetApp is a NoOp in the caching full node.
-// Apps are fetched on startup from the remote full node using the LazyFullNode.
-// During relaying, only sessions are fetched to ensure apps and sessions are always in sync.
-func (cfn *cachingFullNode) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
-	return nil, fmt.Errorf("GetApp is a NoOp in the caching full node")
+// GetApp delegates to the underlying full node to ensure the request is
+// always a a remote request to the full nodeand not attempting to use cached data.
+func (cfn *fullNodeWithCache) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
+	return cfn.underlyingFullNode.GetApp(ctx, appAddr)
 }
 
 // GetSession returns the session for the given service and app, using a cached version if available.
 // The cache will automatically refresh the session in the background before it expires.
-func (cfn *cachingFullNode) GetSession(
+func (cfn *fullNodeWithCache) GetSession(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	appAddr string,
@@ -200,9 +198,9 @@ func (cfn *cachingFullNode) GetSession(
 		getSessionCacheKey(serviceID, appAddr),
 		func(fetchCtx context.Context) (sessiontypes.Session, error) {
 			cfn.logger.Debug().Str("session_key", getSessionCacheKey(serviceID, appAddr)).Msgf(
-				"[cachingFullNode.GetSession] Making request to full node",
+				"[fullNodeWithCache.GetSession] Making request to full node",
 			)
-			return cfn.lazyFullNode.GetSession(fetchCtx, serviceID, appAddr)
+			return cfn.underlyingFullNode.GetSession(fetchCtx, serviceID, appAddr)
 		},
 	)
 }
@@ -219,7 +217,7 @@ func getSessionCacheKey(serviceID sdk.ServiceID, appAddr string) string {
 // The cache has no TTL, so the public key is cached indefinitely.
 //
 // The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
-func (cfn *cachingFullNode) GetAccountPubKey(
+func (cfn *fullNodeWithCache) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
@@ -229,9 +227,9 @@ func (cfn *cachingFullNode) GetAccountPubKey(
 		getAccountPubKeyCacheKey(address),
 		func(fetchCtx context.Context) (cryptotypes.PubKey, error) {
 			cfn.logger.Debug().Str("account_key", getAccountPubKeyCacheKey(address)).Msgf(
-				"[cachingFullNode.GetPubKeyFromAddress] Making request to full node",
+				"[fullNodeWithCache.GetPubKeyFromAddress] Making request to full node",
 			)
-			return cfn.lazyFullNode.GetAccountPubKey(fetchCtx, address)
+			return cfn.underlyingFullNode.GetAccountPubKey(fetchCtx, address)
 		},
 	)
 }
@@ -245,12 +243,12 @@ func getAccountPubKeyCacheKey(address string) string {
 }
 
 // ValidateRelayResponse delegates to the underlying node.
-func (cfn *cachingFullNode) ValidateRelayResponse(
+func (cfn *fullNodeWithCache) ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddr sdk.SupplierAddress,
 	responseBz []byte,
 ) (*servicetypes.RelayResponse, error) {
-	return cfn.lazyFullNode.ValidateRelayResponse(ctx, supplierAddr, responseBz)
+	return cfn.underlyingFullNode.ValidateRelayResponse(ctx, supplierAddr, responseBz)
 }
 
 // IsHealthy delegates to the underlying node.
@@ -259,6 +257,6 @@ func (cfn *cachingFullNode) ValidateRelayResponse(
 //   - Implement a more sophisticated health check
 //   - Check for the presence of cached apps and sessions (when the TODO_IMPROVE at the top of this file is addressed)
 //   - For now, always returns true because the cache is populated incrementally as new apps and sessions are requested.
-func (cfn *cachingFullNode) IsHealthy() bool {
-	return cfn.lazyFullNode.IsHealthy()
+func (cfn *fullNodeWithCache) IsHealthy() bool {
+	return cfn.underlyingFullNode.IsHealthy()
 }
