@@ -1,9 +1,7 @@
 package sdk
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	cosmossdk "github.com/cosmos/cosmos-sdk/types"
@@ -63,46 +61,4 @@ func BuildRelayRequest(
 		},
 		Payload: requestBz,
 	}, nil
-}
-
-// ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
-//
-// - Returns the RelayResponse, even if basic validation fails (may contain error reason).
-// - Verifies supplier's signature with the provided publicKeyFetcher.
-func ValidateRelayResponse(
-	ctx context.Context,
-	supplierAddress SupplierAddress,
-	relayResponseBz []byte,
-	// TODO_IN_THIS_PR(@commoddity): update ValidateRelayResponse to be a method
-	// on the FullNode interface after FullNode is moved to SDK.
-	publicKeyFetcher FullNode,
-) (*servicetypes.RelayResponse, error) {
-	relayResponse := &servicetypes.RelayResponse{}
-	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
-		return nil, err
-	}
-
-	if err := relayResponse.ValidateBasic(); err != nil {
-		// Even if the relay response is invalid, return it (may contain failure reason)
-		return relayResponse, err
-	}
-
-	supplierPubKey, err := publicKeyFetcher.GetAccountPubKey(
-		ctx,
-		string(supplierAddress),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// This can happen if a supplier has never been used (e.g. funded) onchain
-	if supplierPubKey == nil {
-		return nil, fmt.Errorf("ValidateRelayResponse: supplier public key is nil for address %s", string(supplierAddress))
-	}
-
-	if signatureErr := relayResponse.VerifySupplierOperatorSignature(supplierPubKey); signatureErr != nil {
-		return nil, signatureErr
-	}
-
-	return relayResponse, nil
 }

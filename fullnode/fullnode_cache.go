@@ -90,8 +90,6 @@ const (
 	accountPubKeyCacheKeyPrefix = "pubkey"
 )
 
-var _ sdk.FullNode = &cachingFullNode{}
-
 // cachingFullNode implements the FullNode interface by wrapping a LazyFullNode
 // and caching results to improve performance with automatic refresh-ahead.
 //
@@ -248,10 +246,11 @@ func getAccountPubKeyCacheKey(address string) string {
 
 // ValidateRelayResponse delegates to the underlying node.
 func (cfn *cachingFullNode) ValidateRelayResponse(
+	ctx context.Context,
 	supplierAddr sdk.SupplierAddress,
 	responseBz []byte,
 ) (*servicetypes.RelayResponse, error) {
-	return cfn.lazyFullNode.ValidateRelayResponse(supplierAddr, responseBz)
+	return cfn.lazyFullNode.ValidateRelayResponse(ctx, supplierAddr, responseBz)
 }
 
 // IsHealthy delegates to the underlying node.

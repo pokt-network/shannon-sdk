@@ -42,8 +42,8 @@ func ExampleRelay() {
 
 	// 4.b. Create a signer with the mock FullNode
 	signer := Signer{
-		PrivateKeyHex: "private key hex",
-		FullNode:      mockFullNode,
+		PrivateKeyHex:    "private key hex",
+		PublicKeyFetcher: mockFullNode,
 	}
 
 	// 4.c. Create an application
@@ -66,7 +66,7 @@ func ExampleRelay() {
 	}
 
 	// 4.f. Verify the returned response against supplier's public key
-	validatedResponse, err := mockFullNode.ValidateRelayResponse(SupplierAddress(req.Meta.SupplierOperatorAddress), responseBz)
+	validatedResponse, err := mockFullNode.ValidateRelayResponse(ctx, SupplierAddress(req.Meta.SupplierOperatorAddress), responseBz)
 	if err != nil {
 		fmt.Printf("response failed validation: %v", err)
 		return
@@ -129,7 +129,7 @@ func (m *mockFullNode) GetAccountPubKey(ctx context.Context, address string) (cr
 	return nil, fmt.Errorf("mock implementation - not implemented")
 }
 
-func (m *mockFullNode) ValidateRelayResponse(supplierAddr SupplierAddress, responseBz []byte) (*servicetypes.RelayResponse, error) {
+func (m *mockFullNode) ValidateRelayResponse(ctx context.Context, supplierAddr SupplierAddress, responseBz []byte) (*servicetypes.RelayResponse, error) {
 	// Return a mock validated response for testing
 	return &servicetypes.RelayResponse{}, nil
 }

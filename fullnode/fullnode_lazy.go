@@ -30,16 +30,13 @@ func init() {
 	queryCodec = codec.NewProtoCodec(reg)
 }
 
-// The Shannon FullNode interface is implemented by the LazyFullNode struct below.
+// TODO_MVP(@adshmh): Rename `LazyFullNode`: this struct does not perform any caching and should be named accordingly.
+//
+// LazyFullNode: default implementation of a full node for the Shannon.
 //
 // A LazyFullNode queries the onchain data for every data item it needs to do an action (e.g. serve a relay request, etc).
 // This is done to enable supporting short block times (a few seconds), by avoiding caching
 // which can result in failures due to stale data in the cache.
-var _ sdk.FullNode = &LazyFullNode{}
-
-// TODO_MVP(@adshmh): Rename `LazyFullNode`: this struct does not perform any caching and should be named accordingly.
-//
-// LazyFullNode: default implementation of a full node for the Shannon.
 //
 // Key differences from a caching full node:
 // - Intentionally avoids caching:
@@ -128,16 +125,43 @@ func (lfn *LazyFullNode) GetSession(
 	return *session, nil
 }
 
-// ValidateRelayResponse:
-// - Validates the raw response bytes received from an endpoint.
-// - Uses the SDK and the account client for validation.
-func (lfn *LazyFullNode) ValidateRelayResponse(supplierAddr sdk.SupplierAddress, responseBz []byte) (*servicetypes.RelayResponse, error) {
-	return sdk.ValidateRelayResponse(
-		context.Background(),
-		supplierAddr,
-		responseBz,
-		lfn,
+// ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
+//
+// - Returns the RelayResponse, even if basic validation fails (may contain error reason).
+// - Verifies supplier's signature with the provided publicKeyFetcher.
+func (lfn *LazyFullNode) ValidateRelayResponse(
+	ctx context.Context,
+	supplierAddress sdk.SupplierAddress,
+	relayResponseBz []byte,
+) (*servicetypes.RelayResponse, error) {
+	relayResponse := &servicetypes.RelayResponse{}
+	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
+		return nil, err
+	}
+
+	if err := relayResponse.ValidateBasic(); err != nil {
+		// Even if the relay response is invalid, return it (may contain failure reason)
+		return relayResponse, err
+	}
+
+	supplierPubKey, err := lfn.GetAccountPubKey(
+		ctx,
+		string(supplierAddress),
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	// This can happen if a supplier has never been used (e.g. funded) onchain
+	if supplierPubKey == nil {
+		return nil, fmt.Errorf("ValidateRelayResponse: supplier public key is nil for address %s", string(supplierAddress))
+	}
+
+	if signatureErr := relayResponse.VerifySupplierOperatorSignature(supplierPubKey); signatureErr != nil {
+		return nil, signatureErr
+	}
+
+	return relayResponse, nil
 }
 
 // IsHealthy:
