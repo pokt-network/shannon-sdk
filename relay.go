@@ -73,7 +73,9 @@ func ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddress SupplierAddress,
 	relayResponseBz []byte,
-	publicKeyFetcher PublicKeyFetcher,
+	// TODO_IN_THIS_PR(@commoddity): update ValidateRelayResponse to be a method
+	// on the FullNode interface after FullNode is moved to SDK.
+	publicKeyFetcher FullNode,
 ) (*servicetypes.RelayResponse, error) {
 	relayResponse := &servicetypes.RelayResponse{}
 	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
@@ -85,7 +87,7 @@ func ValidateRelayResponse(
 		return relayResponse, err
 	}
 
-	supplierPubKey, err := publicKeyFetcher.GetPubKeyFromAddress(
+	supplierPubKey, err := publicKeyFetcher.GetAccountPubKey(
 		ctx,
 		string(supplierAddress),
 	)

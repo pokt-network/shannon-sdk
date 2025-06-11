@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"net/url"
 
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
-
-	grpc "github.com/cosmos/gogoproto/grpc"
+	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 )
 
 func ExampleRelay() {
@@ -37,43 +37,36 @@ func ExampleRelay() {
 	}
 
 	// 4. Sign the Relay Request
-	// 4.a. Create a signer
-	signer := Signer{PrivateKeyHex: "private key hex"}
+	// 4.a. Create a mock FullNode
+	mockFullNode := &mockFullNode{}
 
-	// 4.b. setup the grpc connection
-	var grpcConn grpc.ClientConn
-	// ...
-
-	// 4.c. Create an AccountClient
-	accountClient := AccountClient{
-		PoktNodeAccountFetcher: NewPoktNodeAccountFetcher(grpcConn),
+	// 4.b. Create a signer with the mock FullNode
+	signer := Signer{
+		PrivateKeyHex: "private key hex",
+		FullNode:      mockFullNode,
 	}
 
-	// 4.d. Create an application ring
+	// 4.c. Create an application
 	var app apptypes.Application
 	// Load/Set app to the target application
-	ring := ApplicationRing{
-		Application:      app,
-		PublicKeyFetcher: &accountClient,
-	}
 
 	ctx := context.Background()
-	// 4.e. Sign the Relay Request
-	req, err = signer.Sign(ctx, req, ring)
+	// 4.d. Sign the Relay Request
+	req, err = signer.SignRelayRequest(ctx, req, app)
 	if err != nil {
 		fmt.Printf("error signing relay: %v", err)
 		return
 	}
 
-	// 4.f. Send the Signed Relay Request to the selected endpoint
+	// 4.e. Send the Signed Relay Request to the selected endpoint
 	responseBz, err := SendHttpRelay(ctx, endpoints[0].Endpoint().Url, *req)
 	if err != nil {
 		fmt.Printf("error sending relay: %v", err)
 		return
 	}
 
-	// 4.g. Verify the returned response against supplier's public key
-	validatedResponse, err := ValidateRelayResponse(ctx, SupplierAddress(req.Meta.SupplierOperatorAddress), responseBz, &accountClient)
+	// 4.f. Verify the returned response against supplier's public key
+	validatedResponse, err := mockFullNode.ValidateRelayResponse(SupplierAddress(req.Meta.SupplierOperatorAddress), responseBz)
 	if err != nil {
 		fmt.Printf("response failed validation: %v", err)
 		return
@@ -114,4 +107,33 @@ func SendHttpRelay(
 	defer relayHTTPResponse.Body.Close()
 
 	return io.ReadAll(relayHTTPResponse.Body)
+}
+
+// mockFullNode implements the FullNode interface for testing purposes
+type mockFullNode struct{}
+
+func (m *mockFullNode) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
+	// Return a mock application for testing
+	return &apptypes.Application{
+		Address: appAddr,
+	}, nil
+}
+
+func (m *mockFullNode) GetSession(ctx context.Context, serviceID ServiceID, appAddr string) (sessiontypes.Session, error) {
+	// Return a mock session for testing
+	return sessiontypes.Session{}, nil
+}
+
+func (m *mockFullNode) GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error) {
+	// Return a mock public key for testing
+	return nil, fmt.Errorf("mock implementation - not implemented")
+}
+
+func (m *mockFullNode) ValidateRelayResponse(supplierAddr SupplierAddress, responseBz []byte) (*servicetypes.RelayResponse, error) {
+	// Return a mock validated response for testing
+	return &servicetypes.RelayResponse{}, nil
+}
+
+func (m *mockFullNode) IsHealthy() bool {
+	return true
 }

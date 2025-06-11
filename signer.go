@@ -5,15 +5,42 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
+	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	"github.com/pokt-network/ring-go"
 )
+
+// TODO_IN_THIS_PR(@commoddity): move this to its own file.
+type FullNode interface {
+	// GetApp returns the onchain application matching the application address
+	GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error)
+
+	// GetSession returns the latest session matching the supplied service+app combination.
+	// Sessions are solely used for sending relays, and therefore only the latest session for any service+app combination is needed.
+	// Note: Shannon returns the latest session for a service+app combination if no blockHeight is provided.
+	GetSession(ctx context.Context, serviceID ServiceID, appAddr string) (sessiontypes.Session, error)
+
+	// GetAccountPubKey returns the account public key for the given address.
+	// The cache has no TTL, so the public key is cached indefinitely.
+	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
+
+	// ValidateRelayResponse validates the raw bytes returned from an endpoint (in response to a relay request) and returns the parsed response.
+	ValidateRelayResponse(supplierAddr SupplierAddress, responseBz []byte) (*servicetypes.RelayResponse, error)
+
+	// IsHealthy returns true if the FullNode instance is healthy.
+	// A LazyFullNode will always return true.
+	// A CachingFullNode will return true if it has data in app and session caches.
+	IsHealthy() bool
+}
 
 // Structs & Interfaces
 // --------------------
 // Signer holds the application or gateway's private key used to sign Relay Requests.
 type Signer struct {
 	PrivateKeyHex string
+	FullNode      FullNode
 }
 
 // Methods
@@ -22,11 +49,16 @@ type Signer struct {
 //
 // - Returns a pointer instead of directly setting the signature on the input relay request to avoid implicit output.
 // - Ideally, the function should accept a struct rather than a pointer, and also return an updated struct instead of a pointer.
-func (s *Signer) Sign(
+func (s *Signer) SignRelayRequest(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
-	appRing ApplicationRing, // TODO_IMPROVE: this input argument should be changed to an interface.
+	app apptypes.Application,
 ) (*servicetypes.RelayRequest, error) {
+	appRing := ApplicationRing{
+		Application:      app,
+		PublicKeyFetcher: s.FullNode,
+	}
+
 	// Get the session ring for the application's session end block height
 	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
