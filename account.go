@@ -3,13 +3,10 @@ package sdk
 import (
 	"context"
 
-	"github.com/cosmos/cosmos-sdk/codec"
 	accounttypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	grpc "github.com/cosmos/gogoproto/grpc"
 	grpcoptions "google.golang.org/grpc"
 )
-
-var queryCodec *codec.ProtoCodec
 
 // -----------------------------
 // Interfaces and Structs
