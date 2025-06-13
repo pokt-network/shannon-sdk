@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -9,6 +10,17 @@ import (
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	sdk "github.com/pokt-network/shannon-sdk"
+)
+
+var (
+	// Delegated gateway mode: could not extract app from HTTP request.
+	ErrProtocolContextSetupGetAppFromHTTPReq = errors.New("error getting the selected app from the HTTP request")
+	// Delegated gateway mode: could not fetch session for app from the full node
+	ErrProtocolContextSetupFetchSession = errors.New("error getting a session from the full node for app")
+	// Delegated gateway mode: app is not staked for the service.
+	errProtocolContextSetupAppNotStaked = errors.New("app is not staked for the service")
+	// Delegated gateway mode: gateway does not have delegation for the app.
+	ErrProtocolContextSetupAppDoesNotDelegate = errors.New("gateway does not have delegation for app")
 )
 
 // - TODO(@Olshansk): Revisit the security specification & requirements for how the paying app is selected.
@@ -63,8 +75,11 @@ func (d *delegatedGatewayClient) GetActiveSessions(
 
 	selectedAppAddr, err := getAppAddrFromHTTPReq(httpReq)
 	if err != nil {
-		err = fmt.Errorf("failed to get app address from HTTP request: %w", err)
-		logger.Error().Err(err).Msg("error getting the app address from the HTTP request. Relay request will fail.")
+		err = fmt.Errorf("%w: error: %w",
+			ErrProtocolContextSetupGetAppFromHTTPReq,
+			err,
+		)
+		logger.Error().Err(err).Msg(err.Error())
 		return nil, err
 	}
 
@@ -72,8 +87,11 @@ func (d *delegatedGatewayClient) GetActiveSessions(
 
 	selectedSession, err := d.FullNode.GetSession(ctx, serviceID, selectedAppAddr)
 	if err != nil {
-		err = fmt.Errorf("failed to fetch app %s: %w. Relay request will fail.", selectedAppAddr, err)
-		logger.Error().Err(err).Msg("error fetching the app. Relay request will fail.")
+		err = fmt.Errorf("%w: error: %w",
+			ErrProtocolContextSetupFetchSession,
+			err,
+		)
+		logger.Error().Err(err).Msg(err.Error())
 		return nil, err
 	}
 
@@ -83,14 +101,21 @@ func (d *delegatedGatewayClient) GetActiveSessions(
 
 	// Skip the session's app if it is not staked for the requested service.
 	if !appIsStakedForService(serviceID, selectedApp) {
-		err = fmt.Errorf("app %s is not staked for the service", selectedApp.Address)
-		logger.Error().Err(err).Msg("app is not staked for the service. Relay request will fail.")
+		err = fmt.Errorf("%w: app: %s",
+			errProtocolContextSetupAppNotStaked,
+			selectedApp.Address,
+		)
+		logger.Error().Err(err).Msg(err.Error())
 		return nil, err
 	}
 
 	if !gatewayHasDelegationForApp(d.gatewayAddr, selectedApp) {
-		err = fmt.Errorf("gateway %s does not have delegation for app %s. Relay request will fail.", d.gatewayAddr, selectedApp.Address)
-		logger.Error().Err(err).Msg("Gateway does not have delegation for the app. Relay request will fail.")
+		err = fmt.Errorf("%w: gateway: %s, app: %s",
+			ErrProtocolContextSetupAppDoesNotDelegate,
+			d.gatewayAddr,
+			selectedApp.Address,
+		)
+		logger.Error().Err(err).Msg(err.Error())
 		return nil, err
 	}
 
