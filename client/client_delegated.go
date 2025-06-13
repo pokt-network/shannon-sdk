@@ -11,8 +11,16 @@ import (
 	sdk "github.com/pokt-network/shannon-sdk"
 )
 
+// - TODO(@Olshansk): Revisit the security specification & requirements for how the paying app is selected.
+// - TODO_DOCUMENT(@Olshansk): Convert the Notion doc into a proper README.
+// - For more details, see:
+//   https://www.notion.so/buildwithgrove/Different-Modes-of-Operation-PATH-LocalNet-Discussions-122a36edfff6805e9090c9a14f72f3b5?pvs=4#122a36edfff680eea2fbd46c7696d845
+
 // delegatedGatewayClient implements the GatewayClient interface for delegated gateway mode.
-// In delegated mode:
+//
+// # Delegated Gateway Mode - Shannon Protocol Integration
+//
+//   - Represents a gateway operation mode with the following behavior:
 //   - Each relay request is signed by the gateway key and sent on behalf of an app selected by the user.
 //   - Users must select a specific app for each relay request (currently via HTTP request headers).
 type delegatedGatewayClient struct {
@@ -43,14 +51,15 @@ func NewDelegatedGatewayClient(
 	}, nil
 }
 
-// GetSessions implements GatewayClient interface.
-// Returns the permitted session under Delegated gateway mode, for the supplied HTTP request.
-func (d *delegatedGatewayClient) GetSessions(
+// GetActiveSessions implements GatewayClient interface.
+//   - Returns the permitted session under Delegated gateway mode, for the supplied HTTP request.
+//   - Gateway address and app address (specified in the HTTP header) are used to retrieve active sessions.
+func (d *delegatedGatewayClient) GetActiveSessions(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	httpReq *http.Request,
 ) ([]sessiontypes.Session, error) {
-	logger := d.logger.With("method", "GetSessions")
+	logger := d.logger.With("method", "GetActiveSessions")
 
 	selectedAppAddr, err := getAppAddrFromHTTPReq(httpReq)
 	if err != nil {
@@ -90,9 +99,13 @@ func (d *delegatedGatewayClient) GetSessions(
 	return []sessiontypes.Session{selectedSession}, nil
 }
 
-// GetRelaySigner implements GatewayClient interface.
+// GetPermittedRelaySigner implements GatewayClient interface.
 // Returns the relay request signer for delegated mode.
-func (d *delegatedGatewayClient) GetRelaySigner(ctx context.Context, serviceID sdk.ServiceID, httpReq *http.Request) (*sdk.Signer, error) {
+func (d *delegatedGatewayClient) GetPermittedRelaySigner(
+	ctx context.Context,
+	serviceID sdk.ServiceID,
+	httpReq *http.Request,
+) (*sdk.Signer, error) {
 	return &sdk.Signer{
 		PrivateKeyHex:    d.gatewayPrivateKeyHex,
 		PublicKeyFetcher: d.FullNode,

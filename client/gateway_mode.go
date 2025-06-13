@@ -6,7 +6,10 @@ import (
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 )
 
-// TODO_MVP(@adshmh): add a README based on the following notion doc:
+// TODO_DOCUMENT(@adshmh): Convert the following notion doc into a proper README.
+//
+// Gateway Mode defines the behavior of a specific mode of operation of PATH.
+// See the following link for more details on PATH's different modes of operation.
 // https://www.notion.so/buildwithgrove/Different-Modes-of-Operation-PATH-LocalNet-Discussions-122a36edfff6805e9090c9a14f72f3b5
 //
 // GatewayMode represents the operation mode of the gateway that is using a relaying protcol for serving user requests.
@@ -21,8 +24,9 @@ import (
 type GatewayMode string
 
 const (
-	GatewayModeCentralized    = "centralized"
-	GatewayModeDelegated      = "delegated"
+	GatewayModeCentralized = "centralized"
+	GatewayModeDelegated   = "delegated"
+	// TODO_MVP(@adshmh): Add `client_permissionless.go` once support for Permissionless Gateway mode is added.
 	GatewayModePermissionless = "permissionless"
 )
 
@@ -36,7 +40,7 @@ func supportedGatewayModes() []GatewayMode {
 	return []GatewayMode{
 		GatewayModeCentralized,
 		GatewayModeDelegated,
-		// TODO_MVP(@adshmh): Uncomment this line once support for Permissionless Gateway mode is added to the shannon package.
-		// protocol.GatewayModePermissionless,
+		// TODO_MVP(@adshmh): Uncomment this line once support for Permissionless Gateway mode is added.
+		// GatewayModePermissionless,
 	}
 }

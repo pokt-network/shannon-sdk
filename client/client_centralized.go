@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -11,13 +12,26 @@ import (
 	"github.com/pokt-network/shannon-sdk/crypto"
 )
 
-// centralizedGatewayClient implements the GatewayClient interface for centralized gateway mode.
-// In centralized mode:
-//   - PATH (Shannon instance) holds private keys for gateway operator's apps
-//   - All apps are owned by the gateway (PATH) operator
-//   - All apps delegate (onchain) to the gateway address
-//   - Each relay request is sent for one of these apps (owned by the gateway operator)
+var (
+	// Centralized gateway mode: Error getting onchain data for app
+	ErrProtocolContextSetupCentralizedAppFetchErr = errors.New("error getting onchain data for app owned by the gateway")
+	// Centralized gateway mode app does not delegate to the gateway.
+	ErrProtocolContextSetupCentralizedAppDelegation = errors.New("centralized gateway mode app does not delegate to the gateway")
+	// Centralized gateway mode: no active sessions could be retrieved for the service.
+	ErrProtocolContextSetupCentralizedNoSessions = errors.New("no active sessions could be retrieved for the service")
+)
+
+// centralizedGatewayClient implements the GatewayClient interface for Centralized Gateway Mode.
+//
+// Centralized Gateway Mode - Shannon Protocol Integration
+//
+//   - PATH (Shannon instance) holds private keys for gateway operator's apps.
+//   - All apps are owned by the gateway (PATH) operator.
+//   - All apps delegate (onchain) to the gateway address.
+//   - Each relay request is sent for one of these apps (owned by the gateway operator).
 //   - Each relay is signed by the gateway's private key (via Shannon ring signatures)
+//
+// More details: https://www.notion.so/buildwithgrove/Different-Modes-of-Operation-PATH-LocalNet-Discussions-122a36edfff6805e9090c9a14f72f3b5?pvs=4#122a36edfff680d4a0fff3a40dea543e
 type centralizedGatewayClient struct {
 	logger polylog.Logger
 
@@ -51,18 +65,19 @@ func NewCentralizedGatewayClient(
 	}, nil
 }
 
-// GetSessions implements GatewayClient interface.
-// Returns the set of permitted sessions under the Centralized gateway mode.
-func (c *centralizedGatewayClient) GetSessions(
+// GetActiveSessions implements GatewayClient interface.
+//   - Returns the set of permitted sessions under the Centralized gateway mode.
+//   - Gateway address and owned apps addresses (specified in configs) are used to retrieve active sessions.
+func (c *centralizedGatewayClient) GetActiveSessions(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	httpReq *http.Request,
 ) ([]sessiontypes.Session, error) {
 	logger := c.logger.With(
-		"method", "GetSessions",
+		"method", "GetActiveGatewaySessions",
 		"service_id", string(serviceID),
 	)
-	logger.Debug().Msg("fetching the list of owned apps.")
+	logger.Debug().Msgf("fetching active sessions for the service %s.", serviceID)
 
 	// TODO_TECHDEBT(@commoddity): if an owned app is re-staked for a
 	// different service, PATH must be restarted for changes to take effect.
@@ -71,46 +86,64 @@ func (c *centralizedGatewayClient) GetSessions(
 		return nil, fmt.Errorf("no owned apps for service %s", serviceID)
 	}
 
-	var permittedSessions []sessiontypes.Session
+	var ownedAppSessions []sessiontypes.Session
 
 	// Loop over the address of apps owned by the gateway in Centralized gateway mode.
 	for _, ownedAppAddr := range ownedAppsForService {
-		logger.Info().Msgf("checking app %s owned by the gateway", ownedAppAddr)
+		logger.Info().Msgf("About to get a session for  owned app %s for service %s", ownedAppAddr, serviceID)
 
+		// Retrieve the session for the owned app.
 		session, err := c.FullNode.GetSession(ctx, serviceID, ownedAppAddr)
 		if err != nil {
-			err = fmt.Errorf("failed to get session for app %s: %w", ownedAppAddr, err)
+			// Wrap the protocol context setup error.
+			err = fmt.Errorf("%w: app: %s, error: %w",
+				ErrProtocolContextSetupCentralizedAppFetchErr,
+				ownedAppAddr,
+				err,
+			)
 			logger.Error().Err(err).Msg(err.Error())
 			return nil, err
 		}
 
 		app := session.Application
 
-		// Verify the app delegates to the gateway.
+		// Verify the app delegates to the gateway	.
 		if !gatewayHasDelegationForApp(c.gatewayAddr, app) {
-			err := fmt.Errorf("app %s does not delegate to gateway %s", app.Address, c.gatewayAddr)
+			// Wrap the protocol context setup error.
+			err := fmt.Errorf("%w: app: %s, gateway: %s",
+				ErrProtocolContextSetupCentralizedAppDelegation,
+				app.Address,
+				c.gatewayAddr,
+			)
 			logger.Error().Msg(err.Error())
 			return nil, err
 		}
 
-		permittedSessions = append(permittedSessions, session)
+		ownedAppSessions = append(ownedAppSessions, session)
 	}
 
-	// If no sessions matched the request, return an error.
-	if len(permittedSessions) == 0 {
-		err := fmt.Errorf("no permitted sessions found for service %s", serviceID)
+	// If no sessions were found, return an error.
+	if len(ownedAppSessions) == 0 {
+		err := fmt.Errorf("%w: service %s.",
+			ErrProtocolContextSetupCentralizedNoSessions,
+			serviceID,
+		)
 		logger.Error().Msg(err.Error())
 		return nil, err
 	}
 
-	logger.Debug().Msgf("Successfully fetched the list of sessions for %d owned apps for service %s.", len(permittedSessions), serviceID)
+	logger.Info().Msgf("Successfully fetched %d sessions for %d owned apps for service %s.", len(ownedAppSessions), len(ownedAppsForService), serviceID)
 
-	return permittedSessions, nil
+	return ownedAppSessions, nil
 }
 
-// GetRelaySigner implements GatewayClient interface.
+// GetPermittedRelaySigner implements GatewayClient interface.
 // Returns the relay request signer for centralized mode.
-func (c *centralizedGatewayClient) GetRelaySigner(ctx context.Context, serviceID sdk.ServiceID, httpReq *http.Request) (*sdk.Signer, error) {
+func (c *centralizedGatewayClient) GetPermittedRelaySigner(
+	ctx context.Context,
+	serviceID sdk.ServiceID,
+	httpReq *http.Request,
+) (*sdk.Signer, error) {
 	return &sdk.Signer{
 		PrivateKeyHex:    c.gatewayPrivateKeyHex,
 		PublicKeyFetcher: c.FullNode,
@@ -131,13 +164,14 @@ func (c *centralizedGatewayClient) GetGatewayMode() GatewayMode {
 	return GatewayModeCentralized
 }
 
-// getOwnedApps returns list of apps owned by the gateway, built from supplied private keys.
+// getOwnedApps:
 //
-// Supplied private keys are ONLY used to build app addresses for relay signing.
+//   - Returns list of apps owned by the gateway, built from supplied private keys
+//   - Supplied private keys are ONLY used to build app addresses for relay signing
+//   - Populates `appAddr` and `stakedServiceID` for each app
 //
-// The owned apps map is a map of service IDs to a list of app addresses owned by
-// the gateway operator in Centralized Gateway Mode.
-// One service ID can have multiple apps owned by the gateway operator.
+// ownedAppsMap maps service IDs to a list of app addresses owned by the gateway operator in Centralized Gateway Mode.
+// Note that one service ID can have multiple apps owned by the gateway operator.
 //
 // Example:
 //
@@ -166,8 +200,8 @@ func getOwnedApps(logger polylog.Logger, ownedAppsPrivateKeysHex []string, fullN
 		}
 
 		// Retrieve the app's onchain data.
-		// GetApp delegates to the underlying full node to ensure the request is
-		// a remote request and not attempting to use cached data.
+		// GetApp passthrough to the underlying full node to ensure the request
+		// is a remote request and not using cached data.
 		app, err := fullNode.GetApp(context.Background(), appAddr)
 		if err != nil {
 			logger.Error().Err(err).Msgf("error getting onchain data for app with address %s", appAddr)
