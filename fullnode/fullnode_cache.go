@@ -84,11 +84,11 @@ const (
 // - Example: 30s TTL, refresh at 22.5–27s (75–90%)
 // - Benefits: zero-latency reads, graceful degradation, auto load balancing
 // Docs: https://github.com/viccon/sturdyc
-type cachingFullNode struct {
+type fullNodeWithCache struct {
 	logger polylog.Logger
 
 	// Underlying node for protocol data fetches
-	lazyFullNode *LazyFullNode
+	underlyingFullNode *fullNode
 
 	// Session cache (5 min on Beta TestNet, see #275)
 	// TODO_MAINNET_MIGRATION(@Olshansk): Revisit after mainnet
@@ -99,21 +99,21 @@ type cachingFullNode struct {
 	accountPubKeyCache *sturdyc.Client[cryptotypes.PubKey]
 }
 
-// NewCachingFullNode wraps a LazyFullNode with:
+// NewFullNodeWithCache wraps a fullNode with:
 //   - Session cache: refreshes early to avoid thundering herd/latency spikes
 //   - Account public key cache: indefinite cache for account data
-func NewCachingFullNode(
+func NewFullNodeWithCache(
 	logger polylog.Logger,
-	lazyFullNode *LazyFullNode,
+	underlyingFullNode *fullNode,
 	cacheConfig CacheConfig,
-) (*cachingFullNode, error) {
+) (*fullNodeWithCache, error) {
 	// Set default session TTL if not set
 	cacheConfig.hydrateDefaults()
 
 	// Log cache configuration
 	logger.Debug().
 		Str("cache_config_session_ttl", cacheConfig.SessionTTL.String()).
-		Msgf("cachingFullNode - Cache Configuration")
+		Msgf("fullNodeWithCache - Cache Configuration")
 
 	// Configure session cache with early refreshes
 	sessionMinRefreshDelay, sessionMaxRefreshDelay := getCacheDelays(cacheConfig.SessionTTL)
@@ -143,22 +143,22 @@ func NewCachingFullNode(
 		evictionPercentage,
 	)
 
-	// Initialize the caching full node with the modified lazy full node
-	return &cachingFullNode{
+	return &fullNodeWithCache{
 		logger:             logger,
-		lazyFullNode:       lazyFullNode,
+		underlyingFullNode: underlyingFullNode,
 		sessionCache:       sessionCache,
 		accountPubKeyCache: accountPubKeyCache,
 	}, nil
 }
 
-// GetApp is a NoOp (apps fetched only at startup; relaying fetches sessions for app/session sync).
-func (cfn *cachingFullNode) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
-	return nil, fmt.Errorf("GetApp is a NoOp in the caching full node")
+// GetApp passthrough to the underlying full node to ensure the request is always a remote request to the full node.
+// Apps are fetched only at startup; relaying fetches sessions for app/session sync).
+func (cfn *fullNodeWithCache) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
+	return cfn.underlyingFullNode.GetApp(ctx, appAddr)
 }
 
 // GetSession returns (and auto-refreshes) the session for a service/app from cache.
-func (cfn *cachingFullNode) GetSession(
+func (cfn *fullNodeWithCache) GetSession(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	appAddr string,
@@ -169,9 +169,9 @@ func (cfn *cachingFullNode) GetSession(
 		getSessionCacheKey(serviceID, appAddr),
 		func(fetchCtx context.Context) (sessiontypes.Session, error) {
 			cfn.logger.Debug().Str("session_key", getSessionCacheKey(serviceID, appAddr)).Msgf(
-				"[cachingFullNode.GetSession] Making request to full node",
+				"[fullNodeWithCache.GetSession] Making request to full node",
 			)
-			return cfn.lazyFullNode.GetSession(fetchCtx, serviceID, appAddr)
+			return cfn.underlyingFullNode.GetSession(fetchCtx, serviceID, appAddr)
 		},
 	)
 }
@@ -185,7 +185,7 @@ func getSessionCacheKey(serviceID sdk.ServiceID, appAddr string) string {
 // The cache has no TTL, so the public key is cached indefinitely.
 //
 // The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
-func (cfn *cachingFullNode) GetAccountPubKey(
+func (cfn *fullNodeWithCache) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
@@ -195,9 +195,9 @@ func (cfn *cachingFullNode) GetAccountPubKey(
 		getAccountPubKeyCacheKey(address),
 		func(fetchCtx context.Context) (cryptotypes.PubKey, error) {
 			cfn.logger.Debug().Str("account_key", getAccountPubKeyCacheKey(address)).Msgf(
-				"[cachingFullNode.GetPubKeyFromAddress] Making request to full node",
+				"[fullNodeWithCache.GetPubKeyFromAddress] Making request to full node",
 			)
-			return cfn.lazyFullNode.GetAccountPubKey(fetchCtx, address)
+			return cfn.underlyingFullNode.GetAccountPubKey(fetchCtx, address)
 		},
 	)
 }
@@ -211,18 +211,18 @@ func getAccountPubKeyCacheKey(address string) string {
 }
 
 // ValidateRelayResponse: passthrough to underlying node.
-func (cfn *cachingFullNode) ValidateRelayResponse(
+func (cfn *fullNodeWithCache) ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddr sdk.SupplierAddress,
 	responseBz []byte,
 ) (*servicetypes.RelayResponse, error) {
-	return cfn.lazyFullNode.ValidateRelayResponse(ctx, supplierAddr, responseBz)
+	return cfn.underlyingFullNode.ValidateRelayResponse(ctx, supplierAddr, responseBz)
 }
 
 // IsHealthy: passthrough to underlying node.
 // TODO_IMPROVE(@commoddity):
 //   - Add smarter health checks (e.g. verify cached apps/sessions)
 //   - Currently always true (cache fills as needed)
-func (cfn *cachingFullNode) IsHealthy() bool {
-	return cfn.lazyFullNode.IsHealthy()
+func (cfn *fullNodeWithCache) IsHealthy() bool {
+	return cfn.underlyingFullNode.IsHealthy()
 }

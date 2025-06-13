@@ -19,7 +19,7 @@ import (
 )
 
 // queryCodec is a package-level codec for unmarshaling account data.
-// Initialized globally to avoid expensive repeated setup across LazyFullNode instances.
+// Initialized globally to avoid expensive repeated setup across fullNode instances.
 var queryCodec *codec.ProtoCodec
 
 // init initializes the codec for the fullnode module.
@@ -30,11 +30,10 @@ func init() {
 	queryCodec = codec.NewProtoCodec(reg)
 }
 
-// TODO_MVP(@adshmh): Rename `LazyFullNode`: this struct does not perform any caching and should be named accordingly.
+// fullNode: default implementation of a full node for the Shannon.
 //
-// LazyFullNode: default implementation of a full node for the Shannon.
+// A fullNode queries the onchain data for every data item it needs to do an action (e.g. serve a relay request, etc).
 //
-// A LazyFullNode queries the onchain data for every data item it needs to do an action (e.g. serve a relay request, etc).
 // This is done to enable supporting short block times (a few seconds), by avoiding caching
 // which can result in failures due to stale data in the cache.
 //
@@ -42,7 +41,7 @@ func init() {
 // - Intentionally avoids caching:
 //   - Enables support for short block times (e.g. LocalNet)
 //   - Use CachingFullNode struct if caching is desired for performance
-type LazyFullNode struct {
+type fullNode struct {
 	// logger polylog.Logger
 
 	appClient     *sdk.ApplicationClient
@@ -51,8 +50,8 @@ type LazyFullNode struct {
 	accountClient *sdk.AccountClient
 }
 
-// NewLazyFullNode builds and returns a LazyFullNode using the provided configuration.
-func NewLazyFullNode(config FullNodeConfig) (*LazyFullNode, error) {
+// NewFullNode builds and returns a fullNode using the provided configuration.
+func NewFullNode(config FullNodeConfig) (*fullNode, error) {
 	blockClient, err := newBlockClient(config.RpcURL)
 	if err != nil {
 		return nil, fmt.Errorf("NewSdk: error creating new Shannon block client at URL %s: %w", config.RpcURL, err)
@@ -75,7 +74,7 @@ func NewLazyFullNode(config FullNodeConfig) (*LazyFullNode, error) {
 		return nil, fmt.Errorf("NewSdk: error creating new account client using url %s: %w", config.GRPCConfig.HostPort, err)
 	}
 
-	fullNode := &LazyFullNode{
+	fullNode := &fullNode{
 		sessionClient: sessionClient,
 		appClient:     appClient,
 		blockClient:   blockClient,
@@ -88,7 +87,7 @@ func NewLazyFullNode(config FullNodeConfig) (*LazyFullNode, error) {
 // GetApp:
 // - Returns the onchain application matching the supplied application address.
 // - Required to fulfill the FullNode interface.
-func (lfn *LazyFullNode) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
+func (lfn *fullNode) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
 	app, err := lfn.appClient.GetApplication(ctx, appAddr)
 	return &app, err
 }
@@ -96,7 +95,7 @@ func (lfn *LazyFullNode) GetApp(ctx context.Context, appAddr string) (*apptypes.
 // GetSession:
 // - Uses the Shannon SDK to fetch a session for the (serviceID, appAddr) combination.
 // - Required to fulfill the FullNode interface.
-func (lfn *LazyFullNode) GetSession(
+func (lfn *fullNode) GetSession(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	appAddr string,
@@ -129,7 +128,7 @@ func (lfn *LazyFullNode) GetSession(
 //
 // - Returns the RelayResponse, even if basic validation fails (may contain error reason).
 // - Verifies supplier's signature with the provided publicKeyFetcher.
-func (lfn *LazyFullNode) ValidateRelayResponse(
+func (lfn *fullNode) ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddress sdk.SupplierAddress,
 	relayResponseBz []byte,
@@ -165,16 +164,16 @@ func (lfn *LazyFullNode) ValidateRelayResponse(
 }
 
 // IsHealthy:
-// - Always returns true for a LazyFullNode.
+// - Always returns true for a fullNode.
 // - Required to fulfill the FullNode interface.
-func (lfn *LazyFullNode) IsHealthy() bool {
+func (lfn *fullNode) IsHealthy() bool {
 	return true
 }
 
 // GetAccountPubKey returns the public key of the account with the given address.
 //
 // - Queries the account module using the gRPC query client.
-func (lfn *LazyFullNode) GetAccountPubKey(
+func (lfn *fullNode) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
