@@ -13,5 +13,5 @@ import (
 //
 // Implements sdk.PublicKeyFetcher interface.
 type PublicKeyFetcher interface {
-	GetPubKeyFromAddress(context.Context, string) (cryptotypes.PubKey, error)
+	GetAccountPubKey(context.Context, string) (cryptotypes.PubKey, error)
 }

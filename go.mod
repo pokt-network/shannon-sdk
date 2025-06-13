@@ -13,6 +13,7 @@ require (
 	github.com/pokt-network/poktroll v0.1.15
 	github.com/pokt-network/ring-go v0.1.0
 	github.com/stretchr/testify v1.10.0
+	github.com/viccon/sturdyc v1.1.5
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 )

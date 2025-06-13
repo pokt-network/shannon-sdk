@@ -154,7 +154,7 @@ func (a ApplicationRing) GetRing(
 
 	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
 	for _, address := range ringAddresses {
-		pubKey, err := a.PublicKeyFetcher.GetPubKeyFromAddress(ctx, address)
+		pubKey, err := a.PublicKeyFetcher.GetAccountPubKey(ctx, address)
 		if err != nil {
 			return nil, err
 		}

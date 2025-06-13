@@ -5,15 +5,22 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	"github.com/pokt-network/ring-go"
 )
+
+type publicKeyFetcher interface {
+	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
+}
 
 // Structs & Interfaces
 // --------------------
 // Signer holds the application or gateway's private key used to sign Relay Requests.
 type Signer struct {
-	PrivateKeyHex string
+	PrivateKeyHex    string
+	PublicKeyFetcher publicKeyFetcher
 }
 
 // Methods
@@ -22,11 +29,16 @@ type Signer struct {
 //
 // - Returns a pointer instead of directly setting the signature on the input relay request to avoid implicit output.
 // - Ideally, the function should accept a struct rather than a pointer, and also return an updated struct instead of a pointer.
-func (s *Signer) Sign(
+func (s *Signer) SignRelayRequest(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
-	appRing ApplicationRing, // TODO_IMPROVE: this input argument should be changed to an interface.
+	app apptypes.Application,
 ) (*servicetypes.RelayRequest, error) {
+	appRing := ApplicationRing{
+		Application:      app,
+		PublicKeyFetcher: s.PublicKeyFetcher,
+	}
+
 	// Get the session ring for the application's session end block height
 	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
