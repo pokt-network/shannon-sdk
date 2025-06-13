@@ -17,8 +17,8 @@ type FullNodeConfig struct {
 	RpcURL     string     `yaml:"rpc_url"`
 	GRPCConfig GRPCConfig `yaml:"grpc_config"`
 
-	// LazyMode, if set to true, will disable all caching of onchain data. For
-	// example, this disables caching of apps and sessions.
+	// If LazyMode is set to true, the full node will be used
+	// directly without any caching of sessions or accounts.
 	LazyMode bool `yaml:"lazy_mode" default:"true"`
 
 	// Configuration options for the cache when LazyMode is false
@@ -42,7 +42,9 @@ type CacheConfig struct {
 	SessionTTL time.Duration `yaml:"session_ttl"`
 }
 
-// TODO_NEXT(@commoddity): Session refresh handling should be significantly reworked as part of the next changes following PATH PR #297.
+// TODO_NEXT(@commoddity): Session refresh handling will be significantly
+// reworked as part of the next changes following PATH PR #297:
+// https://github.com/buildwithgrove/path/pull/297
 //
 // The proposed change is to align session refreshes with actual session expiry time,
 // using the session expiry block and the Shannon SDK's block client.
