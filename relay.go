@@ -16,7 +16,21 @@ import (
 // =======================
 // (No interfaces or structs defined in this file. If you add any, group them here.)
 
-var once sync.Once
+var (
+	// Ensures Cosmos SDK init is run only once
+	once sync.Once
+
+	// Endpoint payload failed to unmarshal as RelayResponse
+	ErrRelayResponseValidationUnmarshal = errors.New("Endpoint payload failed to unmarshal as RelayResponse")
+	// RelayResponse failed basic validation: e.g. empty session header in the RelayResponse struct.
+	ErrRelayResponseValidationBasicValidation = errors.New("RelayResponse failed basic validation")
+	// Could not fetch the public key for supplier address used for the relay.
+	ErrRelayResponseValidationGetPubKey = errors.New("Error getting public key for supplier address")
+	// Received nil public key on supplier lookup using its address
+	ErrRelayResponseValidationNilSupplierPubKey = errors.New("Received nil public key for supplier address")
+	// RelayResponse's signature failed validation.
+	ErrRelayResponseValidationSignatureError = errors.New("RelayResponse signature failed validation")
+)
 
 func init() {
 	once.Do(func() {
@@ -77,12 +91,12 @@ func ValidateRelayResponse(
 ) (*servicetypes.RelayResponse, error) {
 	relayResponse := &servicetypes.RelayResponse{}
 	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: error unmarshaling the raw payload into a RelayResponse struct: %w", ErrRelayResponseValidationUnmarshal, err)
 	}
 
 	if err := relayResponse.ValidateBasic(); err != nil {
 		// Even if the relay response is invalid, return it (may contain failure reason)
-		return relayResponse, err
+		return relayResponse, fmt.Errorf("%w: Relay response failed basic validation: %w", ErrRelayResponseValidationBasicValidation, err)
 	}
 
 	supplierPubKey, err := publicKeyFetcher.GetPubKeyFromAddress(
@@ -90,16 +104,16 @@ func ValidateRelayResponse(
 		string(supplierAddress),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: failed to get public key for supplier address %s: %w", ErrRelayResponseValidationGetPubKey, string(supplierAddress), err)
 	}
 
 	// This can happen if a supplier has never been used (e.g. funded) onchain
 	if supplierPubKey == nil {
-		return nil, fmt.Errorf("ValidateRelayResponse: supplier public key is nil for address %s", string(supplierAddress))
+		return nil, fmt.Errorf("%w: received nil supplier public key for address %s", ErrRelayResponseValidationNilSupplierPubKey, string(supplierAddress))
 	}
 
 	if signatureErr := relayResponse.VerifySupplierOperatorSignature(supplierPubKey); signatureErr != nil {
-		return nil, signatureErr
+		return nil, fmt.Errorf("%s: relay response failed signature verification: %w", ErrRelayResponseValidationSignatureError, signatureErr)
 	}
 
 	return relayResponse, nil
