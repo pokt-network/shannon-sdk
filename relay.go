@@ -14,7 +14,21 @@ import (
 // =======================
 // (No interfaces or structs defined in this file. If you add any, group them here.)
 
-var once sync.Once
+var (
+	// Ensures Cosmos SDK init is run only once
+	once sync.Once
+
+	// Endpoint payload failed to unmarshal as RelayResponse
+	ErrRelayResponseValidationUnmarshal = errors.New("Endpoint payload failed to unmarshal as RelayResponse")
+	// RelayResponse failed basic validation: e.g. empty session header in the RelayResponse struct.
+	ErrRelayResponseValidationBasicValidation = errors.New("RelayResponse failed basic validation")
+	// Could not fetch the public key for supplier address used for the relay.
+	ErrRelayResponseValidationGetPubKey = errors.New("Error getting public key for supplier address")
+	// Received nil public key on supplier lookup using its address
+	ErrRelayResponseValidationNilSupplierPubKey = errors.New("Received nil public key for supplier address")
+	// RelayResponse's signature failed validation.
+	ErrRelayResponseValidationSignatureError = errors.New("RelayResponse signature failed validation")
+)
 
 func init() {
 	once.Do(func() {
