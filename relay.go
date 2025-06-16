@@ -9,6 +9,8 @@ import (
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
 
+// TODO_IN_THIS_PR(@commoddity): create a new `relay_test.go` file the tests the process of signing and building a relay request.
+
 // =======================
 // Interfaces & Structs
 // =======================
