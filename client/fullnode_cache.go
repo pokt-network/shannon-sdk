@@ -1,4 +1,4 @@
-package fullnode
+package client
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/pokt-network/poktroll/pkg/polylog"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
-	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	"github.com/viccon/sturdyc"
 
@@ -99,36 +98,35 @@ type fullNodeWithCache struct {
 	accountPubKeyCache *sturdyc.Client[cryptotypes.PubKey]
 }
 
-// NewFullNodeWithCache wraps a fullNode with:
+// newFullNodeWithCache wraps a fullNode with:
 //   - Session cache: refreshes early to avoid thundering herd/latency spikes
 //   - Account public key cache: indefinite cache for account data
-func NewFullNodeWithCache(
+func newFullNodeWithCache(
 	logger polylog.Logger,
 	underlyingFullNode *fullNode,
-	cacheConfig CacheConfig,
+	sessionTTL time.Duration,
 ) (*fullNodeWithCache, error) {
-	// Set default session TTL if not set
-	cacheConfig.hydrateDefaults()
+	logger = logger.With("full_node_type", "cachingFfullNodeWithCacheullNode")
 
 	// Log cache configuration
 	logger.Debug().
-		Str("cache_config_session_ttl", cacheConfig.SessionTTL.String()).
-		Msgf("fullNodeWithCache - Cache Configuration")
+		Str("cache_config_session_ttl", sessionTTL.String()).
+		Msgf("Cache Configuration")
 
 	// Configure session cache with early refreshes
-	sessionMinRefreshDelay, sessionMaxRefreshDelay := getCacheDelays(cacheConfig.SessionTTL)
+	sessionMinRefreshDelay, sessionMaxRefreshDelay := getCacheDelays(sessionTTL)
 
 	// Create the session cache with early refreshes
 	sessionCache := sturdyc.New[sessiontypes.Session](
 		cacheCapacity,
 		numShards,
-		cacheConfig.SessionTTL,
+		sessionTTL,
 		evictionPercentage,
 		// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#early-refreshes
 		sturdyc.WithEarlyRefreshes(
 			sessionMinRefreshDelay,
 			sessionMaxRefreshDelay,
-			cacheConfig.SessionTTL,
+			sessionTTL,
 			retryBaseDelay,
 		),
 	)
@@ -153,25 +151,25 @@ func NewFullNodeWithCache(
 
 // GetApp passthrough to the underlying full node to ensure the request is always a remote request to the full node.
 // Apps are fetched only at startup; relaying fetches sessions for app/session sync).
-func (cfn *fullNodeWithCache) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
-	return cfn.underlyingFullNode.GetApp(ctx, appAddr)
+func (fnc *fullNodeWithCache) GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error) {
+	return fnc.underlyingFullNode.GetApp(ctx, appAddr)
 }
 
 // GetSession returns (and auto-refreshes) the session for a service/app from cache.
-func (cfn *fullNodeWithCache) GetSession(
+func (fnc *fullNodeWithCache) GetSession(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	appAddr string,
 ) (sessiontypes.Session, error) {
 	// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#get-or-fetch
-	return cfn.sessionCache.GetOrFetch(
+	return fnc.sessionCache.GetOrFetch(
 		ctx,
 		getSessionCacheKey(serviceID, appAddr),
 		func(fetchCtx context.Context) (sessiontypes.Session, error) {
-			cfn.logger.Debug().Str("session_key", getSessionCacheKey(serviceID, appAddr)).Msgf(
-				"[fullNodeWithCache.GetSession] Making request to full node",
-			)
-			return cfn.underlyingFullNode.GetSession(fetchCtx, serviceID, appAddr)
+			fnc.logger.Debug().
+				Str("session_key", getSessionCacheKey(serviceID, appAddr)).
+				Msgf("GetSession: Making request to full node for service %s", serviceID)
+			return fnc.underlyingFullNode.GetSession(fetchCtx, serviceID, appAddr)
 		},
 	)
 }
@@ -185,19 +183,19 @@ func getSessionCacheKey(serviceID sdk.ServiceID, appAddr string) string {
 // The cache has no TTL, so the public key is cached indefinitely.
 //
 // The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
-func (cfn *fullNodeWithCache) GetAccountPubKey(
+func (fnc *fullNodeWithCache) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
 	// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#get-or-fetch
-	return cfn.accountPubKeyCache.GetOrFetch(
+	return fnc.accountPubKeyCache.GetOrFetch(
 		ctx,
 		getAccountPubKeyCacheKey(address),
 		func(fetchCtx context.Context) (cryptotypes.PubKey, error) {
-			cfn.logger.Debug().Str("account_key", getAccountPubKeyCacheKey(address)).Msgf(
-				"[fullNodeWithCache.GetPubKeyFromAddress] Making request to full node",
-			)
-			return cfn.underlyingFullNode.GetAccountPubKey(fetchCtx, address)
+			fnc.logger.Debug().
+				Str("account_key", getAccountPubKeyCacheKey(address)).
+				Msgf("GetAccountPubKey: Making request to full node")
+			return fnc.underlyingFullNode.GetAccountPubKey(fetchCtx, address)
 		},
 	)
 }
@@ -210,19 +208,10 @@ func getAccountPubKeyCacheKey(address string) string {
 	return fmt.Sprintf("%s:%s", accountPubKeyCacheKeyPrefix, address)
 }
 
-// ValidateRelayResponse: passthrough to underlying node.
-func (cfn *fullNodeWithCache) ValidateRelayResponse(
-	ctx context.Context,
-	supplierAddr sdk.SupplierAddress,
-	responseBz []byte,
-) (*servicetypes.RelayResponse, error) {
-	return cfn.underlyingFullNode.ValidateRelayResponse(ctx, supplierAddr, responseBz)
-}
-
 // IsHealthy: passthrough to underlying node.
 // TODO_IMPROVE(@commoddity):
 //   - Add smarter health checks (e.g. verify cached apps/sessions)
 //   - Currently always true (cache fills as needed)
-func (cfn *fullNodeWithCache) IsHealthy() bool {
-	return cfn.underlyingFullNode.IsHealthy()
+func (fnc *fullNodeWithCache) IsHealthy() bool {
+	return fnc.underlyingFullNode.IsHealthy()
 }
