@@ -9,6 +9,7 @@ import (
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+	"golang.org/x/exp/slices"
 
 	sdk "github.com/pokt-network/shannon-sdk"
 )
@@ -26,7 +27,7 @@ import (
 //   - A relay signer for signing relays using ring signatures
 //   - The gateway address
 type GatewayClient struct {
-	FullNode
+	shannonFullNode
 	*relaySigner
 	gatewayAddress string
 }
@@ -48,9 +49,9 @@ func NewGatewayClient(
 	}
 
 	return &GatewayClient{
-		FullNode:       fullNode,
-		relaySigner:    relaySigner,
-		gatewayAddress: gatewayAddress,
+		shannonFullNode: fullNode,
+		relaySigner:     relaySigner,
+		gatewayAddress:  gatewayAddress,
 	}, nil
 }
 
@@ -60,7 +61,7 @@ func NewGatewayClient(
 // It is implemented by the structs:
 //   - fullNode: default implementation of a full node for the Shannon.
 //   - fullNodeWithCache: the default full node with a SturdyC-based cache.
-type FullNode interface {
+type shannonFullNode interface {
 	// GetApp returns the onchain application matching the application address
 	GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error)
 
@@ -80,7 +81,7 @@ type FullNode interface {
 // getFullNode builds and returns a FullNode implementation for Shannon protocol integration.
 //
 // It may return a `fullNode` or a `fullNodeWithCache` depending on the caching configuration.
-func getFullNode(logger polylog.Logger, config FullNodeConfig) (FullNode, error) {
+func getFullNode(logger polylog.Logger, config FullNodeConfig) (shannonFullNode, error) {
 
 	// In both lazy and caching modes, we use the full node to fetch the onchain data.
 	fullNode, err := newFullNode(logger, config.RpcURL, config)
@@ -98,6 +99,78 @@ func getFullNode(logger polylog.Logger, config FullNodeConfig) (FullNode, error)
 
 	// If caching is enabled, return the full node with cache.
 	return newFullNodeWithCache(logger, fullNode, config.CacheConfig.SessionTTL)
+}
+
+// GetActiveSessions retrieves active sessions for a list of app addresses and a service ID.
+// It verifies that each app delegates to the gateway and is staked for the requested service.
+// This method encapsulates the shared logic between centralized and delegated gateway modes.
+func (c *GatewayClient) GetActiveSessions(
+	ctx context.Context,
+	serviceID sdk.ServiceID,
+	appAddresses []string,
+) ([]sessiontypes.Session, error) {
+	if len(appAddresses) == 0 {
+		return nil, fmt.Errorf("no app addresses provided for service %s", serviceID)
+	}
+
+	var activeSessions []sessiontypes.Session
+
+	for _, appAddr := range appAddresses {
+		// Retrieve the session for the app
+		session, err := c.GetSession(ctx, serviceID, appAddr)
+		if err != nil {
+			return nil, fmt.Errorf("%w: app: %s, error: %w",
+				ErrProtocolContextSetupCentralizedAppFetchErr,
+				appAddr,
+				err,
+			)
+		}
+
+		app := session.Application
+
+		// Verify the app is staked for the requested service
+		if !appIsStakedForService(serviceID, app) {
+			return nil, fmt.Errorf("%w: app: %s",
+				ErrProtocolContextSetupAppNotStaked,
+				app.Address,
+			)
+		}
+
+		// Verify the app delegates to the gateway
+		if !c.gatewayHasDelegationForApp(app) {
+			return nil, fmt.Errorf("%w: gateway: %s, app: %s",
+				ErrProtocolContextSetupAppDoesNotDelegate,
+				c.gatewayAddress,
+				app.Address,
+			)
+		}
+
+		activeSessions = append(activeSessions, session)
+	}
+
+	if len(activeSessions) == 0 {
+		return nil, fmt.Errorf("%w: service %s",
+			ErrProtocolContextSetupCentralizedNoSessions,
+			serviceID,
+		)
+	}
+
+	return activeSessions, nil
+}
+
+// gatewayHasDelegationForApp checks if the gateway has delegation for the application.
+func (c *GatewayClient) gatewayHasDelegationForApp(app *apptypes.Application) bool {
+	return slices.Contains(app.DelegateeGatewayAddresses, c.gatewayAddress)
+}
+
+// appIsStakedForService checks if the application is staked for the specified service.
+func appIsStakedForService(serviceID sdk.ServiceID, app *apptypes.Application) bool {
+	for _, serviceConfig := range app.GetServiceConfigs() {
+		if serviceConfig.GetServiceId() == string(serviceID) {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
@@ -132,8 +205,4 @@ func (c *GatewayClient) ValidateRelayResponse(
 	}
 
 	return relayResponse, nil
-}
-
-func (c *GatewayClient) GetGatewayAddress() string {
-	return c.gatewayAddress
 }

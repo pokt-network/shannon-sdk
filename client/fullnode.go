@@ -115,8 +115,8 @@ func (fn *fullNode) GetSession(
 }
 
 // IsHealthy:
-// - Always returns true for a fullNode.
-// - Required to fulfill the FullNode interface.
+//   - Always returns true for a fullNode.
+//   - Required to fulfill the shannonFullNode interface.
 func (fn *fullNode) IsHealthy() bool {
 	return true
 }

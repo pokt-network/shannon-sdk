@@ -58,9 +58,10 @@ const (
 const pubKeyCacheTTL = time.Duration(math.MaxInt64)
 
 // getCacheDelays returns the min/max delays for SturdyC's Early Refresh strategy.
-// - Proactively refreshes cache before expiry (prevents misses/latency spikes)
-// - Refresh window: 75-90% of TTL (e.g. 22.5-27s for 30s TTL)
-// - Spreads requests to avoid thundering herd
+//   - Proactively refreshes cache before expiry (prevents misses/latency spikes)
+//   - Refresh window: 75-90% of TTL (e.g. 22.5-27s for 30s TTL)
+//   - Spreads requests to avoid thundering herd
+//
 // See: https://github.com/viccon/sturdyc?tab=readme-ov-file#early-refreshes
 func getCacheDelays(ttl time.Duration) (min, max time.Duration) {
 	minFloat := float64(ttl) * minEarlyRefreshPercentage
@@ -79,9 +80,10 @@ const (
 )
 
 // cachingFullNode wraps a LazyFullNode with SturdyC-based caching.
-// - Early refresh: background updates before expiry (prevents thundering herd/latency spikes)
-// - Example: 30s TTL, refresh at 22.5–27s (75–90%)
-// - Benefits: zero-latency reads, graceful degradation, auto load balancing
+//   - Early refresh: background updates before expiry (prevents thundering herd/latency spikes)
+//   - Example: 30s TTL, refresh at 22.5–27s (75–90%)
+//   - Benefits: zero-latency reads, graceful degradation, auto load balancing
+//
 // Docs: https://github.com/viccon/sturdyc
 type fullNodeWithCache struct {
 	logger polylog.Logger
@@ -89,7 +91,7 @@ type fullNodeWithCache struct {
 	// Underlying node for protocol data fetches
 	underlyingFullNode *fullNode
 
-	// Session cache (5 min on Beta TestNet, see #275)
+	// Session cache
 	// TODO_MAINNET_MIGRATION(@Olshansk): Revisit after mainnet
 	sessionCache *sturdyc.Client[sessiontypes.Session]
 
