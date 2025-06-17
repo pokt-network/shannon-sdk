@@ -180,10 +180,10 @@ func getSessionCacheKey(serviceID sdk.ServiceID, appAddr string) string {
 }
 
 // GetAccountPubKey returns the account public key for the given address.
-// The cache has no TTL, so the public key is cached indefinitely.
+// The getAccountPubKey has no TTL, so the public key is cached indefinitely.
 //
 // The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
-func (fnc *fullNodeWithCache) GetAccountPubKey(
+func (fnc *fullNodeWithCache) getAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
@@ -195,7 +195,7 @@ func (fnc *fullNodeWithCache) GetAccountPubKey(
 			fnc.logger.Debug().
 				Str("account_key", getAccountPubKeyCacheKey(address)).
 				Msgf("GetAccountPubKey: Making request to full node")
-			return fnc.underlyingFullNode.GetAccountPubKey(fetchCtx, address)
+			return fnc.underlyingFullNode.getAccountPubKey(fetchCtx, address)
 		},
 	)
 }

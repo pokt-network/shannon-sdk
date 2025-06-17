@@ -69,9 +69,9 @@ type FullNode interface {
 	// Note: Shannon returns the latest session for a service+app combination if no blockHeight is provided.
 	GetSession(ctx context.Context, serviceID sdk.ServiceID, appAddr string) (sessiontypes.Session, error)
 
-	// GetAccountPubKey returns the account public key for the given address.
+	// getAccountPubKey returns the account public key for the given address.
 	// The cache has no TTL, so the public key is cached indefinitely.
-	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
+	getAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
 
 	// IsHealthy returns true if the full node is healthy.
 	IsHealthy() bool
@@ -119,7 +119,7 @@ func (c *GatewayClient) ValidateRelayResponse(
 		return relayResponse, err
 	}
 
-	supplierPubKey, err := c.GetAccountPubKey(ctx, string(supplierAddress))
+	supplierPubKey, err := c.getAccountPubKey(ctx, string(supplierAddress))
 	if err != nil {
 		return nil, err
 	}

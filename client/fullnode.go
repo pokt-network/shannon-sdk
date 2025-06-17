@@ -124,7 +124,7 @@ func (fn *fullNode) IsHealthy() bool {
 // GetAccountPubKey returns the public key of the account with the given address.
 //
 // - Queries the account module using the gRPC query client.
-func (fn *fullNode) GetAccountPubKey(
+func (fn *fullNode) getAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {

@@ -17,7 +17,7 @@ import (
 // publicKeyFetcher allows fetching the public key for a given address.
 // Satisfied by a full node, either with or without caching.
 type publicKeyFetcher interface {
-	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
+	getAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
 }
 
 // relaySigner holds the application or gateway's private key used to sign Relay Requests
@@ -127,7 +127,7 @@ func (a ApplicationRing) GetRing(
 
 	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
 	for _, address := range ringAddresses {
-		pubKey, err := a.publicKeyFetcher.GetAccountPubKey(ctx, address)
+		pubKey, err := a.publicKeyFetcher.getAccountPubKey(ctx, address)
 		if err != nil {
 			return nil, err
 		}
