@@ -120,7 +120,7 @@ func (c *GatewayClient) GetActiveSessions(
 		session, err := c.GetSession(ctx, serviceID, appAddr)
 		if err != nil {
 			return nil, fmt.Errorf("%w: app: %s, error: %w",
-				ErrProtocolContextSetupCentralizedAppFetchErr,
+				ErrProtocolContextSetupAppFetchErr,
 				appAddr,
 				err,
 			)
@@ -139,7 +139,7 @@ func (c *GatewayClient) GetActiveSessions(
 		// Verify the app delegates to the gateway
 		if !c.gatewayHasDelegationForApp(app) {
 			return nil, fmt.Errorf("%w: gateway: %s, app: %s",
-				ErrProtocolContextSetupAppDoesNotDelegate,
+				ErrProtocolContextSetupAppDelegation,
 				c.gatewayAddress,
 				app.Address,
 			)
@@ -150,7 +150,7 @@ func (c *GatewayClient) GetActiveSessions(
 
 	if len(activeSessions) == 0 {
 		return nil, fmt.Errorf("%w: service %s",
-			ErrProtocolContextSetupCentralizedNoSessions,
+			ErrProtocolContextSetupNoSessions,
 			serviceID,
 		)
 	}

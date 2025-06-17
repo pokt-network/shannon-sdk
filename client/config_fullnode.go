@@ -1,16 +1,9 @@
 package client
 
 import (
-	"errors"
 	"net"
 	"net/url"
 	"time"
-)
-
-var (
-	errShannonInvalidNodeURL            = errors.New("invalid node URL")
-	errShannonInvalidGrpcHostPort       = errors.New("invalid grpc host port")
-	errShannonCacheConfigSetForLazyMode = errors.New("session TTL cannot be set when caching is disabled")
 )
 
 type (
