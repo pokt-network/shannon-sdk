@@ -208,8 +208,13 @@ func getCacheDelays(ttl time.Duration) (min, max time.Duration) {
 	return
 }
 
-// GetApp passthrough to the underlying full node to ensure the request is always a remote request to the full node.
-// Apps are fetched only at startup by the GatewayClientCache; relaying fetches sessions for app/session sync).
+// GetApp always fetches the app from the full node, rather than caching it.
+//
+// This is because fetching apps is only needed on gateway startup in order to determine
+// the staked services information for apps owned by the gateway.
+//
+// In all other contexts - such as sending relay requests - applications are accessed
+// by fetching the session for the app, which contains the application.
 func (gcc *GatewayClientCache) GetApp(ctx context.Context, appAddr string) (apptypes.Application, error) {
 	return gcc.appClient.GetApplication(ctx, appAddr)
 }
