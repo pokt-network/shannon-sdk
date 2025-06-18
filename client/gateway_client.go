@@ -2,13 +2,16 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/pkg/polylog"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+	"github.com/pokt-network/ring-go"
 	"golang.org/x/exp/slices"
 
 	sdk "github.com/pokt-network/shannon-sdk"
@@ -24,34 +27,32 @@ import (
 //
 // It contains:
 //   - A full node for fetching onchain data (caching or just-in-time)
-//   - A relay signer for signing relays using ring signatures
 //   - The gateway address
 type GatewayClient struct {
-	shannonFullNode
-	*relaySigner
-	gatewayAddress string
+	logger polylog.Logger
+
+	// Embeds the ShannonFullNode interface to fetch onchain data.
+	// May be either:
+	//   - fullNode: default implementation of a full node for the Shannon protocol.
+	//   - fullNodeWithCache: the default full node with a SturdyC-based cache.
+	ShannonFullNode
+
+	gatewayAddress       string
+	gatewayPrivateKeyHex string
 }
 
+// NewGatewayClient builds and returns a GatewayClient using the supplied configuration.
 func NewGatewayClient(
 	logger polylog.Logger,
-	fullNodeConfig FullNodeConfig,
+	fullNode ShannonFullNode,
 	gatewayAddress string,
 	gatewayPrivateKeyHex string,
 ) (*GatewayClient, error) {
-	fullNode, err := getFullNode(logger, fullNodeConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Shannon full node: %v", err)
-	}
-
-	relaySigner := &relaySigner{
-		PrivateKeyHex:    gatewayPrivateKeyHex,
-		PublicKeyFetcher: fullNode,
-	}
-
 	return &GatewayClient{
-		shannonFullNode: fullNode,
-		relaySigner:     relaySigner,
-		gatewayAddress:  gatewayAddress,
+		logger:               logger,
+		ShannonFullNode:      fullNode,
+		gatewayAddress:       gatewayAddress,
+		gatewayPrivateKeyHex: gatewayPrivateKeyHex,
 	}, nil
 }
 
@@ -59,9 +60,9 @@ func NewGatewayClient(
 // It is used to fetch onchain data for the Shannon protocol integration.
 //
 // It is implemented by the structs:
-//   - fullNode: default implementation of a full node for the Shannon.
+//   - fullNode: default implementation of a full node for the Shannon protocol.
 //   - fullNodeWithCache: the default full node with a SturdyC-based cache.
-type shannonFullNode interface {
+type ShannonFullNode interface {
 	// GetApp returns the onchain application matching the application address
 	GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error)
 
@@ -70,40 +71,16 @@ type shannonFullNode interface {
 	// Note: Shannon returns the latest session for a service+app combination if no blockHeight is provided.
 	GetSession(ctx context.Context, serviceID sdk.ServiceID, appAddr string) (sessiontypes.Session, error)
 
-	// getAccountPubKey returns the account public key for the given address.
+	// GetAccountPubKey returns the account public key for the given address.
 	// The cache has no TTL, so the public key is cached indefinitely.
-	getAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
+	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
 
 	// IsHealthy returns true if the full node is healthy.
 	IsHealthy() bool
 }
 
-// getFullNode builds and returns a FullNode implementation for Shannon protocol integration.
-//
-// It may return a `fullNode` or a `fullNodeWithCache` depending on the caching configuration.
-func getFullNode(logger polylog.Logger, config FullNodeConfig) (shannonFullNode, error) {
-
-	// In both lazy and caching modes, we use the full node to fetch the onchain data.
-	fullNode, err := newFullNode(logger, config.RpcURL, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Shannon full node: %v", err)
-	}
-
-	// If caching is disabled, return the full node directly.
-	if !config.CacheConfig.CachingEnabled {
-		return fullNode, nil
-	}
-
-	// Hydrate the cache configuration with defaults if cache is enabled.
-	config.CacheConfig.hydrateDefaults()
-
-	// If caching is enabled, return the full node with cache.
-	return newFullNodeWithCache(logger, fullNode, config.CacheConfig.SessionTTL)
-}
-
 // GetActiveSessions retrieves active sessions for a list of app addresses and a service ID.
 // It verifies that each app delegates to the gateway and is staked for the requested service.
-// This method encapsulates the shared logic between centralized and delegated gateway modes.
 func (c *GatewayClient) GetActiveSessions(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
@@ -116,7 +93,7 @@ func (c *GatewayClient) GetActiveSessions(
 	var activeSessions []sessiontypes.Session
 
 	for _, appAddr := range appAddresses {
-		// Retrieve the session for the app
+		// Retrieve the session for the app from the gateway client's full node.
 		session, err := c.GetSession(ctx, serviceID, appAddr)
 		if err != nil {
 			return nil, fmt.Errorf("%w: app: %s, error: %w",
@@ -173,10 +150,111 @@ func appIsStakedForService(serviceID sdk.ServiceID, app *apptypes.Application) b
 	return false
 }
 
+// SignRelayRequest signs the given relay request using the signer's private key and the application's ring.
+//
+//   - Returns a pointer instead of directly setting the signature on the input relay request to avoid implicit output.
+//   - Ideally, the function should accept a struct rather than a pointer, and also return an updated struct instead of a pointer.
+func (c *GatewayClient) SignRelayRequest(
+	ctx context.Context,
+	relayRequest *servicetypes.RelayRequest,
+	app apptypes.Application,
+) (*servicetypes.RelayRequest, error) {
+	sessionEndBlockHeight := uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight)
+
+	logger := c.logger.With(
+		"method", "SignRelayRequest",
+		"app_address", app.Address,
+		"session_end_block_height", sessionEndBlockHeight,
+	)
+
+	// Get the session ring for the application's session end block height
+	sessionRing, err := c.getRing(ctx, app, sessionEndBlockHeight)
+	if err != nil {
+		err := fmt.Errorf("%w: %w: app: %s", ErrSignRelayRequestAppFetchErr, err, app.Address)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
+	}
+
+	// Get the signable bytes hash from the relay request
+	signableBz, err := relayRequest.GetSignableBytesHash()
+	if err != nil {
+		logger.Error().Err(err).Msgf("error getting signable bytes hash from the relay request")
+		return nil, fmt.Errorf("Sign: error getting signable bytes hash from the relay request: %w", err)
+	}
+
+	// TODO_IMPROVE:
+	// - Store the private key as a scalar in Signer to reduce processing steps per Relay Request.
+	signerPrivKeyBz, err := hex.DecodeString(c.gatewayPrivateKeyHex)
+	if err != nil {
+		return nil, fmt.Errorf("Sign: error decoding private key to a string: %w", err)
+	}
+
+	signerPrivKey, err := ring.Secp256k1().DecodeToScalar(signerPrivKeyBz)
+	if err != nil {
+		return nil, fmt.Errorf("Sign: error decoding private key to a scalar: %w", err)
+	}
+
+	// Sign the request using the session ring and signer's private key
+	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"Sign: error signing using the ring of application with address %s: %w",
+			app.Address,
+			err,
+		)
+	}
+
+	// Serialize the signature
+	signature, err := ringSig.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"Sign: error serializing the signature of application with address %s: %w",
+			app.Address,
+			err,
+		)
+	}
+
+	// Set the signature on the relay request
+	relayRequest.Meta.Signature = signature
+	return relayRequest, nil
+}
+
+// GetRing returns the ring for the application until the current session end height.
+//
+//   - Ring is created using the application's public key and the public keys of gateways currently delegated from the application
+//   - Returns error if PublicKeyFetcher is not set or any pubkey fetch fails
+func (c *GatewayClient) getRing(
+	ctx context.Context,
+	app apptypes.Application,
+	sessionEndHeight uint64,
+) (addressRing *ring.Ring, err error) {
+	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&app, sessionEndHeight)
+
+	ringAddresses := make([]string, 0)
+	ringAddresses = append(ringAddresses, app.Address)
+
+	if len(currentGatewayAddresses) == 0 {
+		ringAddresses = append(ringAddresses, app.Address)
+	} else {
+		ringAddresses = append(ringAddresses, currentGatewayAddresses...)
+	}
+
+	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
+	for _, address := range ringAddresses {
+		pubKey, err := c.GetAccountPubKey(ctx, address)
+		if err != nil {
+			return nil, err
+		}
+		ringPubKeys = append(ringPubKeys, pubKey)
+	}
+
+	return rings.GetRingFromPubKeys(ringPubKeys)
+}
+
 // ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
 //
-// - Returns the RelayResponse, even if basic validation fails (may contain error reason).
-// - Verifies supplier's signature with the provided publicKeyFetcher.
+//   - Returns the RelayResponse, even if basic validation fails (may contain error reason).
+//   - Verifies supplier's signature with the provided publicKeyFetcher.
 func (c *GatewayClient) ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddress sdk.SupplierAddress,
@@ -192,7 +270,7 @@ func (c *GatewayClient) ValidateRelayResponse(
 		return relayResponse, err
 	}
 
-	supplierPubKey, err := c.getAccountPubKey(ctx, string(supplierAddress))
+	supplierPubKey, err := c.GetAccountPubKey(ctx, string(supplierAddress))
 	if err != nil {
 		return nil, err
 	}

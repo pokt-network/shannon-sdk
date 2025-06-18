@@ -39,8 +39,8 @@ type fullNode struct {
 	accountClient *sdk.AccountClient
 }
 
-// newFullNode builds and returns a fullNode using the provided configuration.
-func newFullNode(logger polylog.Logger, rpcURL string, fullNodeConfig FullNodeConfig) (*fullNode, error) {
+// NewFullNode builds and returns a fullNode using the provided configuration.
+func NewFullNode(logger polylog.Logger, rpcURL string, fullNodeConfig FullNodeConfig) (*fullNode, error) {
 	grpcConn, err := connectGRPC(
 		fullNodeConfig.GRPCConfig.HostPort,
 		fullNodeConfig.GRPCConfig.UseInsecureGRPCConn,
@@ -124,7 +124,7 @@ func (fn *fullNode) IsHealthy() bool {
 // GetAccountPubKey returns the public key of the account with the given address.
 //
 // - Queries the account module using the gRPC query client.
-func (fn *fullNode) getAccountPubKey(
+func (fn *fullNode) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {

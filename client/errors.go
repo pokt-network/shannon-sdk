@@ -6,6 +6,8 @@ var (
 	errShannonInvalidNodeURL            = errors.New("invalid node URL")
 	errShannonInvalidGrpcHostPort       = errors.New("invalid grpc host port")
 	errShannonCacheConfigSetForLazyMode = errors.New("session TTL cannot be set when caching is disabled")
+
+	ErrSignRelayRequestAppFetchErr = errors.New("error getting a ring for application address")
 )
 
 var (

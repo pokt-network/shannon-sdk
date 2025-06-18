@@ -100,14 +100,17 @@ type fullNodeWithCache struct {
 	accountPubKeyCache *sturdyc.Client[cryptotypes.PubKey]
 }
 
-// newFullNodeWithCache wraps a fullNode with:
+// NewFullNodeWithCache wraps a fullNode with:
 //   - Session cache: refreshes early to avoid thundering herd/latency spikes
 //   - Account public key cache: indefinite cache for account data
-func newFullNodeWithCache(
+func NewFullNodeWithCache(
 	logger polylog.Logger,
 	underlyingFullNode *fullNode,
-	sessionTTL time.Duration,
+	cacheConfig CacheConfig,
 ) (*fullNodeWithCache, error) {
+	cacheConfig.hydrateDefaults()
+	sessionTTL := cacheConfig.SessionTTL
+
 	logger = logger.With("full_node_type", "cachingFfullNodeWithCacheullNode")
 
 	// Log cache configuration
@@ -185,7 +188,7 @@ func getSessionCacheKey(serviceID sdk.ServiceID, appAddr string) string {
 // The getAccountPubKey has no TTL, so the public key is cached indefinitely.
 //
 // The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
-func (fnc *fullNodeWithCache) getAccountPubKey(
+func (fnc *fullNodeWithCache) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
@@ -197,7 +200,7 @@ func (fnc *fullNodeWithCache) getAccountPubKey(
 			fnc.logger.Debug().
 				Str("account_key", getAccountPubKeyCacheKey(address)).
 				Msgf("GetAccountPubKey: Making request to full node")
-			return fnc.underlyingFullNode.getAccountPubKey(fetchCtx, address)
+			return fnc.underlyingFullNode.GetAccountPubKey(fetchCtx, address)
 		},
 	)
 }
