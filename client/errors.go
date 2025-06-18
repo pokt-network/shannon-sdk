@@ -3,20 +3,30 @@ package client
 import "errors"
 
 var (
+	// Config Validation errors
 	errShannonInvalidNodeURL            = errors.New("invalid node URL")
 	errShannonInvalidGrpcHostPort       = errors.New("invalid grpc host port")
 	errShannonCacheConfigSetForLazyMode = errors.New("session TTL cannot be set when caching is disabled")
 
-	ErrSignRelayRequestAppFetchErr = errors.New("error getting a ring for application address")
-)
+	// GatewayClient.GetActiveSessions errors
+	ErrProtocolContextSetupNoAppAddresses = errors.New("no app addresses provided for service")
+	ErrProtocolContextSetupAppFetchErr    = errors.New("error getting onchain data for app owned by the gateway")
+	ErrProtocolContextSetupAppDelegation  = errors.New("app does not delegate to the gateway")
+	ErrProtocolContextSetupNoSessions     = errors.New("no active sessions could be retrieved for the service")
+	ErrProtocolContextSetupAppNotStaked   = errors.New("app is not staked for the service")
 
-var (
-	// could not get onchain data for app
-	ErrProtocolContextSetupAppFetchErr = errors.New("error getting onchain data for app owned by the gateway")
-	// app does not delegate to the gateway
-	ErrProtocolContextSetupAppDelegation = errors.New("app does not delegate to the gateway")
-	// no active sessions could be retrieved for the service.
-	ErrProtocolContextSetupNoSessions = errors.New("no active sessions could be retrieved for the service")
-	// app is not staked for the service.
-	ErrProtocolContextSetupAppNotStaked = errors.New("app is not staked for the service")
+	// GatewayClient.SignRelayRequest errors
+	ErrSignRelayRequestAppFetchErr            = errors.New("error getting a ring for application address")
+	ErrSignRelayRequestSignableBytesHash      = errors.New("error getting signable bytes hash from the relay request")
+	ErrSignRelayRequestSignerPrivKey          = errors.New("error decoding private key to a string")
+	ErrSignRelayRequestSignerPrivKeyDecode    = errors.New("error decoding private key to a scalar")
+	ErrSignRelayRequestSignerPrivKeySign      = errors.New("error signing the request using the ring of application")
+	ErrSignRelayRequestSignerPrivKeySerialize = errors.New("error serializing the signature of application")
+
+	// GatewayClient.ValidateRelayResponse errors
+	ErrValidateRelayResponseUnmarshal     = errors.New("error unmarshalling the relay response")
+	ErrValidateRelayResponseValidateBasic = errors.New("error validating the relay response")
+	ErrValidateRelayResponseAccountPubKey = errors.New("error getting the account public key")
+	ErrValidateRelayResponsePubKeyNil     = errors.New("supplier public key is nil for address")
+	ErrValidateRelayResponseSignature     = errors.New("error verifying the supplier's signature")
 )

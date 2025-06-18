@@ -21,13 +21,14 @@ import (
 // and validate relays on the Shannon protocol.
 //
 // It is used to:
-//   - Fetch onchain data for the Shannon protocol integration
+//   - Fetch onchain data for the Shannon protocol integration,
+//     such as: sessions, applications, and account public keys.
 //   - Sign relays using ring signatures (with the gateway's private key)
 //   - Validate relay responses
 //
 // It contains:
 //   - A GatewayClientCache for fetching and caching onchain data
-//   - The gateway address
+//   - The gateway address & private key
 type GatewayClient struct {
 	logger polylog.Logger
 
@@ -60,8 +61,16 @@ func (c *GatewayClient) GetActiveSessions(
 	serviceID sdk.ServiceID,
 	appAddresses []string,
 ) ([]sessiontypes.Session, error) {
+	logger := c.logger.With(
+		"method", "GetActiveSessions",
+		"service_id", serviceID,
+		"app_addresses_len", len(appAddresses),
+	)
+
 	if len(appAddresses) == 0 {
-		return nil, fmt.Errorf("no app addresses provided for service %s", serviceID)
+		err := fmt.Errorf("%w: service: %s", ErrProtocolContextSetupNoAppAddresses, serviceID)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	var activeSessions []sessiontypes.Session
@@ -70,40 +79,34 @@ func (c *GatewayClient) GetActiveSessions(
 		// Retrieve the session for the app from the gateway client cache.
 		session, err := c.GetSession(ctx, serviceID, appAddr)
 		if err != nil {
-			return nil, fmt.Errorf("%w: app: %s, error: %w",
-				ErrProtocolContextSetupAppFetchErr,
-				appAddr,
-				err,
-			)
+			err := fmt.Errorf("%w: app: %s, error: %w", ErrProtocolContextSetupAppFetchErr, appAddr, err)
+			logger.Error().Err(err).Msg(err.Error())
+			return nil, err
 		}
 
 		app := session.Application
 
 		// Verify the app is staked for the requested service
 		if !appIsStakedForService(serviceID, app) {
-			return nil, fmt.Errorf("%w: app: %s",
-				ErrProtocolContextSetupAppNotStaked,
-				app.Address,
-			)
+			err := fmt.Errorf("%w: app: %s", ErrProtocolContextSetupAppNotStaked, app.Address)
+			logger.Error().Err(err).Msg(err.Error())
+			return nil, err
 		}
 
 		// Verify the app delegates to the gateway
 		if !c.gatewayHasDelegationForApp(app) {
-			return nil, fmt.Errorf("%w: gateway: %s, app: %s",
-				ErrProtocolContextSetupAppDelegation,
-				c.gatewayAddress,
-				app.Address,
-			)
+			err := fmt.Errorf("%w: gateway: %s, app: %s", ErrProtocolContextSetupAppDelegation, c.gatewayAddress, app.Address)
+			logger.Error().Err(err).Msg(err.Error())
+			return nil, err
 		}
 
 		activeSessions = append(activeSessions, session)
 	}
 
 	if len(activeSessions) == 0 {
-		return nil, fmt.Errorf("%w: service %s",
-			ErrProtocolContextSetupNoSessions,
-			serviceID,
-		)
+		err := fmt.Errorf("%w: service: %s", ErrProtocolContextSetupNoSessions, serviceID)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	return activeSessions, nil
@@ -152,40 +155,41 @@ func (c *GatewayClient) SignRelayRequest(
 	// Get the signable bytes hash from the relay request
 	signableBz, err := relayRequest.GetSignableBytesHash()
 	if err != nil {
-		logger.Error().Err(err).Msgf("error getting signable bytes hash from the relay request")
-		return nil, fmt.Errorf("Sign: error getting signable bytes hash from the relay request: %w", err)
+		err := fmt.Errorf("%w: %w", ErrSignRelayRequestSignableBytesHash, err)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	// TODO_IMPROVE:
 	// - Store the private key as a scalar in Signer to reduce processing steps per Relay Request.
 	signerPrivKeyBz, err := hex.DecodeString(c.gatewayPrivateKeyHex)
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error decoding private key to a string: %w", err)
+		err := fmt.Errorf("%w: %w", ErrSignRelayRequestSignerPrivKey, err)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	signerPrivKey, err := ring.Secp256k1().DecodeToScalar(signerPrivKeyBz)
 	if err != nil {
-		return nil, fmt.Errorf("Sign: error decoding private key to a scalar: %w", err)
+		err := fmt.Errorf("%w: %w", ErrSignRelayRequestSignerPrivKeyDecode, err)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	// Sign the request using the session ring and signer's private key
 	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Sign: error signing using the ring of application with address %s: %w",
-			app.Address,
-			err,
-		)
+		err := fmt.Errorf("%w: %w: app: %s", ErrSignRelayRequestSignerPrivKeySign, err, app.Address)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	// Serialize the signature
 	signature, err := ringSig.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Sign: error serializing the signature of application with address %s: %w",
-			app.Address,
-			err,
-		)
+		err := fmt.Errorf("%w: %w: app: %s", ErrSignRelayRequestSignerPrivKeySerialize, err, app.Address)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	// Set the signature on the relay request
@@ -204,17 +208,22 @@ func (c *GatewayClient) getRing(
 ) (addressRing *ring.Ring, err error) {
 	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&app, sessionEndHeight)
 
+	// Add the application address to the ring addresses
 	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, app.Address)
 
+	// If there are no current gateway addresses, use the application address
 	if len(currentGatewayAddresses) == 0 {
 		ringAddresses = append(ringAddresses, app.Address)
 	} else {
 		ringAddresses = append(ringAddresses, currentGatewayAddresses...)
 	}
 
+	// Get the public keys for the ring addresses
 	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
 	for _, address := range ringAddresses {
+		// TODO_TECHDEBT(@commoddity): investigate if we can avoid needing
+		// to fetch the public key for the application address for every relay request.
 		pubKey, err := c.GetAccountPubKey(ctx, address)
 		if err != nil {
 			return nil, err
@@ -234,26 +243,47 @@ func (c *GatewayClient) ValidateRelayResponse(
 	supplierAddress sdk.SupplierAddress,
 	relayResponseBz []byte,
 ) (*servicetypes.RelayResponse, error) {
+	logger := c.logger.With(
+		"method", "ValidateRelayResponse",
+		"supplier_address", supplierAddress,
+		"relay_response_bz_len", len(relayResponseBz),
+	)
+
+	// Unmarshal the relay response
 	relayResponse := &servicetypes.RelayResponse{}
 	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
+		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseUnmarshal, err)
+		logger.Error().Err(err).Msg(err.Error())
 		return nil, err
 	}
 
+	// Perform basic validation of the relay response
 	if err := relayResponse.ValidateBasic(); err != nil {
+		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseValidateBasic, err)
+		logger.Warn().Err(err).Msg(err.Error())
+
 		// Even if the relay response is invalid, return it (may contain failure reason)
 		return relayResponse, err
 	}
 
+	// Get the supplier's public key
 	supplierPubKey, err := c.GetAccountPubKey(ctx, string(supplierAddress))
 	if err != nil {
+		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseAccountPubKey, err)
+		logger.Error().Err(err).Msg(err.Error())
 		return nil, err
 	}
 	if supplierPubKey == nil {
-		return nil, fmt.Errorf("ValidateRelayResponse: supplier public key is nil for address %s", string(supplierAddress))
+		err := fmt.Errorf("%w: %s", ErrValidateRelayResponsePubKeyNil, supplierAddress)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
+	// Verify the supplier's signature
 	if signatureErr := relayResponse.VerifySupplierOperatorSignature(supplierPubKey); signatureErr != nil {
-		return nil, signatureErr
+		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseSignature, signatureErr)
+		logger.Error().Err(err).Msg(err.Error())
+		return nil, err
 	}
 
 	return relayResponse, nil
