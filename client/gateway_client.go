@@ -54,6 +54,8 @@ func NewGatewayClient(
 	}, nil
 }
 
+// -- Onchain Session Data Fetching --
+
 // GetActiveSessions retrieves active sessions for a list of app addresses and a service ID.
 // It verifies that each app delegates to the gateway and is staked for the requested service.
 func (c *GatewayClient) GetActiveSessions(
@@ -127,6 +129,8 @@ func appIsStakedForService(serviceID sdk.ServiceID, app *apptypes.Application) b
 	return false
 }
 
+// -- Relay Request Signing --
+
 // SignRelayRequest signs the given relay request using the signer's private key and the application's ring.
 //
 //   - Returns a pointer instead of directly setting the signature on the input relay request to avoid implicit output.
@@ -197,7 +201,7 @@ func (c *GatewayClient) SignRelayRequest(
 	return relayRequest, nil
 }
 
-// GetRing returns the ring for the application until the current session end height.
+// getRing returns the ring for the application until the current session end height.
 //
 //   - Ring is created using the application's public key and the public keys of gateways currently delegated from the application
 //   - Returns error if PublicKeyFetcher is not set or any pubkey fetch fails
@@ -224,7 +228,7 @@ func (c *GatewayClient) getRing(
 	for _, address := range ringAddresses {
 		// TODO_TECHDEBT(@commoddity): investigate if we can avoid needing
 		// to fetch the public key for the application address for every relay request.
-		pubKey, err := c.GetAccountPubKey(ctx, address)
+		pubKey, err := c.getAccountPubKey(ctx, address)
 		if err != nil {
 			return nil, err
 		}
@@ -233,6 +237,8 @@ func (c *GatewayClient) getRing(
 
 	return rings.GetRingFromPubKeys(ringPubKeys)
 }
+
+// -- Relay Response Validation --
 
 // ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
 //
@@ -267,7 +273,7 @@ func (c *GatewayClient) ValidateRelayResponse(
 	}
 
 	// Get the supplier's public key
-	supplierPubKey, err := c.GetAccountPubKey(ctx, string(supplierAddress))
+	supplierPubKey, err := c.getAccountPubKey(ctx, string(supplierAddress))
 	if err != nil {
 		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseAccountPubKey, err)
 		logger.Error().Err(err).Msg(err.Error())

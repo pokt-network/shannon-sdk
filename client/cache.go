@@ -274,11 +274,13 @@ func (gcc *GatewayClientCache) getSessionFromFullNode(
 	return *session, nil
 }
 
-// GetAccountPubKey returns the account public key for the given address.
+// getAccountPubKey returns the account public key for the given address.
 // The account public key cache has no TTL, so the public key is cached indefinitely.
 //
 // The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
-func (gcc *GatewayClientCache) GetAccountPubKey(
+//
+// It is private because it is only used by the GatewayClient's SignRelayRequest method in this package.
+func (gcc *GatewayClientCache) getAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
