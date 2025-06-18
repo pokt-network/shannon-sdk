@@ -11,7 +11,7 @@ import (
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-	"github.com/pokt-network/ring-go"
+	ring "github.com/pokt-network/ring-go"
 	"golang.org/x/exp/slices"
 
 	sdk "github.com/pokt-network/shannon-sdk"
@@ -209,7 +209,7 @@ func (c *GatewayClient) getRing(
 	ctx context.Context,
 	app apptypes.Application,
 	sessionEndHeight uint64,
-) (addressRing *ring.Ring, err error) {
+) (*ring.Ring, error) {
 	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&app, sessionEndHeight)
 
 	// Add the application address to the ring addresses

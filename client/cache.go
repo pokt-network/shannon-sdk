@@ -12,10 +12,10 @@ import (
 	"github.com/pokt-network/poktroll/pkg/polylog"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-	sdkTypes "github.com/pokt-network/shannon-sdk/types"
 	"github.com/viccon/sturdyc"
 
 	sdk "github.com/pokt-network/shannon-sdk"
+	sdkTypes "github.com/pokt-network/shannon-sdk/types"
 )
 
 // ---------------- Cache Configuration ----------------
