@@ -7,13 +7,13 @@ import (
 )
 
 type (
-	// FullNodeConfig is the configuration for the full node used by the GatewayClient.
+	// FullNodeConfig is the configuration for the full node used by the GatewayClientCache.
 	FullNodeConfig struct {
 		// RPC URL is used to make RPC calls to the full node.
 		RpcURL string `yaml:"rpc_url"`
 		// GRPCConfig is the configuration for the gRPC connection to the full node.
 		GRPCConfig GRPCConfig `yaml:"grpc_config"`
-		// CacheConfig configures the caching behavior of the full node, including whether caching is enabled.
+		// CacheConfig configures the caching behavior of the GatewayClientCache, including whether caching is enabled.
 		CacheConfig CacheConfig `yaml:"cache_config"`
 	}
 
@@ -27,15 +27,14 @@ type (
 		UseInsecureGRPCConn bool `yaml:"insecure"`
 	}
 
-	// CacheConfig configures the caching behavior of the full node, including whether caching is enabled.
+	// CacheConfig configures the caching behavior of the GatewayClientCache, including whether caching is enabled.
 	CacheConfig struct {
-		// CachingEnabled determines if the full node should use caching.
-		// If set to `false`, the full node will not use caching, and will be returned directly.
-		// If set to `true`, the full node will be wrapped in a SturdyC-based cache.
-		CachingEnabled bool `yaml:"caching_enabled"`
 		// SessionTTL is the time to live for the session cache.
 		// Optional. If not set, the default session TTL will be used.
 		SessionTTL time.Duration `yaml:"session_ttl"`
+		// EarlyRefreshEnabled determines if the cache should be refreshed early.
+		// If set to `true`, the cache will be refreshed early.
+		EarlyRefreshEnabled *bool `yaml:"early_refresh_enabled"`
 	}
 )
 
@@ -45,9 +44,6 @@ func (c FullNodeConfig) Validate() error {
 	}
 	if !isValidHostPort(c.GRPCConfig.HostPort) {
 		return errShannonInvalidGrpcHostPort
-	}
-	if err := c.CacheConfig.validate(); err != nil {
-		return err
 	}
 	return nil
 }
@@ -62,19 +58,17 @@ func (c FullNodeConfig) Validate() error {
 // When this is done, session cache TTL can be removed altogether.
 const defaultSessionCacheTTL = 30 * time.Second
 
-// validate validates the cache configuration for the full node.
-func (c *CacheConfig) validate() error {
-	// Cannot set both lazy mode and cache configuration.
-	if !c.CachingEnabled && c.SessionTTL != 0 {
-		return errShannonCacheConfigSetForLazyMode
-	}
-	return nil
-}
+// defaultEarlyRefreshEnabled is the default value for the early refresh enabled flag.
+// It is set to true by default.
+var defaultEarlyRefreshEnabled = true
 
 // hydrateDefaults hydrates the cache configuration with defaults for any fields that are not set.
 func (c *CacheConfig) hydrateDefaults() {
 	if c.SessionTTL == 0 {
 		c.SessionTTL = defaultSessionCacheTTL
+	}
+	if c.EarlyRefreshEnabled == nil {
+		c.EarlyRefreshEnabled = &defaultEarlyRefreshEnabled
 	}
 }
 

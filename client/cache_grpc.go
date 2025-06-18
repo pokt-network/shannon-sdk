@@ -38,25 +38,25 @@ func connectGRPC(hostPort string, useInsecure bool) (*grpc.ClientConn, error) {
 	)
 }
 
-// newSessionClient creates a new session client used to fetch sessions from the full node
+// newSessionClient creates a new session client used by GatewayClientCache to fetch sessions from the full node
 // Uses a gRPC connection to the full node.
 func newSessionClient(conn *grpc.ClientConn) *sdk.SessionClient {
 	return &sdk.SessionClient{PoktNodeSessionFetcher: sdk.NewPoktNodeSessionFetcher(conn)}
 }
 
-// newAppClient creates a new application client used to fetch applications from the full node
+// newAppClient creates a new application client used by GatewayClientCache to fetch applications from the full node
 // Uses a gRPC connection to the full node.
 func newAppClient(conn *grpc.ClientConn) *sdk.ApplicationClient {
 	return &sdk.ApplicationClient{QueryClient: apptypes.NewQueryClient(conn)}
 }
 
-// newAccClient creates a new account client used to fetch accounts from the full node
+// newAccClient creates a new account client used by GatewayClientCache to fetch accounts from the full node
 // Uses a gRPC connection to the full node.
 func newAccClient(conn *grpc.ClientConn) *sdk.AccountClient {
 	return &sdk.AccountClient{PoktNodeAccountFetcher: sdk.NewPoktNodeAccountFetcher(conn)}
 }
 
-// newBlockClient creates a new block client used to fetch block information from the full node
+// newBlockClient creates a new block client used by GatewayClientCache to fetch block information from the full node
 // Uses an RPC request to the full node.
 func newBlockClient(rpcURL string) (*sdk.BlockClient, error) {
 	_, err := url.Parse(rpcURL)

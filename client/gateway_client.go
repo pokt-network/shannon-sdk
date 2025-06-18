@@ -26,16 +26,13 @@ import (
 //   - Validate relay responses
 //
 // It contains:
-//   - A full node for fetching onchain data (caching or just-in-time)
+//   - A GatewayClientCache for fetching and caching onchain data
 //   - The gateway address
 type GatewayClient struct {
 	logger polylog.Logger
 
-	// Embeds the ShannonFullNode interface to fetch onchain data.
-	// May be either:
-	//   - fullNode: default implementation of a full node for the Shannon protocol.
-	//   - fullNodeWithCache: the default full node with a SturdyC-based cache.
-	ShannonFullNode
+	// Embeds the GatewayClientCache to fetch and cache onchain data.
+	*GatewayClientCache
 
 	gatewayAddress       string
 	gatewayPrivateKeyHex string
@@ -44,39 +41,16 @@ type GatewayClient struct {
 // NewGatewayClient builds and returns a GatewayClient using the supplied configuration.
 func NewGatewayClient(
 	logger polylog.Logger,
-	fullNode ShannonFullNode,
+	cache *GatewayClientCache,
 	gatewayAddress string,
 	gatewayPrivateKeyHex string,
 ) (*GatewayClient, error) {
 	return &GatewayClient{
 		logger:               logger,
-		ShannonFullNode:      fullNode,
+		GatewayClientCache:   cache,
 		gatewayAddress:       gatewayAddress,
 		gatewayPrivateKeyHex: gatewayPrivateKeyHex,
 	}, nil
-}
-
-// FullNode is the interface that wraps the basic methods used to interface with the Shannon full node.
-// It is used to fetch onchain data for the Shannon protocol integration.
-//
-// It is implemented by the structs:
-//   - fullNode: default implementation of a full node for the Shannon protocol.
-//   - fullNodeWithCache: the default full node with a SturdyC-based cache.
-type ShannonFullNode interface {
-	// GetApp returns the onchain application matching the application address
-	GetApp(ctx context.Context, appAddr string) (*apptypes.Application, error)
-
-	// GetSession returns the latest session matching the supplied service+app combination.
-	// Sessions are solely used for sending relays, and therefore only the latest session for any service+app combination is needed.
-	// Note: Shannon returns the latest session for a service+app combination if no blockHeight is provided.
-	GetSession(ctx context.Context, serviceID sdk.ServiceID, appAddr string) (sessiontypes.Session, error)
-
-	// GetAccountPubKey returns the account public key for the given address.
-	// The cache has no TTL, so the public key is cached indefinitely.
-	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
-
-	// IsHealthy returns true if the full node is healthy.
-	IsHealthy() bool
 }
 
 // GetActiveSessions retrieves active sessions for a list of app addresses and a service ID.
@@ -93,7 +67,7 @@ func (c *GatewayClient) GetActiveSessions(
 	var activeSessions []sessiontypes.Session
 
 	for _, appAddr := range appAddresses {
-		// Retrieve the session for the app from the gateway client's full node.
+		// Retrieve the session for the app from the gateway client cache.
 		session, err := c.GetSession(ctx, serviceID, appAddr)
 		if err != nil {
 			return nil, fmt.Errorf("%w: app: %s, error: %w",
