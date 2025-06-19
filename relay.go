@@ -1,15 +1,15 @@
 package sdk
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	cosmossdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pokt-network/poktroll/app"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
+
+// TODO_IN_THIS_PR(@commoddity): create a new `relay_test.go` file the tests the process of signing and building a relay request.
 
 // =======================
 // Interfaces & Structs
@@ -77,44 +77,4 @@ func BuildRelayRequest(
 		},
 		Payload: requestBz,
 	}, nil
-}
-
-// ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
-//
-// - Returns the RelayResponse, even if basic validation fails (may contain error reason).
-// - Verifies supplier's signature with the provided publicKeyFetcher.
-func ValidateRelayResponse(
-	ctx context.Context,
-	supplierAddress SupplierAddress,
-	relayResponseBz []byte,
-	publicKeyFetcher PublicKeyFetcher,
-) (*servicetypes.RelayResponse, error) {
-	relayResponse := &servicetypes.RelayResponse{}
-	if err := relayResponse.Unmarshal(relayResponseBz); err != nil {
-		return nil, fmt.Errorf("%w: error unmarshaling the raw payload into a RelayResponse struct: %w", ErrRelayResponseValidationUnmarshal, err)
-	}
-
-	if err := relayResponse.ValidateBasic(); err != nil {
-		// Even if the relay response is invalid, return it (may contain failure reason)
-		return relayResponse, fmt.Errorf("%w: Relay response failed basic validation: %w", ErrRelayResponseValidationBasicValidation, err)
-	}
-
-	supplierPubKey, err := publicKeyFetcher.GetPubKeyFromAddress(
-		ctx,
-		string(supplierAddress),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to get public key for supplier address %s: %w", ErrRelayResponseValidationGetPubKey, string(supplierAddress), err)
-	}
-
-	// This can happen if a supplier has never been used (e.g. funded) onchain
-	if supplierPubKey == nil {
-		return nil, fmt.Errorf("%w: received nil supplier public key for address %s", ErrRelayResponseValidationNilSupplierPubKey, string(supplierAddress))
-	}
-
-	if signatureErr := relayResponse.VerifySupplierOperatorSignature(supplierPubKey); signatureErr != nil {
-		return nil, fmt.Errorf("%s: relay response failed signature verification: %w", ErrRelayResponseValidationSignatureError, signatureErr)
-	}
-
-	return relayResponse, nil
 }

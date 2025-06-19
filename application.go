@@ -2,21 +2,13 @@ package sdk
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	query "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/application/types"
-	"github.com/pokt-network/ring-go"
 )
-
-type ApplicationRing struct {
-	types.Application
-	PublicKeyFetcher
-}
 
 // ApplicationClient is the interface to interact with the on-chain application-module.
 //
@@ -127,39 +119,4 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 	}
 
 	return gatewayDelegatingApplications, nil
-}
-
-// GetRing returns the ring for the application until the current session end height.
-//
-// - Ring is created using the application's public key and the public keys of gateways currently delegated from the application
-// - Returns error if PublicKeyFetcher is not set or any pubkey fetch fails
-func (a ApplicationRing) GetRing(
-	ctx context.Context,
-	sessionEndHeight uint64,
-) (addressRing *ring.Ring, err error) {
-	if a.PublicKeyFetcher == nil {
-		return nil, errors.New("GetRing: Public Key Fetcher not set")
-	}
-
-	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&a.Application, sessionEndHeight)
-
-	ringAddresses := make([]string, 0)
-	ringAddresses = append(ringAddresses, a.Application.Address)
-
-	if len(currentGatewayAddresses) == 0 {
-		ringAddresses = append(ringAddresses, a.Application.Address)
-	} else {
-		ringAddresses = append(ringAddresses, currentGatewayAddresses...)
-	}
-
-	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
-	for _, address := range ringAddresses {
-		pubKey, err := a.PublicKeyFetcher.GetPubKeyFromAddress(ctx, address)
-		if err != nil {
-			return nil, err
-		}
-		ringPubKeys = append(ringPubKeys, pubKey)
-	}
-
-	return rings.GetRingFromPubKeys(ringPubKeys)
 }
