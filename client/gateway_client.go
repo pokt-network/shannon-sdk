@@ -17,36 +17,36 @@ import (
 	sdk "github.com/pokt-network/shannon-sdk"
 )
 
+// OnchainDataFetcher defines the interface for fetching blockchain data.
+// Implemented by both GRPCClient (direct access) and GatewayClientCache (cached access).
 type OnchainDataFetcher interface {
 	GetApp(ctx context.Context, appAddr string) (apptypes.Application, error)
 	GetSession(ctx context.Context, serviceID sdk.ServiceID, appAddr string) (sessiontypes.Session, error)
 	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
+	LatestBlockHeight(ctx context.Context) (height int64, err error)
 	IsHealthy() bool
 }
 
-// GatewayClient contains functionality needed to sign
-// and validate relays on the Shannon protocol.
+// GatewayClient provides high-level functionality for Shannon protocol relay operations.
 //
-// It is used to:
-//   - Fetch onchain data for the Shannon protocol integration,
-//     such as: sessions, applications, and account public keys.
-//   - Sign relays using ring signatures (with the gateway's private key)
-//   - Validate relay responses
+// Core capabilities:
+//   - Fetch onchain data (sessions, applications, account public keys)
+//   - Sign relay requests using ring signatures
+//   - Validate relay responses from suppliers
 //
-// It contains:
-//   - A GatewayClientCache for fetching and caching onchain data
-//   - The gateway address & private key
+// The client embeds an OnchainDataFetcher (typically GatewayClientCache) for efficient
+// data access and includes the gateway's credentials for signing operations.
 type GatewayClient struct {
 	logger polylog.Logger
 
-	// Embeds the GatewayClientCache to fetch and cache onchain data.
+	// Embedded data fetcher (typically GatewayClientCache for caching)
 	OnchainDataFetcher
 
 	gatewayAddress       string
 	gatewayPrivateKeyHex string
 }
 
-// NewGatewayClient builds and returns a GatewayClient using the supplied configuration.
+// NewGatewayClient creates a new gateway client with the provided credentials and data fetcher.
 func NewGatewayClient(
 	logger polylog.Logger,
 	dataFetcher OnchainDataFetcher,
@@ -61,10 +61,14 @@ func NewGatewayClient(
 	}, nil
 }
 
-// -- Onchain Session Data Fetching --
-
-// GetActiveSessions retrieves active sessions for a list of app addresses and a service ID.
-// It verifies that each app delegates to the gateway and is staked for the requested service.
+// GetActiveSessions retrieves and validates sessions for the given service and applications.
+//
+// For each application, this method:
+//   - Fetches the session from the blockchain
+//   - Verifies the app is staked for the requested service
+//   - Confirms the app delegates to this gateway
+//
+// Returns an error if any application fails validation or if no valid sessions are found.
 func (c *GatewayClient) GetActiveSessions(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
@@ -85,7 +89,7 @@ func (c *GatewayClient) GetActiveSessions(
 	var activeSessions []sessiontypes.Session
 
 	for _, appAddr := range appAddresses {
-		// Retrieve the session for the app from the gateway client cache.
+		// Fetch session from cache or blockchain
 		session, err := c.GetSession(ctx, serviceID, appAddr)
 		if err != nil {
 			err := fmt.Errorf("%w: app: %s, error: %w", ErrProtocolContextSetupAppFetchErr, appAddr, err)
@@ -102,7 +106,7 @@ func (c *GatewayClient) GetActiveSessions(
 			return nil, err
 		}
 
-		// Verify the app delegates to the gateway
+		// Verify the app delegates to this gateway
 		if !c.gatewayHasDelegationForApp(app) {
 			err := fmt.Errorf("%w: gateway: %s, app: %s", ErrProtocolContextSetupAppDelegation, c.gatewayAddress, app.Address)
 			logger.Error().Err(err).Msg(err.Error())
@@ -121,12 +125,12 @@ func (c *GatewayClient) GetActiveSessions(
 	return activeSessions, nil
 }
 
-// gatewayHasDelegationForApp checks if the gateway has delegation for the application.
+// gatewayHasDelegationForApp checks if this gateway is delegated by the application
 func (c *GatewayClient) gatewayHasDelegationForApp(app *apptypes.Application) bool {
 	return slices.Contains(app.DelegateeGatewayAddresses, c.gatewayAddress)
 }
 
-// appIsStakedForService checks if the application is staked for the specified service.
+// appIsStakedForService checks if the application is staked for the specified service
 func appIsStakedForService(serviceID sdk.ServiceID, app *apptypes.Application) bool {
 	for _, serviceConfig := range app.GetServiceConfigs() {
 		if serviceConfig.GetServiceId() == string(serviceID) {
@@ -136,12 +140,15 @@ func appIsStakedForService(serviceID sdk.ServiceID, app *apptypes.Application) b
 	return false
 }
 
-// -- Relay Request Signing --
-
-// SignRelayRequest signs the given relay request using the signer's private key and the application's ring.
+// SignRelayRequest signs a relay request using the gateway's private key and application's ring.
 //
-//   - Returns a pointer instead of directly setting the signature on the input relay request to avoid implicit output.
-//   - Ideally, the function should accept a struct rather than a pointer, and also return an updated struct instead of a pointer.
+// The signing process:
+//  1. Creates a ring from the application and its delegated gateways
+//  2. Generates signable bytes from the relay request
+//  3. Signs using the gateway's private key with ring signature
+//  4. Attaches the signature to the relay request
+//
+// Returns a new relay request with the signature attached.
 func (c *GatewayClient) SignRelayRequest(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
@@ -155,7 +162,7 @@ func (c *GatewayClient) SignRelayRequest(
 		"session_end_block_height", sessionEndBlockHeight,
 	)
 
-	// Get the session ring for the application's session end block height
+	// Create the session ring for signing
 	sessionRing, err := c.getRing(ctx, app, sessionEndBlockHeight)
 	if err != nil {
 		err := fmt.Errorf("%w: %w: app: %s", ErrSignRelayRequestAppFetchErr, err, app.Address)
@@ -163,7 +170,7 @@ func (c *GatewayClient) SignRelayRequest(
 		return nil, err
 	}
 
-	// Get the signable bytes hash from the relay request
+	// Get signable bytes hash from the relay request
 	signableBz, err := relayRequest.GetSignableBytesHash()
 	if err != nil {
 		err := fmt.Errorf("%w: %w", ErrSignRelayRequestSignableBytesHash, err)
@@ -171,8 +178,8 @@ func (c *GatewayClient) SignRelayRequest(
 		return nil, err
 	}
 
-	// TODO_IMPROVE:
-	// - Store the private key as a scalar in Signer to reduce processing steps per Relay Request.
+	// Decode the gateway's private key
+	// TODO_IMPROVE: Store as scalar to avoid repeated decoding
 	signerPrivKeyBz, err := hex.DecodeString(c.gatewayPrivateKeyHex)
 	if err != nil {
 		err := fmt.Errorf("%w: %w", ErrSignRelayRequestSignerPrivKey, err)
@@ -187,7 +194,7 @@ func (c *GatewayClient) SignRelayRequest(
 		return nil, err
 	}
 
-	// Sign the request using the session ring and signer's private key
+	// Create ring signature
 	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
 	if err != nil {
 		err := fmt.Errorf("%w: %w: app: %s", ErrSignRelayRequestSignerPrivKeySign, err, app.Address)
@@ -195,7 +202,7 @@ func (c *GatewayClient) SignRelayRequest(
 		return nil, err
 	}
 
-	// Serialize the signature
+	// Serialize and attach signature
 	signature, err := ringSig.Serialize()
 	if err != nil {
 		err := fmt.Errorf("%w: %w: app: %s", ErrSignRelayRequestSignerPrivKeySerialize, err, app.Address)
@@ -203,15 +210,16 @@ func (c *GatewayClient) SignRelayRequest(
 		return nil, err
 	}
 
-	// Set the signature on the relay request
 	relayRequest.Meta.Signature = signature
 	return relayRequest, nil
 }
 
-// getRing returns the ring for the application until the current session end height.
+// getRing creates a ring signature ring for the application at the given session end height.
 //
-//   - Ring is created using the application's public key and the public keys of gateways currently delegated from the application
-//   - Returns error if PublicKeyFetcher is not set or any pubkey fetch fails
+// The ring includes:
+//   - The application's public key
+//   - Public keys of all gateways delegated by the app at the session end height
+//   - Falls back to just the application if no gateways are delegated
 func (c *GatewayClient) getRing(
 	ctx context.Context,
 	app apptypes.Application,
@@ -219,22 +227,21 @@ func (c *GatewayClient) getRing(
 ) (*ring.Ring, error) {
 	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&app, sessionEndHeight)
 
-	// Add the application address to the ring addresses
+	// Build ring addresses starting with the application
 	ringAddresses := make([]string, 0)
 	ringAddresses = append(ringAddresses, app.Address)
 
-	// If there are no current gateway addresses, use the application address
+	// Add delegated gateways or duplicate app address if none
 	if len(currentGatewayAddresses) == 0 {
 		ringAddresses = append(ringAddresses, app.Address)
 	} else {
 		ringAddresses = append(ringAddresses, currentGatewayAddresses...)
 	}
 
-	// Get the public keys for the ring addresses
+	// Fetch public keys for all ring members
 	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
 	for _, address := range ringAddresses {
-		// TODO_TECHDEBT(@commoddity): investigate if we can avoid needing
-		// to fetch the public key for the application address for every relay request.
+		// TODO_TECHDEBT: Cache app public key to avoid repeated fetches
 		pubKey, err := c.GetAccountPubKey(ctx, address)
 		if err != nil {
 			return nil, err
@@ -245,12 +252,16 @@ func (c *GatewayClient) getRing(
 	return rings.GetRingFromPubKeys(ringPubKeys)
 }
 
-// -- Relay Response Validation --
-
-// ValidateRelayResponse validates the RelayResponse and verifies the supplier's signature.
+// ValidateRelayResponse validates and verifies a relay response from a supplier.
 //
-//   - Returns the RelayResponse, even if basic validation fails (may contain error reason).
-//   - Verifies supplier's signature with the provided publicKeyFetcher.
+// Validation steps:
+//  1. Unmarshal the response bytes
+//  2. Perform basic validation (structure, required fields)
+//  3. Fetch the supplier's public key
+//  4. Verify the supplier's signature
+//
+// Returns the relay response even if basic validation fails (may contain error details).
+// Returns nil only if unmarshaling fails or signature verification fails.
 func (c *GatewayClient) ValidateRelayResponse(
 	ctx context.Context,
 	supplierAddress sdk.SupplierAddress,
@@ -270,16 +281,14 @@ func (c *GatewayClient) ValidateRelayResponse(
 		return nil, err
 	}
 
-	// Perform basic validation of the relay response
+	// Basic validation (return response even if invalid - may contain error reason)
 	if err := relayResponse.ValidateBasic(); err != nil {
 		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseValidateBasic, err)
 		logger.Warn().Err(err).Msg(err.Error())
-
-		// Even if the relay response is invalid, return it (may contain failure reason)
 		return relayResponse, err
 	}
 
-	// Get the supplier's public key
+	// Fetch supplier's public key for signature verification
 	supplierPubKey, err := c.GetAccountPubKey(ctx, string(supplierAddress))
 	if err != nil {
 		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseAccountPubKey, err)

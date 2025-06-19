@@ -1,9 +1,23 @@
+// Package client provides blockchain data fetching and caching for Shannon SDK gateways.
+//
+// This package contains:
+//   - GatewayClient: High-level client for signing relays and validating responses
+//   - GatewayClientCache: Intelligent caching layer with block-based session refresh
+//   - GRPCClient: Direct gRPC connection to Shannon full nodes
+//   - Configuration types for flexible client setup
+//
+// The caching system uses SturdyC to provide:
+//   - Block-aware session refresh (triggers at SessionEndBlockHeight+1)
+//   - Zero-downtime cache swaps during session transitions
+//   - Stampede protection for concurrent requests
+//   - Infinite TTL for account public keys (immutable data)
 package client
 
 import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -18,82 +32,55 @@ import (
 // GatewayClientCache implements OnchainDataFetcher interface.
 var _ OnchainDataFetcher = &GatewayClientCache{}
 
-// ---------------- Cache Configuration ----------------
+// Cache configuration constants
 const (
-	// Retry base delay for exponential backoff on failed refreshes
-	retryBaseDelay = 100 * time.Millisecond
+	// Network timing constants
+	blockTime            = 30 * time.Second // Estimated time per block
+	blockPollingInterval = 1 * time.Second  // Polling frequency during intensive monitoring
+	retryBaseDelay       = 100 * time.Millisecond
 
-	// cacheCapacity:
-	//   - Max entries across all shards (not per-shard)
-	//   - Exceeding capacity triggers LRU eviction per shard
-	//   - 100k supports most large deployments
-	//   - TODO_TECHDEBT(@commoddity): Revisit based on real-world usage; consider making configurable
-	cacheCapacity = 100_000
+	// SturdyC cache configuration
+	// Docs: https://github.com/viccon/sturdyc
+	cacheCapacity      = 100_000 // Max entries across all shards
+	numShards          = 10      // Number of cache shards for concurrency
+	evictionPercentage = 10      // Percentage of LRU entries evicted when full
 
-	// numShards:
-	//   - Number of independent cache shards for concurrency
-	//   - Reduces lock contention, improves parallelism
-	//   - 10 is a good balance for most workloads
-	numShards = 10
-
-	// evictionPercentage:
-	//   - % of LRU entries evicted per shard when full
-	//   - 10% = incremental cleanup, avoids memory spikes
-	//   - SturdyC also evicts expired entries in background
-	evictionPercentage = 10
-
-	// TODO_TECHDEBT(@commoddity): See Issue #291 for improvements to refresh logic
-	// minEarlyRefreshPercentage:
-	//   - Earliest point (as % of TTL) to start background refresh
-	//   - 0.75 = 75% of TTL (e.g. 22.5s for 30s TTL)
-	minEarlyRefreshPercentage = 0.75
-
-	// maxEarlyRefreshPercentage:
-	//   - Latest point (as % of TTL) to start background refresh
-	//   - 0.9 = 90% of TTL (e.g. 27s for 30s TTL)
-	//   - Ensures refresh always completes before expiry
-	maxEarlyRefreshPercentage = 0.9
-)
-
-// pubKeyCacheTTL: No TTL for the account public key cache since account data never changes.
-//
-// time.Duration(math.MaxInt64) equals ~292 years, which is effectively infinite.
-const pubKeyCacheTTL = time.Duration(math.MaxInt64)
-
-// Prefix for cache keys to avoid collisions with other keys.
-const (
+	// Cache key prefixes to avoid collisions
 	sessionCacheKeyPrefix       = "session"
 	accountPubKeyCacheKeyPrefix = "pubkey"
 )
 
-// GatewayClientCache provides a caching layer for the gateway client.
-// It is the primary fetching/caching layer that caches onchain data using SturdyC.
-// It uses the OnchainDataFetcher interface to fetch data from the full node before caching it.
-//
-//   - Early refresh: background updates before expiry (prevents thundering herd/latency spikes)
-//   - Example: 30s TTL, refresh at 22.5–27s (75–90%)
-//   - Benefits: zero-latency reads, graceful degradation, auto load balancing
-//
-// Docs: https://github.com/viccon/sturdyc
-type GatewayClientCache struct {
-	logger polylog.Logger
+// noTTL represents infinite cache duration (~292 years)
+// Used for immutable data like account public keys
+const noTTL = time.Duration(math.MaxInt64)
 
+// GatewayClientCache provides intelligent caching for Shannon blockchain data.
+//
+// Key features:
+//   - Block-based session refresh: Monitors SessionEndBlockHeight instead of time-based TTL
+//   - Zero-downtime transitions: Creates new cache instances and atomically swaps them
+//   - Intelligent polling: Switches to 1-second polling when approaching session end
+//   - Stampede protection: SturdyC prevents duplicate requests for the same data
+//   - Infinite caching: Account public keys cached forever (immutable data)
+//
+// Documentation: https://github.com/viccon/sturdyc
+type GatewayClientCache struct {
+	logger             polylog.Logger
 	onchainDataFetcher OnchainDataFetcher
 
-	// Session cache
-	// TODO_MAINNET_MIGRATION(@Olshansk): Revisit after mainnet
-	// TODO_NEXT(@commoddity): Session refresh handling should be significantly reworked as part of the next changes following PATH PR #297.
-	//   The proposed change is to align session refreshes with actual session expiry time,
-	//   using the session expiry block and the Shannon SDK's block client.
-	//   When this is done, session cache TTL can be removed altogether.
-	sessionCache *sturdyc.Client[sessiontypes.Session]
+	// Session cache with block-based refresh monitoring
+	sessionCache        *sturdyc.Client[sessiontypes.Session]
+	sessionCacheMu      sync.RWMutex
+	sessionRefreshState *sessionRefreshState
 
-	// The account public key cache; used to cache account public keys indefinitely.
-	// It has an infinite TTL and is populated only once on startup.
+	// Account public key cache with infinite TTL
 	accountPubKeyCache *sturdyc.Client[cryptotypes.PubKey]
 }
 
-// NewGatewayClientCache takes an OnchainDataFetcher and wraps it in a caching layer.
+// NewGatewayClientCache creates a new caching layer around an OnchainDataFetcher.
+//
+// The cache automatically starts background session monitoring and will refresh
+// sessions based on blockchain height rather than time-based TTL.
 func NewGatewayClientCache(
 	logger polylog.Logger,
 	dataFetcher OnchainDataFetcher,
@@ -101,158 +88,143 @@ func NewGatewayClientCache(
 ) (*GatewayClientCache, error) {
 	logger = logger.With("client", "gateway_client_cache")
 
+	// Hydrate default values for cache configuration
 	cacheConfig.hydrateDefaults()
+
 	logger.Info().
 		Bool("use_cache", *cacheConfig.UseCache).
-		Dur("session_ttl", cacheConfig.SessionTTL).
-		Bool("early_refresh_enabled", *cacheConfig.EarlyRefreshEnabled).
 		Msg("Cache configuration")
 
-	// Create the session cache with early refreshes
-	sessionCache := getCache[sessiontypes.Session](
-		cacheConfig.SessionTTL,
-		*cacheConfig.EarlyRefreshEnabled,
-	)
-
-	// Create the account cache, which is effectively infinite
-	// caching for the lifetime of the application.
-	accountPubKeyCache := getCache[cryptotypes.PubKey](
-		pubKeyCacheTTL,
-		false, // Never refresh the account public key cache
-	)
-
-	return &GatewayClientCache{
-		logger: logger,
-
+	gcc := &GatewayClientCache{
+		logger:             logger,
 		onchainDataFetcher: dataFetcher,
 
-		sessionCache:       sessionCache,
-		accountPubKeyCache: accountPubKeyCache,
-	}, nil
-}
+		sessionCache: getCache[sessiontypes.Session](),
+		sessionRefreshState: &sessionRefreshState{
+			activeSessionKeys: make(map[string]sessionKeyInfo),
+		},
 
-// getCache creates a SturdyC cache with the given TTL and early refresh configuration.
-//
-// If early refresh is enabled, SturdyC will refresh the cache before it
-// expires to ensure that the cache is always hot and never blocking.
-//
-// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#early-refreshes
-func getCache[T any](ttl time.Duration, earlyRefreshEnabled bool) *sturdyc.Client[T] {
-	if earlyRefreshEnabled {
-		// Configure session cache with early refreshes
-		minRefreshDelay, maxRefreshDelay := getCacheDelays(ttl)
-
-		// Create the session cache with early refreshes
-		// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#early-refreshes
-		return sturdyc.New[T](
-			cacheCapacity,
-			numShards,
-			ttl,
-			evictionPercentage,
-			sturdyc.WithEarlyRefreshes(
-				minRefreshDelay,
-				maxRefreshDelay,
-				ttl,
-				retryBaseDelay,
-			),
-		)
-	} else {
-		// Create the session cache without early refreshes
-		return sturdyc.New[T](
-			cacheCapacity,
-			numShards,
-			ttl,
-			evictionPercentage,
-		)
+		accountPubKeyCache: getCache[cryptotypes.PubKey](),
 	}
+
+	// Start background session monitoring
+	gcc.startSessionMonitoring()
+
+	return gcc, nil
 }
 
-// getCacheDelays returns the min/max delays for SturdyC's Early Refresh strategy.
-//   - Proactively refreshes cache before expiry (prevents misses/latency spikes)
-//   - Refresh window: 75-90% of TTL (e.g. 22.5-27s for 30s TTL)
-//   - Spreads requests to avoid thundering herd
-//
-// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#early-refreshes
-func getCacheDelays(ttl time.Duration) (min, max time.Duration) {
-	minFloat := float64(ttl) * minEarlyRefreshPercentage
-	maxFloat := float64(ttl) * maxEarlyRefreshPercentage
-
-	// Round to the nearest second
-	min = time.Duration(minFloat/float64(time.Second)+0.5) * time.Second
-	max = time.Duration(maxFloat/float64(time.Second)+0.5) * time.Second
-	return
+// getCache creates a SturdyC cache instance with infinite TTL
+func getCache[T any]() *sturdyc.Client[T] {
+	return sturdyc.New[T](
+		cacheCapacity,
+		numShards,
+		noTTL,
+		evictionPercentage,
+	)
 }
 
-// GetApp always fetches the app from the full node, rather than caching it.
+// GetApp fetches application data directly from the full node without caching.
 //
-// This is because fetching apps is only needed on gateway startup in order to determine
-// the staked services information for apps owned by the gateway.
-//
-// In all other contexts - such as sending relay requests - applications are accessed
-// by fetching the session for the app, which contains the application.
+// Applications are not cached because:
+//   - Only needed during gateway startup for service configuration
+//   - Runtime access to applications happens via sessions (which contain the app)
+//   - Reduces cache complexity for rarely-accessed data
 func (gcc *GatewayClientCache) GetApp(ctx context.Context, appAddr string) (apptypes.Application, error) {
 	return gcc.onchainDataFetcher.GetApp(ctx, appAddr)
 }
 
-// GetSession returns (and auto-refreshes) the session for a service/app from cache.
+// GetSession returns a session from cache or fetches it from the blockchain.
+//
+// On cache miss, this method:
+//   - Fetches the session from the full node
+//   - Updates the global session end height for monitoring
+//   - Tracks the session key for background refresh
+//   - Caches the session with infinite TTL (refreshed by block monitoring)
+//
+// SturdyC provides automatic stampede protection for concurrent requests.
 func (gcc *GatewayClientCache) GetSession(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
 	appAddr string,
 ) (sessiontypes.Session, error) {
-	// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#get-or-fetch
-	return gcc.sessionCache.GetOrFetch(
+	sessionKey := getSessionCacheKey(serviceID, appAddr)
+
+	// Get current cache instance with read lock
+	gcc.sessionCacheMu.RLock()
+	sessionCache := gcc.sessionCache
+	gcc.sessionCacheMu.RUnlock()
+
+	// SturdyC GetOrFetch provides stampede protection
+	session, err := sessionCache.GetOrFetch(
 		ctx,
-		getSessionCacheKey(serviceID, appAddr),
+		sessionKey,
 		func(fetchCtx context.Context) (sessiontypes.Session, error) {
 			gcc.logger.Debug().
-				Str("session_key", getSessionCacheKey(serviceID, appAddr)).
-				Msgf("GetSession: GatewayClientCache making request to full node for service %s", serviceID)
+				Str("session_key", sessionKey).
+				Msgf("Cache miss - fetching session from full node for service %s", serviceID)
 
-			return gcc.onchainDataFetcher.GetSession(fetchCtx, serviceID, appAddr)
+			session, err := gcc.onchainDataFetcher.GetSession(fetchCtx, serviceID, appAddr)
+			if err != nil {
+				return session, err
+			}
+
+			// Register session for block-based monitoring
+			gcc.updateSessionEndHeight(session)
+
+			// Track for background refresh during session transitions
+			gcc.trackActiveSession(sessionKey, serviceID, appAddr)
+
+			return session, nil
 		},
 	)
+
+	return session, err
 }
 
-// getSessionCacheKey builds a unique cache key for session: <prefix>:<serviceID>:<appAddr>
+// getSessionCacheKey creates a unique cache key: "session:<serviceID>:<appAddr>"
 func getSessionCacheKey(serviceID sdk.ServiceID, appAddr string) string {
 	return fmt.Sprintf("%s:%s:%s", sessionCacheKeyPrefix, serviceID, appAddr)
 }
 
-// getAccountPubKey returns the account public key for the given address.
-// The account public key cache has no TTL, so the public key is cached indefinitely.
+// GetAccountPubKey returns an account's public key from cache or blockchain.
 //
-// The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
+// Account public keys are cached with infinite TTL because they never change.
+// The fetchFn is only called once per address during the application lifetime.
 func (gcc *GatewayClientCache) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
-	// See: https://github.com/viccon/sturdyc?tab=readme-ov-file#get-or-fetch
 	return gcc.accountPubKeyCache.GetOrFetch(
 		ctx,
 		getAccountPubKeyCacheKey(address),
 		func(fetchCtx context.Context) (cryptotypes.PubKey, error) {
 			gcc.logger.Debug().
 				Str("account_key", getAccountPubKeyCacheKey(address)).
-				Msgf("GetAccountPubKey: GatewayClientCache making request to full node")
+				Msg("Cache miss - fetching account public key from full node")
 
 			return gcc.onchainDataFetcher.GetAccountPubKey(fetchCtx, address)
 		},
 	)
 }
 
-// getAccountPubKeyCacheKey returns the cache key for the given account address.
-// It uses the accountPubKeyCacheKeyPrefix and the account address to create a unique key.
-//
-// eg. "pubkey:pokt1up7zlytnmvlsuxzpzvlrta95347w322adsxslw"
+// getAccountPubKeyCacheKey creates a unique cache key: "pubkey:<address>"
 func getAccountPubKeyCacheKey(address string) string {
 	return fmt.Sprintf("%s:%s", accountPubKeyCacheKeyPrefix, address)
 }
 
-// IsHealthy satisfies the interface required by the ShannonFullNode interface.
-// TODO_IMPROVE(@commoddity):
-//   - Add smarter health checks (e.g. verify cached apps/sessions)
-//   - Currently always true (cache fills as needed)
+// LatestBlockHeight returns the current blockchain height from the full node.
+// This method is not cached as block height changes frequently.
+func (gcc *GatewayClientCache) LatestBlockHeight(ctx context.Context) (height int64, err error) {
+	return gcc.onchainDataFetcher.LatestBlockHeight(ctx)
+}
+
+// IsHealthy reports the health status of the cache.
+// Currently always returns true as the cache is populated on-demand.
+//
+// TODO_IMPROVE: Add meaningful health checks:
+//   - Verify cache connectivity
+//   - Check session refresh monitoring status
+//   - Validate recent successful fetches
 func (gcc *GatewayClientCache) IsHealthy() bool {
 	return true
 }
