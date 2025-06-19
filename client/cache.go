@@ -93,15 +93,7 @@ type GatewayClientCache struct {
 	accountPubKeyCache *sturdyc.Client[cryptotypes.PubKey]
 }
 
-// NewGatewayClientCache connects to a Shannon full node and creates a GatewayClientCache.
-// It uses the full node's RPC URL and gRPC configuration to connect to the full node.
-// It creates the SDK clients and SturdyC cache to provide the primary fetching/caching layer.
-//
-//   - Session cache: refreshes early to avoid thundering herd/latency spikes
-//   - Account public key cache: indefinite cache for account data
-//   - Application client: used by GatewayClientCache to fetch applications from the full node
-//   - Session client: used by GatewayClientCache to fetch sessions from the full node
-//   - Account client: used by GatewayClientCache to fetch accounts from the full node
+// NewGatewayClientCache takes an OnchainDataFetcher and wraps it in a caching layer.
 func NewGatewayClientCache(
 	logger polylog.Logger,
 	dataFetcher OnchainDataFetcher,
