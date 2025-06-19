@@ -29,4 +29,15 @@ var (
 	ErrValidateRelayResponseAccountPubKey = errors.New("error getting the account public key")
 	ErrValidateRelayResponsePubKeyNil     = errors.New("supplier public key is nil for address")
 	ErrValidateRelayResponseSignature     = errors.New("error verifying the supplier's signature")
+
+	// GRPCClient.GetApp errors
+	ErrGRPCClientGetAppError = errors.New("error getting the application")
+
+	// GRPCClient.GetSession errors
+	ErrGRPCClientGetSessionError      = errors.New("error getting the session for service")
+	ErrGRPCClientGetSessionNilSession = errors.New("got nil session for service")
+
+	// GRPCClient.GetAccountPubKey errors
+	ErrGRPCClientGetAccountPubKeyError = errors.New("error getting the account public key")
+	ErrGRPCClientGetAccountPubKeyNil   = errors.New("got nil account public key")
 )

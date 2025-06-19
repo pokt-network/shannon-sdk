@@ -7,16 +7,16 @@ import (
 	"time"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/cosmos/cosmos-sdk/types"
-	accounttypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/pokt-network/poktroll/pkg/polylog"
 	apptypes "github.com/pokt-network/poktroll/x/application/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	"github.com/viccon/sturdyc"
 
 	sdk "github.com/pokt-network/shannon-sdk"
-	sdkTypes "github.com/pokt-network/shannon-sdk/types"
 )
+
+// GatewayClientCache implements OnchainDataFetcher interface.
+var _ OnchainDataFetcher = &GatewayClientCache{}
 
 // ---------------- Cache Configuration ----------------
 const (
@@ -67,7 +67,8 @@ const (
 )
 
 // GatewayClientCache provides a caching layer for the gateway client.
-// It is the primary fetching/caching layer that retrieves data from a Shannon full node and caches it using SturdyC.
+// It is the primary fetching/caching layer that caches onchain data using SturdyC.
+// It uses the OnchainDataFetcher interface to fetch data from the full node before caching it.
 //
 //   - Early refresh: background updates before expiry (prevents thundering herd/latency spikes)
 //   - Example: 30s TTL, refresh at 22.5–27s (75–90%)
@@ -76,6 +77,8 @@ const (
 // Docs: https://github.com/viccon/sturdyc
 type GatewayClientCache struct {
 	logger polylog.Logger
+
+	onchainDataFetcher OnchainDataFetcher
 
 	// Session cache
 	// TODO_MAINNET_MIGRATION(@Olshansk): Revisit after mainnet
@@ -88,14 +91,6 @@ type GatewayClientCache struct {
 	// The account public key cache; used to cache account public keys indefinitely.
 	// It has an infinite TTL and is populated only once on startup.
 	accountPubKeyCache *sturdyc.Client[cryptotypes.PubKey]
-
-	// The SDK clients are used by the GatewayClientCache to fetch onchain data from a
-	// Shannon full node and store it in the SturdyC cache.
-
-	appClient     *sdk.ApplicationClient
-	sessionClient *sdk.SessionClient
-	accountClient *sdk.AccountClient
-	blockClient   *sdk.BlockClient
 }
 
 // NewGatewayClientCache connects to a Shannon full node and creates a GatewayClientCache.
@@ -109,31 +104,22 @@ type GatewayClientCache struct {
 //   - Account client: used by GatewayClientCache to fetch accounts from the full node
 func NewGatewayClientCache(
 	logger polylog.Logger,
-	rpcURL string,
-	fullNodeConfig FullNodeConfig,
+	dataFetcher OnchainDataFetcher,
+	cacheConfig CacheConfig,
 ) (*GatewayClientCache, error) {
-	fullNodeConfig.CacheConfig.hydrateDefaults()
+	logger = logger.With("client", "gateway_client_cache")
 
-	// Connect to the full node
-	grpcConn, err := connectGRPC(
-		fullNodeConfig.GRPCConfig.HostPort,
-		fullNodeConfig.GRPCConfig.UseInsecureGRPCConn,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("NewGatewayClientCache: error creating new GRPC connection at url %s: %w",
-			fullNodeConfig.GRPCConfig.HostPort, err)
-	}
-
-	// Create the block client
-	blockClient, err := newBlockClient(rpcURL)
-	if err != nil {
-		return nil, fmt.Errorf("NewGatewayClientCache: error creating new Shannon block client at URL %s: %w", rpcURL, err)
-	}
+	cacheConfig.hydrateDefaults()
+	logger.Info().
+		Bool("use_cache", *cacheConfig.UseCache).
+		Dur("session_ttl", cacheConfig.SessionTTL).
+		Bool("early_refresh_enabled", *cacheConfig.EarlyRefreshEnabled).
+		Msg("Cache configuration")
 
 	// Create the session cache with early refreshes
 	sessionCache := getCache[sessiontypes.Session](
-		fullNodeConfig.CacheConfig.SessionTTL,
-		*fullNodeConfig.CacheConfig.EarlyRefreshEnabled,
+		cacheConfig.SessionTTL,
+		*cacheConfig.EarlyRefreshEnabled,
 	)
 
 	// Create the account cache, which is effectively infinite
@@ -146,13 +132,10 @@ func NewGatewayClientCache(
 	return &GatewayClientCache{
 		logger: logger,
 
+		onchainDataFetcher: dataFetcher,
+
 		sessionCache:       sessionCache,
 		accountPubKeyCache: accountPubKeyCache,
-
-		sessionClient: newSessionClient(grpcConn),
-		appClient:     newAppClient(grpcConn),
-		accountClient: newAccClient(grpcConn),
-		blockClient:   blockClient,
 	}, nil
 }
 
@@ -216,7 +199,7 @@ func getCacheDelays(ttl time.Duration) (min, max time.Duration) {
 // In all other contexts - such as sending relay requests - applications are accessed
 // by fetching the session for the app, which contains the application.
 func (gcc *GatewayClientCache) GetApp(ctx context.Context, appAddr string) (apptypes.Application, error) {
-	return gcc.appClient.GetApplication(ctx, appAddr)
+	return gcc.onchainDataFetcher.GetApp(ctx, appAddr)
 }
 
 // GetSession returns (and auto-refreshes) the session for a service/app from cache.
@@ -233,7 +216,8 @@ func (gcc *GatewayClientCache) GetSession(
 			gcc.logger.Debug().
 				Str("session_key", getSessionCacheKey(serviceID, appAddr)).
 				Msgf("GetSession: GatewayClientCache making request to full node for service %s", serviceID)
-			return gcc.getSessionFromFullNode(fetchCtx, serviceID, appAddr)
+
+			return gcc.onchainDataFetcher.GetSession(fetchCtx, serviceID, appAddr)
 		},
 	)
 }
@@ -243,44 +227,11 @@ func getSessionCacheKey(serviceID sdk.ServiceID, appAddr string) string {
 	return fmt.Sprintf("%s:%s:%s", sessionCacheKeyPrefix, serviceID, appAddr)
 }
 
-// getSessionFromFullNode:
-// - Uses the GatewayClientCache's session client to fetch a session for the (serviceID, appAddr) combination.
-func (gcc *GatewayClientCache) getSessionFromFullNode(
-	ctx context.Context,
-	serviceID sdk.ServiceID,
-	appAddr string,
-) (sessiontypes.Session, error) {
-	session, err := gcc.sessionClient.GetSession(
-		ctx,
-		appAddr,
-		string(serviceID),
-		0,
-	)
-	if err != nil {
-		return sessiontypes.Session{},
-			fmt.Errorf("GetSession: error getting the session for service %s app %s: %w",
-				serviceID, appAddr, err,
-			)
-	}
-	if session == nil {
-		return sessiontypes.Session{},
-			fmt.Errorf("GetSession: got nil session for service %s app %s: %w",
-				serviceID, appAddr, err,
-			)
-	}
-
-	gcc.logger.Debug().Msgf("GetSession: fetched session %s", session)
-
-	return *session, nil
-}
-
 // getAccountPubKey returns the account public key for the given address.
 // The account public key cache has no TTL, so the public key is cached indefinitely.
 //
 // The `fetchFn` param of `GetOrFetch` is only called once per address on startup.
-//
-// It is private because it is only used by the GatewayClient's SignRelayRequest method in this package.
-func (gcc *GatewayClientCache) getAccountPubKey(
+func (gcc *GatewayClientCache) GetAccountPubKey(
 	ctx context.Context,
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
@@ -292,7 +243,8 @@ func (gcc *GatewayClientCache) getAccountPubKey(
 			gcc.logger.Debug().
 				Str("account_key", getAccountPubKeyCacheKey(address)).
 				Msgf("GetAccountPubKey: GatewayClientCache making request to full node")
-			return gcc.getAccountPubKeyFromFullNode(fetchCtx, address)
+
+			return gcc.onchainDataFetcher.GetAccountPubKey(fetchCtx, address)
 		},
 	)
 }
@@ -303,28 +255,6 @@ func (gcc *GatewayClientCache) getAccountPubKey(
 // eg. "pubkey:pokt1up7zlytnmvlsuxzpzvlrta95347w322adsxslw"
 func getAccountPubKeyCacheKey(address string) string {
 	return fmt.Sprintf("%s:%s", accountPubKeyCacheKeyPrefix, address)
-}
-
-// getAccountPubKeyFromFullNode returns the public key of the account with the given address.
-//
-// - Uses the GatewayClientCache's account client to query the account module using the gRPC query client.
-func (gcc *GatewayClientCache) getAccountPubKeyFromFullNode(
-	ctx context.Context,
-	address string,
-) (pubKey cryptotypes.PubKey, err error) {
-	req := &accounttypes.QueryAccountRequest{Address: address}
-
-	res, err := gcc.accountClient.Account(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	var fetchedAccount types.AccountI
-	if err = sdkTypes.QueryCodec.UnpackAny(res.Account, &fetchedAccount); err != nil {
-		return nil, err
-	}
-
-	return fetchedAccount.GetPubKey(), nil
 }
 
 // IsHealthy satisfies the interface required by the ShannonFullNode interface.

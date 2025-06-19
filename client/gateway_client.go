@@ -17,6 +17,13 @@ import (
 	sdk "github.com/pokt-network/shannon-sdk"
 )
 
+type OnchainDataFetcher interface {
+	GetApp(ctx context.Context, appAddr string) (apptypes.Application, error)
+	GetSession(ctx context.Context, serviceID sdk.ServiceID, appAddr string) (sessiontypes.Session, error)
+	GetAccountPubKey(ctx context.Context, address string) (cryptotypes.PubKey, error)
+	IsHealthy() bool
+}
+
 // GatewayClient contains functionality needed to sign
 // and validate relays on the Shannon protocol.
 //
@@ -33,7 +40,7 @@ type GatewayClient struct {
 	logger polylog.Logger
 
 	// Embeds the GatewayClientCache to fetch and cache onchain data.
-	*GatewayClientCache
+	OnchainDataFetcher
 
 	gatewayAddress       string
 	gatewayPrivateKeyHex string
@@ -42,13 +49,13 @@ type GatewayClient struct {
 // NewGatewayClient builds and returns a GatewayClient using the supplied configuration.
 func NewGatewayClient(
 	logger polylog.Logger,
-	cache *GatewayClientCache,
+	dataFetcher OnchainDataFetcher,
 	gatewayAddress string,
 	gatewayPrivateKeyHex string,
 ) (*GatewayClient, error) {
 	return &GatewayClient{
 		logger:               logger,
-		GatewayClientCache:   cache,
+		OnchainDataFetcher:   dataFetcher,
 		gatewayAddress:       gatewayAddress,
 		gatewayPrivateKeyHex: gatewayPrivateKeyHex,
 	}, nil
@@ -228,7 +235,7 @@ func (c *GatewayClient) getRing(
 	for _, address := range ringAddresses {
 		// TODO_TECHDEBT(@commoddity): investigate if we can avoid needing
 		// to fetch the public key for the application address for every relay request.
-		pubKey, err := c.getAccountPubKey(ctx, address)
+		pubKey, err := c.GetAccountPubKey(ctx, address)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +280,7 @@ func (c *GatewayClient) ValidateRelayResponse(
 	}
 
 	// Get the supplier's public key
-	supplierPubKey, err := c.getAccountPubKey(ctx, string(supplierAddress))
+	supplierPubKey, err := c.GetAccountPubKey(ctx, string(supplierAddress))
 	if err != nil {
 		err := fmt.Errorf("%w: %w", ErrValidateRelayResponseAccountPubKey, err)
 		logger.Error().Err(err).Msg(err.Error())
