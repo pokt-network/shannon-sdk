@@ -23,8 +23,8 @@ import (
 // GRPCClient implements OnchainDataFetcher interface.
 var _ OnchainDataFetcher = &GRPCClient{}
 
-// GRPCClient is a client used to fetch onchain data
-// from the Shannon protocol over a gRPC connection.
+// GRPCClient provides direct access to Shannon blockchain data via gRPC.
+// This is the underlying data fetcher used by GatewayClientCache for non-cached requests.
 type GRPCClient struct {
 	logger polylog.Logger
 
@@ -34,23 +34,24 @@ type GRPCClient struct {
 	blockClient       *sdk.BlockClient
 }
 
+// NewGRPCClient creates a new gRPC client connected to a Shannon full node.
 func NewGRPCClient(logger polylog.Logger, grpcConfig GRPCConfig) (*GRPCClient, error) {
 	logger = logger.With("client", "grpc_client")
 
-	// Connect to the full node
+	// Establish gRPC connection to the full node
 	grpcConn, err := connectGRPC(
 		grpcConfig.HostPort,
 		grpcConfig.UseInsecureGRPCConn,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("NewGatewayClientCache: error creating new GRPC connection at url %s: %w",
+		return nil, fmt.Errorf("NewGRPCClient: error creating gRPC connection to %s: %w",
 			grpcConfig.HostPort, err)
 	}
 
-	// Create the block client
+	// Create block client for RPC requests
 	blockClient, err := newBlockClient(grpcConfig.RpcURL)
 	if err != nil {
-		return nil, fmt.Errorf("NewGatewayClientCache: error creating new Shannon block client at URL %s: %w", grpcConfig.RpcURL, err)
+		return nil, fmt.Errorf("NewGRPCClient: error creating block client for %s: %w", grpcConfig.RpcURL, err)
 	}
 
 	return &GRPCClient{
@@ -63,9 +64,7 @@ func NewGRPCClient(logger polylog.Logger, grpcConfig GRPCConfig) (*GRPCClient, e
 	}, nil
 }
 
-// GetApp fetches an application from the full node.
-//
-// - Uses the GRPCClient's applicationClient to fetch an application from the full node.
+// GetApp fetches application data directly from the Shannon full node.
 func (g *GRPCClient) GetApp(ctx context.Context, appAddr string) (apptypes.Application, error) {
 	app, err := g.applicationClient.GetApplication(ctx, appAddr)
 	if err != nil {
@@ -77,9 +76,7 @@ func (g *GRPCClient) GetApp(ctx context.Context, appAddr string) (apptypes.Appli
 	return app, nil
 }
 
-// GetSession fetches a session for the (serviceID, appAddr) combination.
-//
-// - Uses the GRPCClient's sessionClient to fetch a session for the (serviceID, appAddr) combination.
+// GetSession fetches a session for the given service and application from the full node.
 func (g *GRPCClient) GetSession(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
@@ -111,9 +108,7 @@ func (g *GRPCClient) GetSession(
 	return *session, nil
 }
 
-// GetAccountPubKey returns the public key of the account with the given address.
-//
-// - Uses the GRPCClient's accountClient to query the account module using the gRPC query client.
+// GetAccountPubKey fetches an account's public key from the full node.
 func (g *GRPCClient) GetAccountPubKey(
 	ctx context.Context,
 	address string,
@@ -142,11 +137,13 @@ func (g *GRPCClient) GetAccountPubKey(
 	return fetchedAccount.GetPubKey(), nil
 }
 
-// connectGRPC creates a new gRPC connection.
-//
-// TLS is enabled by default, unless overridden by the `grpc_config.insecure` field.
-//
-// TODO_TECHDEBT: use an enhanced grpc connection with reconnect logic.
+// LatestBlockHeight returns the current blockchain height from the full node.
+func (g *GRPCClient) LatestBlockHeight(ctx context.Context) (height int64, err error) {
+	return g.blockClient.LatestBlockHeight(ctx)
+}
+
+// connectGRPC establishes a gRPC connection with optional TLS.
+// TLS is enabled by default unless explicitly disabled for local development.
 func connectGRPC(hostPort string, useInsecure bool) (*grpc.ClientConn, error) {
 	if useInsecure {
 		transport := grpc.WithTransportCredentials(insecure.NewCredentials())
@@ -157,52 +154,50 @@ func connectGRPC(hostPort string, useInsecure bool) (*grpc.ClientConn, error) {
 		)
 	}
 
-	// TODO_TECHDEBT(@commoddity): make the necessary changes to allow using grpc.NewClient here.
-	// Currently using the grpc.NewClient method fails the E2E tests.
+	// TODO_TECHDEBT: Migrate to grpc.NewClient once E2E tests support it
 	return grpc.Dial( //nolint:all
 		hostPort,
 		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})),
 	)
 }
 
-// newSessionClient creates a new session client used by GatewayClientCache to fetch sessions from the full node
-// Uses a gRPC connection to the full node.
+// newSessionClient creates a session client for fetching session data
 func newSessionClient(conn *grpc.ClientConn) *sdk.SessionClient {
 	return &sdk.SessionClient{PoktNodeSessionFetcher: sdk.NewPoktNodeSessionFetcher(conn)}
 }
 
-// newAppClient creates a new application client used by GatewayClientCache to fetch applications from the full node
-// Uses a gRPC connection to the full node.
+// newAppClient creates an application client for fetching application data
 func newAppClient(conn *grpc.ClientConn) *sdk.ApplicationClient {
 	return &sdk.ApplicationClient{QueryClient: apptypes.NewQueryClient(conn)}
 }
 
-// newAccClient creates a new account client used by GatewayClientCache to fetch accounts from the full node
-// Uses a gRPC connection to the full node.
+// newAccClient creates an account client for fetching account data
 func newAccClient(conn *grpc.ClientConn) *sdk.AccountClient {
 	return &sdk.AccountClient{PoktNodeAccountFetcher: sdk.NewPoktNodeAccountFetcher(conn)}
 }
 
-// newBlockClient creates a new block client used by GatewayClientCache to fetch block information from the full node
-// Uses an RPC request to the full node.
+// newBlockClient creates a block client for fetching blockchain height via RPC
 func newBlockClient(rpcURL string) (*sdk.BlockClient, error) {
 	_, err := url.Parse(rpcURL)
 	if err != nil {
-		return nil, fmt.Errorf("newBlockClient: error parsing url %s: %w", rpcURL, err)
+		return nil, fmt.Errorf("newBlockClient: invalid RPC URL %s: %w", rpcURL, err)
 	}
 
 	nodeStatusFetcher, err := sdk.NewPoktNodeStatusFetcher(rpcURL)
 	if err != nil {
-		return nil, fmt.Errorf("newBlockClient: error connecting to a full node %s: %w", rpcURL, err)
+		return nil, fmt.Errorf("newBlockClient: error connecting to full node %s: %w", rpcURL, err)
 	}
 
 	return &sdk.BlockClient{PoktNodeStatusFetcher: nodeStatusFetcher}, nil
 }
 
-// IsHealthy satisfies the interface required by the ShannonFullNode interface.
-// TODO_IMPROVE(@commoddity):
-//   - Add smarter health checks (e.g. verify cached apps/sessions)
-//   - Currently always true (cache fills as needed)
+// IsHealthy reports the health status of the gRPC client.
+// Currently always returns true as connections are established on-demand.
+//
+// TODO_IMPROVE: Add meaningful health checks:
+//   - Test gRPC connection connectivity
+//   - Verify recent successful requests
+//   - Check full node sync status
 func (g *GRPCClient) IsHealthy() bool {
 	return true
 }

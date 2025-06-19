@@ -1,218 +1,340 @@
 package client
 
-// import (
-// 	"context"
-// 	"sync"
-// 	"time"
+import (
+	"context"
+	"sync"
+	"time"
 
-// 	"github.com/pokt-network/poktroll/pkg/polylog"
-// 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-// )
+	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+	sdk "github.com/pokt-network/shannon-sdk"
+	"github.com/viccon/sturdyc"
+)
 
-// // sessionRefreshMonitor handles intelligent block-based session refresh monitoring
-// type sessionRefreshMonitor struct {
-// 	logger             polylog.Logger
-// 	onchainDataFetcher OnchainDataFetcher
+// sessionKeyInfo holds metadata for active sessions during background refresh
+type sessionKeyInfo struct {
+	serviceID sdk.ServiceID
+	appAddr   string
+}
 
-// 	// Session refresh callback - called when all sessions need to be refreshed
-// 	refreshCallback func()
+// sessionRefreshState holds the state for block-based session monitoring
+//
+// Session refresh lifecycle:
+//  1. Normal monitoring: Check every 15 seconds
+//  2. Intensive polling: 1-second checks starting at SessionEndBlockHeight
+//  3. Cache refresh: Triggered at SessionEndBlockHeight+1
+//  4. Background refresh: New cache populated while old cache serves requests
+//  5. Atomic swap: New cache replaces old cache with zero downtime
+//
+// Documentation: https://github.com/viccon/sturdyc
+type sessionRefreshState struct {
+	currentSessionEndHeight int64
+	sessionEndHeightMu      sync.RWMutex
 
-// 	// Current session end height being monitored
-// 	currentSessionEndHeight int64
-// 	sessionEndHeightMu      sync.RWMutex
+	blockMonitorMu sync.Mutex
+	isMonitoring   bool
 
-// 	// Block monitoring control
-// 	blockMonitorCtx    context.Context
-// 	blockMonitorCancel context.CancelFunc
-// 	blockMonitorMu     sync.Mutex
-// 	isMonitoring       bool
-// }
+	// Active session tracking for background refresh
+	activeSessionKeys map[string]sessionKeyInfo
+	activeSessionMu   sync.RWMutex
+}
 
-// // newSessionRefreshMonitor creates a new session refresh monitor
-// func newSessionRefreshMonitor(
-// 	logger polylog.Logger,
-// 	onchainDataFetcher OnchainDataFetcher,
-// 	refreshCallback func(),
-// ) *sessionRefreshMonitor {
-// 	blockMonitorCtx, blockMonitorCancel := context.WithCancel(context.Background())
+// ============================================================================
+// Session Monitoring Lifecycle
+// ============================================================================
 
-// 	return &sessionRefreshMonitor{
-// 		logger:                  logger.With("component", "session_refresh_monitor"),
-// 		onchainDataFetcher:      onchainDataFetcher,
-// 		refreshCallback:         refreshCallback,
-// 		currentSessionEndHeight: 0,
-// 		blockMonitorCtx:         blockMonitorCtx,
-// 		blockMonitorCancel:      blockMonitorCancel,
-// 	}
-// }
+// startSessionMonitoring begins background block monitoring
+func (gcc *GatewayClientCache) startSessionMonitoring() {
+	gcc.logger.Debug().
+		Dur("check_interval", blockTime/2).
+		Msg("Starting session monitoring background process")
 
-// // start begins the background block monitoring goroutine
-// func (srm *sessionRefreshMonitor) start() {
-// 	go srm.startBlockMonitoring()
-// }
+	go gcc.monitorBlockHeights()
+}
 
-// // stop stops the block monitoring goroutine
-// func (srm *sessionRefreshMonitor) stop() {
-// 	srm.logger.Info().Msg("Stopping session refresh monitor")
-// 	if srm.blockMonitorCancel != nil {
-// 		srm.blockMonitorCancel()
-// 	}
-// }
+// updateSessionEndHeight updates the global session end height from a fetched session
+func (gcc *GatewayClientCache) updateSessionEndHeight(session sessiontypes.Session) {
+	if session.Header == nil {
+		gcc.logger.Warn().Msg("Session header is nil, cannot update session end height")
+		return
+	}
 
-// // updateSessionEndHeight updates the global session end height from a fetched session
-// func (srm *sessionRefreshMonitor) updateSessionEndHeight(session sessiontypes.Session) {
-// 	if session.Header == nil {
-// 		srm.logger.Warn().
-// 			Msg("Session header is nil, cannot update session end height")
-// 		return
-// 	}
+	sessionEndHeight := session.Header.SessionEndBlockHeight
 
-// 	sessionEndHeight := session.Header.SessionEndBlockHeight
+	gcc.sessionRefreshState.sessionEndHeightMu.Lock()
+	previousHeight := gcc.sessionRefreshState.currentSessionEndHeight
+	gcc.sessionRefreshState.currentSessionEndHeight = sessionEndHeight
+	gcc.sessionRefreshState.sessionEndHeightMu.Unlock()
 
-// 	srm.sessionEndHeightMu.Lock()
-// 	srm.currentSessionEndHeight = sessionEndHeight
-// 	srm.sessionEndHeightMu.Unlock()
+	if previousHeight != sessionEndHeight {
+		gcc.logger.Debug().
+			Int64("previous_session_end_height", previousHeight).
+			Int64("new_session_end_height", sessionEndHeight).
+			Msg("Updated session end height for monitoring")
+	}
+}
 
-// 	srm.logger.Debug().
-// 		Int64("session_end_height", sessionEndHeight).
-// 		Msg("Updated global session end height for monitoring")
-// }
+// ============================================================================
+// Background Monitoring Logic
+// ============================================================================
 
-// // startBlockMonitoring starts the background block monitoring goroutine
-// func (srm *sessionRefreshMonitor) startBlockMonitoring() {
-// 	srm.logger.Info().Msg("Starting block monitoring for intelligent session refresh")
+// monitorBlockHeights runs the main monitoring loop that checks every 15 seconds
+func (gcc *GatewayClientCache) monitorBlockHeights() {
+	checkCount := 0
+	for {
+		time.Sleep(blockTime / 2) // Check every 15 seconds
+		checkCount++
 
-// 	for {
-// 		select {
-// 		case <-srm.blockMonitorCtx.Done():
-// 			srm.logger.Info().Msg("Block monitoring stopped")
-// 			return
-// 		case <-time.After(blockTime / 2): // Check every half block time initially
-// 			srm.checkAndHandleSessionRefresh()
-// 		}
-// 	}
-// }
+		gcc.logger.Debug().
+			Int("check_count", checkCount).
+			Msg("Background monitoring check")
 
-// // checkAndHandleSessionRefresh checks if we need to start intensive polling or refresh sessions
-// func (srm *sessionRefreshMonitor) checkAndHandleSessionRefresh() {
-// 	srm.sessionEndHeightMu.RLock()
-// 	targetHeight := srm.currentSessionEndHeight
-// 	srm.sessionEndHeightMu.RUnlock()
+		gcc.checkAndHandleSessionRefresh()
+	}
+}
 
-// 	if targetHeight == 0 {
-// 		// No sessions to monitor yet
-// 		return
-// 	}
+// checkAndHandleSessionRefresh determines if session refresh is needed and takes action
+func (gcc *GatewayClientCache) checkAndHandleSessionRefresh() {
+	targetHeight := gcc.getCurrentSessionEndHeight()
+	if targetHeight == 0 {
+		gcc.logger.Debug().Msg("No sessions to monitor yet")
+		return
+	}
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-// 	defer cancel()
+	currentHeight, err := gcc.getCurrentBlockHeight()
+	if err != nil {
+		gcc.logger.Error().
+			Err(err).
+			Int64("session_end_height", targetHeight).
+			Msg("Failed to get current block height")
+		return
+	}
 
-// 	currentHeight, err := srm.onchainDataFetcher.LatestBlockHeight(ctx)
-// 	if err != nil {
-// 		srm.logger.Error().
-// 			Err(err).
-// 			Msg("Failed to get current block height for session monitoring")
-// 		return
-// 	}
+	gcc.logger.Debug().
+		Int64("current_height", currentHeight).
+		Int64("session_end_height", targetHeight).
+		Int64("blocks_until_session_end", targetHeight-currentHeight).
+		Msg("Checking session end proximity")
 
-// 	srm.logger.Debug().
-// 		Int64("current_height", currentHeight).
-// 		Int64("target_height", targetHeight).
-// 		Msg("Checking session end proximity")
+	// Refresh immediately if we're past SessionEndBlockHeight + 1
+	if currentHeight >= targetHeight+1 {
+		gcc.logger.Debug().
+			Int64("current_height", currentHeight).
+			Int64("session_end_height", targetHeight).
+			Msg("SessionEndBlockHeight+1 reached, refreshing sessions")
 
-// 	// If we're at or past the session end height, refresh all sessions immediately
-// 	if currentHeight >= targetHeight {
-// 		srm.logger.Info().
-// 			Int64("current_height", currentHeight).
-// 			Int64("session_end_height", targetHeight).
-// 			Msg("Session end height reached, refreshing all sessions")
-// 		srm.refreshAllSessions()
-// 		srm.resetSessionMonitoring()
-// 		return
-// 	}
+		gcc.refreshAllSessions()
+		gcc.resetMonitoring()
+		return
+	}
 
-// 	// If we're at the block before session end, start intensive polling
-// 	if currentHeight == targetHeight-1 {
-// 		srm.logger.Info().
-// 			Int64("current_height", currentHeight).
-// 			Int64("session_end_height", targetHeight).
-// 			Msg("Block before session end detected, starting intensive polling")
-// 		srm.startIntensivePolling(targetHeight)
-// 	}
-// }
+	// Start intensive polling if we've reached SessionEndBlockHeight
+	if currentHeight >= targetHeight && gcc.tryStartIntensiveMonitoring() {
+		gcc.logger.Debug().
+			Int64("session_end_height", targetHeight).
+			Msg("Starting intensive polling for SessionEndBlockHeight+1")
 
-// // startIntensivePolling starts intensive polling when approaching session end
-// func (srm *sessionRefreshMonitor) startIntensivePolling(targetHeight int64) {
-// 	srm.blockMonitorMu.Lock()
-// 	if srm.isMonitoring {
-// 		srm.blockMonitorMu.Unlock()
-// 		return // Already in intensive monitoring mode
-// 	}
-// 	srm.isMonitoring = true
-// 	srm.blockMonitorMu.Unlock()
+		gcc.runIntensivePolling(targetHeight)
+	}
+}
 
-// 	srm.logger.Info().
-// 		Int64("target_height", targetHeight).
-// 		Msg("Starting intensive block height polling")
+// tryStartIntensiveMonitoring attempts to start intensive monitoring (prevents duplicates)
+func (gcc *GatewayClientCache) tryStartIntensiveMonitoring() bool {
+	gcc.sessionRefreshState.blockMonitorMu.Lock()
+	defer gcc.sessionRefreshState.blockMonitorMu.Unlock()
 
-// 	ticker := time.NewTicker(blockPollingInterval)
-// 	defer ticker.Stop()
+	if gcc.sessionRefreshState.isMonitoring {
+		return false // Already monitoring intensively
+	}
 
-// 	for {
-// 		select {
-// 		case <-srm.blockMonitorCtx.Done():
-// 			return
-// 		case <-ticker.C:
-// 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-// 			currentHeight, err := srm.onchainDataFetcher.LatestBlockHeight(ctx)
-// 			cancel()
+	gcc.sessionRefreshState.isMonitoring = true
+	return true
+}
 
-// 			if err != nil {
-// 				srm.logger.Error().
-// 					Err(err).
-// 					Msg("Failed to get current block height during intensive polling")
-// 				continue
-// 			}
+// runIntensivePolling performs 1-second polling until SessionEndBlockHeight+1 is reached
+func (gcc *GatewayClientCache) runIntensivePolling(targetHeight int64) {
+	ticker := time.NewTicker(blockPollingInterval)
+	defer ticker.Stop()
 
-// 			srm.logger.Debug().
-// 				Int64("current_height", currentHeight).
-// 				Int64("target_height", targetHeight).
-// 				Msg("Intensive polling check")
+	pollCount := 0
+	for {
+		<-ticker.C
+		pollCount++
 
-// 			if currentHeight >= targetHeight {
-// 				srm.logger.Info().
-// 					Int64("current_height", currentHeight).
-// 					Int64("session_end_height", targetHeight).
-// 					Msg("Session end height reached during intensive polling, refreshing all sessions")
+		if gcc.shouldRefreshNow(targetHeight, pollCount) {
+			gcc.refreshAllSessions()
+			gcc.resetMonitoring()
+			return
+		}
+	}
+}
 
-// 				srm.refreshAllSessions()
-// 				srm.resetSessionMonitoring()
-// 				return
-// 			}
-// 		}
-// 	}
-// }
+// shouldRefreshNow checks if we've reached SessionEndBlockHeight+1 during intensive polling
+func (gcc *GatewayClientCache) shouldRefreshNow(targetHeight int64, pollCount int) bool {
+	currentHeight, err := gcc.getCurrentBlockHeight()
+	if err != nil {
+		gcc.logger.Error().
+			Err(err).
+			Int64("session_end_height", targetHeight).
+			Int("poll_count", pollCount).
+			Msg("Failed to get current block height during intensive polling")
+		return false
+	}
 
-// // refreshAllSessions triggers the session refresh callback
-// func (srm *sessionRefreshMonitor) refreshAllSessions() {
-// 	srm.logger.Info().
-// 		Int64("session_end_height", srm.currentSessionEndHeight).
-// 		Msg("Triggering session refresh callback")
+	gcc.logger.Debug().
+		Int64("current_height", currentHeight).
+		Int64("target_refresh_height", targetHeight+1).
+		Int64("blocks_until_refresh", (targetHeight+1)-currentHeight).
+		Int("poll_count", pollCount).
+		Msg("Intensive polling check")
 
-// 	if srm.refreshCallback != nil {
-// 		srm.refreshCallback()
-// 	}
-// }
+	if currentHeight >= targetHeight+1 {
+		gcc.logger.Debug().
+			Int64("current_height", currentHeight).
+			Int64("session_end_height", targetHeight).
+			Int("total_polls", pollCount).
+			Msg("SessionEndBlockHeight+1 reached, refreshing sessions")
+		return true
+	}
 
-// // resetSessionMonitoring resets the monitoring state for the next session cycle
-// func (srm *sessionRefreshMonitor) resetSessionMonitoring() {
-// 	srm.blockMonitorMu.Lock()
-// 	srm.isMonitoring = false
-// 	srm.blockMonitorMu.Unlock()
+	return false
+}
 
-// 	srm.sessionEndHeightMu.Lock()
-// 	srm.currentSessionEndHeight = 0
-// 	srm.sessionEndHeightMu.Unlock()
+// refreshAllSessions triggers background refresh of all active sessions
+func (gcc *GatewayClientCache) refreshAllSessions() {
+	activeKeys := gcc.getActiveSessionKeys()
+	if len(activeKeys) == 0 {
+		gcc.logger.Debug().Msg("No active sessions to refresh")
+		return
+	}
 
-// 	srm.logger.Info().Msg("Reset session monitoring for next session cycle")
-// }
+	gcc.logger.Info().
+		Int("session_count", len(activeKeys)).
+		Msg("Starting background session refresh")
+
+	gcc.refreshSessionsInBackground(activeKeys)
+}
+
+// resetMonitoring resets monitoring state for the next session cycle
+func (gcc *GatewayClientCache) resetMonitoring() {
+	gcc.sessionRefreshState.blockMonitorMu.Lock()
+	gcc.sessionRefreshState.isMonitoring = false
+	gcc.sessionRefreshState.blockMonitorMu.Unlock()
+
+	gcc.sessionRefreshState.sessionEndHeightMu.Lock()
+	gcc.sessionRefreshState.currentSessionEndHeight = 0
+	gcc.sessionRefreshState.sessionEndHeightMu.Unlock()
+
+	gcc.logger.Debug().Msg("Reset session monitoring for next cycle")
+}
+
+// ============================================================================
+// Session Key Tracking - For background refresh
+// ============================================================================
+
+// trackActiveSession records a session key for background refresh tracking
+func (gcc *GatewayClientCache) trackActiveSession(sessionKey string, serviceID sdk.ServiceID, appAddr string) {
+	gcc.sessionRefreshState.activeSessionMu.Lock()
+	defer gcc.sessionRefreshState.activeSessionMu.Unlock()
+
+	gcc.sessionRefreshState.activeSessionKeys[sessionKey] = sessionKeyInfo{
+		serviceID: serviceID,
+		appAddr:   appAddr,
+	}
+
+	gcc.logger.Debug().
+		Str("session_key", sessionKey).
+		Msg("Tracking session for background refresh")
+}
+
+// getActiveSessionKeys returns a thread-safe copy of all active session keys
+func (gcc *GatewayClientCache) getActiveSessionKeys() map[string]sessionKeyInfo {
+	gcc.sessionRefreshState.activeSessionMu.RLock()
+	defer gcc.sessionRefreshState.activeSessionMu.RUnlock()
+
+	activeKeys := make(map[string]sessionKeyInfo, len(gcc.sessionRefreshState.activeSessionKeys))
+	for key, info := range gcc.sessionRefreshState.activeSessionKeys {
+		activeKeys[key] = info
+	}
+	return activeKeys
+}
+
+// refreshSessionsInBackground creates a new cache with fresh sessions and atomically swaps it
+func (gcc *GatewayClientCache) refreshSessionsInBackground(activeKeys map[string]sessionKeyInfo) {
+	go func() {
+		gcc.logger.Debug().
+			Int("session_count", len(activeKeys)).
+			Msg("Creating new cache with fresh sessions")
+
+		// Create a new empty cache to populate with fresh sessions
+		newCache := getCache[sessiontypes.Session]()
+
+		// Populate the new cache with fresh sessions based on the active keys
+		successCount, errorCount := gcc.populateNewCache(newCache, activeKeys)
+
+		// Atomically swap to the new cache
+		gcc.sessionCacheMu.Lock()
+		gcc.sessionCache = newCache
+		gcc.sessionCacheMu.Unlock()
+
+		gcc.logger.Info().
+			Int("total_sessions", len(activeKeys)).
+			Int("successful_refreshes", successCount).
+			Int("failed_refreshes", errorCount).
+			Msg("Background session refresh completed")
+	}()
+}
+
+// populateNewCache fetches all sessions concurrently and populates the new cache
+func (gcc *GatewayClientCache) populateNewCache(newCache *sturdyc.Client[sessiontypes.Session], activeKeys map[string]sessionKeyInfo) (int, int) {
+	var wg sync.WaitGroup
+	var successCount, errorCount int
+	var countMu sync.Mutex
+
+	for sessionKey, keyInfo := range activeKeys {
+		wg.Add(1)
+		go func(key string, info sessionKeyInfo) {
+			defer wg.Done()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			_, err := newCache.GetOrFetch(ctx, key, func(fetchCtx context.Context) (sessiontypes.Session, error) {
+				session, err := gcc.onchainDataFetcher.GetSession(fetchCtx, info.serviceID, info.appAddr)
+				if err == nil {
+					gcc.updateSessionEndHeight(session)
+				}
+				return session, err
+			})
+
+			countMu.Lock()
+			if err != nil {
+				errorCount++
+				gcc.logger.Warn().Err(err).Str("session_key", key).Msg("Failed to refresh session")
+			} else {
+				successCount++
+			}
+			countMu.Unlock()
+		}(sessionKey, keyInfo)
+	}
+
+	wg.Wait()
+	return successCount, errorCount
+}
+
+// ============================================================================
+// HELPER METHODS - Thread-safe getters and utilities
+// ============================================================================
+
+// getCurrentSessionEndHeight safely gets the current session end height
+func (gcc *GatewayClientCache) getCurrentSessionEndHeight() int64 {
+	gcc.sessionRefreshState.sessionEndHeightMu.RLock()
+	defer gcc.sessionRefreshState.sessionEndHeightMu.RUnlock()
+	return gcc.sessionRefreshState.currentSessionEndHeight
+}
+
+// getCurrentBlockHeight gets the current blockchain height with a 10-second timeout
+func (gcc *GatewayClientCache) getCurrentBlockHeight() (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return gcc.onchainDataFetcher.LatestBlockHeight(ctx)
+}
