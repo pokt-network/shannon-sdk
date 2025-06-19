@@ -54,6 +54,8 @@ func NewGRPCClient(logger polylog.Logger, grpcConfig GRPCConfig) (*GRPCClient, e
 	}
 
 	return &GRPCClient{
+		logger: logger,
+
 		applicationClient: newAppClient(grpcConn),
 		sessionClient:     newSessionClient(grpcConn),
 		accountClient:     newAccClient(grpcConn),
