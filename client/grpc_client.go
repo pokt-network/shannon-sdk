@@ -61,6 +61,9 @@ func NewGRPCClient(logger polylog.Logger, grpcConfig GRPCConfig) (*GRPCClient, e
 	}, nil
 }
 
+// GetApp fetches an application from the full node.
+//
+// - Uses the GRPCClient's applicationClient to fetch an application from the full node.
 func (g *GRPCClient) GetApp(ctx context.Context, appAddr string) (apptypes.Application, error) {
 	app, err := g.applicationClient.GetApplication(ctx, appAddr)
 	if err != nil {
@@ -72,8 +75,9 @@ func (g *GRPCClient) GetApp(ctx context.Context, appAddr string) (apptypes.Appli
 	return app, nil
 }
 
-// GetSessionFromFullNode:
-// - Uses the GRPCClient's session client to fetch a session for the (serviceID, appAddr) combination.
+// GetSession fetches a session for the (serviceID, appAddr) combination.
+//
+// - Uses the GRPCClient's sessionClient to fetch a session for the (serviceID, appAddr) combination.
 func (g *GRPCClient) GetSession(
 	ctx context.Context,
 	serviceID sdk.ServiceID,
@@ -105,9 +109,9 @@ func (g *GRPCClient) GetSession(
 	return *session, nil
 }
 
-// getAccountPubKeyFromFullNode returns the public key of the account with the given address.
+// GetAccountPubKey returns the public key of the account with the given address.
 //
-// - Uses the GatewayClientCache's account client to query the account module using the gRPC query client.
+// - Uses the GRPCClient's accountClient to query the account module using the gRPC query client.
 func (g *GRPCClient) GetAccountPubKey(
 	ctx context.Context,
 	address string,
@@ -137,12 +141,10 @@ func (g *GRPCClient) GetAccountPubKey(
 }
 
 // connectGRPC creates a new gRPC connection.
-// Backoff configuration may be customized using the config YAML fields
-// under `grpc_config`. TLS is enabled by default, unless overridden by
-// the `grpc_config.insecure` field.
+//
+// TLS is enabled by default, unless overridden by the `grpc_config.insecure` field.
+//
 // TODO_TECHDEBT: use an enhanced grpc connection with reconnect logic.
-// All GRPC settings have been disabled to focus the E2E tests on the
-// gateway functionality rather than GRPC settings.
 func connectGRPC(hostPort string, useInsecure bool) (*grpc.ClientConn, error) {
 	if useInsecure {
 		transport := grpc.WithTransportCredentials(insecure.NewCredentials())
@@ -153,7 +155,7 @@ func connectGRPC(hostPort string, useInsecure bool) (*grpc.ClientConn, error) {
 		)
 	}
 
-	// TODO_TECHDEBT: make the necessary changes to allow using grpc.NewClient here.
+	// TODO_TECHDEBT(@commoddity): make the necessary changes to allow using grpc.NewClient here.
 	// Currently using the grpc.NewClient method fails the E2E tests.
 	return grpc.Dial( //nolint:all
 		hostPort,
