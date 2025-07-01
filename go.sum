@@ -967,8 +967,8 @@ github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10/go.mod h1
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pokt-network/poktroll v0.0.0-20250701102134-f46b2d5a6414 h1:s8okxfQG12bZ0w1+njC+crCZG/R0dhgtc0uF90cVIAo=
-github.com/pokt-network/poktroll v0.0.0-20250701102134-f46b2d5a6414/go.mod h1:8Ukz3y5o5MhEmCVrdVV0/S/IMgRPW5ZZQST+67BQPT4=
+github.com/pokt-network/poktroll v0.0.0-20250701102937-35a54a7b7432 h1:YBxvn/7yv/VxTgruA28nCxjLdX2ddqb7jUjfBGEKJdk=
+github.com/pokt-network/poktroll v0.0.0-20250701102937-35a54a7b7432/go.mod h1:8Ukz3y5o5MhEmCVrdVV0/S/IMgRPW5ZZQST+67BQPT4=
 github.com/pokt-network/ring-go v0.1.0 h1:hF7mDR4VVCIqqDAsrloP8azM9y1mprc99YgnTjKSSwk=
 github.com/pokt-network/ring-go v0.1.0/go.mod h1:8NHPH7H3EwrPX3XHfpyRI6bz4gApkE3+fd0XZRbMWP0=
 github.com/pokt-network/smt v0.13.0 h1:C2F8FlJh34aU+DVeRU/Bt8BOkFXn4QjWMK+nbT9PUj4=
