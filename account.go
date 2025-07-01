@@ -3,17 +3,10 @@ package sdk
 import (
 	"context"
 
-	"github.com/cosmos/cosmos-sdk/codec"
-	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/cosmos/cosmos-sdk/types"
 	accounttypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	grpc "github.com/cosmos/gogoproto/grpc"
 	grpcoptions "google.golang.org/grpc"
 )
-
-var queryCodec *codec.ProtoCodec
 
 // -----------------------------
 // Interfaces and Structs
@@ -37,39 +30,6 @@ type PoktNodeAccountFetcher interface {
 //   - Get the public key corresponding to an address.
 type AccountClient struct {
 	PoktNodeAccountFetcher
-}
-
-// -----------------------------
-// Functions
-// -----------------------------
-
-// init initializes the codec for the account module.
-func init() {
-	reg := cdctypes.NewInterfaceRegistry()
-	accounttypes.RegisterInterfaces(reg)
-	cryptocodec.RegisterInterfaces(reg)
-	queryCodec = codec.NewProtoCodec(reg)
-}
-
-// GetPubKeyFromAddress returns the public key of the account with the given address.
-//
-// - Queries the account module using the gRPC query client.
-func (ac *AccountClient) GetPubKeyFromAddress(
-	ctx context.Context,
-	address string,
-) (pubKey cryptotypes.PubKey, err error) {
-	req := &accounttypes.QueryAccountRequest{Address: address}
-	res, err := ac.PoktNodeAccountFetcher.Account(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	var fetchedAccount types.AccountI
-	if err = queryCodec.UnpackAny(res.Account, &fetchedAccount); err != nil {
-		return nil, err
-	}
-
-	return fetchedAccount.GetPubKey(), nil
 }
 
 // NewPoktNodeAccountFetcher returns the default implementation of the PoktNodeAccountFetcher interface.
