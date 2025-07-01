@@ -48,6 +48,7 @@ implementation of the `signer`. See [signer.go](https://github.com/buildwithgrov
 | ApplicationRing    | Manage gateway delegations and ring signatures |
 | Block Client       | Retrieve blockchain information                |
 | Session Client     | Manage session operations                      |
+| Shared Client      | Query shared module parameters                 |
 | Session Filter     | Select supplier endpoints based on criteria    |
 | Signer             | Sign relay requests securely                   |
 | Relayer            | Build and validate relay requests/responses    |
@@ -235,6 +236,7 @@ func main() {
 | **ApplicationRing**   | Handles gateway delegations and ring signatures   | `GetRing()`                                                                        |
 | **BlockClient**       | Retrieves blockchain information                  | `LatestBlockHeight()`                                                              |
 | **SessionClient**     | Manages session operations                        | `GetSession()`                                                                     |
+| **SharedClient**      | Queries shared module parameters                  | `GetParams()`                                                                      |
 | **SessionFilter**     | Filters and selects supplier endpoints            | `AllEndpoints()`, `FilteredEndpoints()`                                            |
 | **Signer**            | Signs relay requests with private keys            | `Sign()`                                                                           |
 | **Relayer Functions** | Builds and validates relay requests/responses     | `BuildRelayRequest()`, `ValidateRelayResponse()`                                   |
@@ -248,6 +250,7 @@ func main() {
 | `block.go`            | Block client implementation                |
 | `relay.go`            | Relay request/response utilities           |
 | `session.go`          | Session client and filtering               |
+| `shared.go`           | Shared module parameters client            |
 | `signer.go`           | Request signing implementation             |
 | `types/*.go`          | HTTP/RPC type definitions                  |
 | `proto/types/*.proto` | Protocol buffer definitions                |
