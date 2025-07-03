@@ -4,6 +4,7 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
 
 ## Table of Contents <!-- omit in toc -->
 
+- [TechDebt: Updating the ShannonSDK](#techdebt-updating-the-shannonsdk)
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Complete working integration example](#complete-working-integration-example)
@@ -13,6 +14,37 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
   - [Relay Request Workflow](#relay-request-workflow)
   - [Example Code](#example-code)
 - [API Reference](#api-reference)
+
+## TechDebt: Updating the ShannonSDK
+
+As of 07/2025, the two primary repositories dependant on ShannonSDK are:
+
+- [Grove's Path](https://github.com/buildwithgrove/path)
+- [Pocket's Poktroll](https://github.com/pokt-network/poktroll)
+
+Since the protobufs are shared between the `poktroll` and `shannon-sdk` repositories,
+but are housed in the `poktroll` repository, [poktroll/go.mod] has the following piece of techdebt:
+
+```go
+// TODO_TECHDEBT: Whenever we update a protobuf in the `poktroll` repo, we need to:
+// 1. Merge in the update PR (and it's generated outputs) into `poktroll` main.
+// 2. Update the `poktroll` sha in the `shannon-sdk` to reflect the new dependency.
+// 3. Update the `shannon-sdk` sha in the `poktroll` repo (here).
+// This is creating a circular dependency whereby exporting the protobufs into a separate
+// repo is the first obvious idea, but has to be carefully considered, automated, and is not
+// a hard blocker.
+github.com/pokt-network/shannon-sdk v0.0.0-20250603210336-969a825fddd5
+```
+
+To update the `poktroll` repository in the `shannon-sdk` repository, simply run:
+
+```bash
+go get github.com/pokt-network/poktroll@latest
+make proto_regen
+go mod tidy
+git commit -am "chore: update poktroll dependency in shannon-sdk"
+git push
+```
 
 ## Overview
 
