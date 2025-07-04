@@ -21,6 +21,7 @@ help: ## Prints all the targets in all the Makefiles
 ### Protobuf ###
 ################
 
+# Requires protoc-gen-go to be installed
 .PHONY: proto_regen ## Regenerate protobuf artifacts
 proto_regen:
 	find proto -name "*.proto" -exec protoc --go_out=. --go_opt=paths=source_relative {} \;
