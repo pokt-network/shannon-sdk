@@ -136,16 +136,16 @@ func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 		return nil, fmt.Errorf("AllEndpoints: Session not set on FilteredSession struct")
 	}
 
-	header := f.Session.Header
+	header := f.Header
 	supplierEndpoints := make(map[SupplierAddress][]Endpoint)
-	for _, supplier := range f.Session.Suppliers {
+	for _, supplier := range f.Suppliers {
 		// The endpoints slice is intentionally defined here to prevent any overwrites
 		// in the unlikely case that there are duplicate service IDs under a supplier.
 		var endpoints []Endpoint
 		for _, service := range supplier.Services {
 			// TODO_TECHDEBT: Remove this check once the session module ensures that
 			// only the services corresponding to the session header are returned.
-			if service.ServiceId != f.Session.Header.ServiceId {
+			if service.ServiceId != f.Header.ServiceId {
 				continue
 			}
 

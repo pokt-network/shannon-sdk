@@ -39,11 +39,16 @@ github.com/pokt-network/shannon-sdk v0.0.0-20250603210336-969a825fddd5
 To update the `poktroll` repository in the `shannon-sdk` repository, simply run:
 
 ```bash
-go get github.com/pokt-network/poktroll@latest
+git checkout -b bump_poktroll_version
+# Optional: go clean -v -modcache
+go get github.com/pokt-network/poktroll@main
 make proto_regen
+make go_lint
 go mod tidy
-git commit -am "chore: update poktroll dependency in shannon-sdk"
+make test_all
+git commit -am "[Poktroll] update poktroll go dependency in the shannon-sdk"
 git push
+# Merge the PR after the CI is green
 ```
 
 ## Overview

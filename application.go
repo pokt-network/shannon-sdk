@@ -54,7 +54,7 @@ func (ac *ApplicationClient) GetAllApplications(
 				Limit: query.PaginationMaxLimit,
 			},
 		}
-		res, err := ac.QueryClient.AllApplications(ctx, req)
+		res, err := ac.AllApplications(ctx, req)
 		if err != nil {
 			fetchErr = err
 			return
@@ -87,7 +87,7 @@ func (ac *ApplicationClient) GetApplication(
 		defer close(doneCh)
 		req := &types.QueryGetApplicationRequest{Address: appAddress}
 		// TODO_TECHDEBT(@adshmh): Consider increasing default response size (e.g. grpc MaxCallRecvMsgSize)
-		res, err := ac.QueryClient.Application(ctx, req)
+		res, err := ac.Application(ctx, req)
 		if err != nil {
 			fetchErr = err
 			return
@@ -144,17 +144,17 @@ func (a ApplicationRing) GetRing(
 	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&a.Application, sessionEndHeight)
 
 	ringAddresses := make([]string, 0)
-	ringAddresses = append(ringAddresses, a.Application.Address)
+	ringAddresses = append(ringAddresses, a.Address)
 
 	if len(currentGatewayAddresses) == 0 {
-		ringAddresses = append(ringAddresses, a.Application.Address)
+		ringAddresses = append(ringAddresses, a.Address)
 	} else {
 		ringAddresses = append(ringAddresses, currentGatewayAddresses...)
 	}
 
 	ringPubKeys := make([]cryptotypes.PubKey, 0, len(ringAddresses))
 	for _, address := range ringAddresses {
-		pubKey, err := a.PublicKeyFetcher.GetPubKeyFromAddress(ctx, address)
+		pubKey, err := a.GetPubKeyFromAddress(ctx, address)
 		if err != nil {
 			return nil, err
 		}

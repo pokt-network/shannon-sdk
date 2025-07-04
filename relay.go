@@ -25,9 +25,9 @@ var (
 	// RelayResponse failed basic validation: e.g. empty session header in the RelayResponse struct.
 	ErrRelayResponseValidationBasicValidation = errors.New("RelayResponse failed basic validation")
 	// Could not fetch the public key for supplier address used for the relay.
-	ErrRelayResponseValidationGetPubKey = errors.New("Error getting public key for supplier address")
+	ErrRelayResponseValidationGetPubKey = errors.New("error getting public key for supplier address")
 	// Received nil public key on supplier lookup using its address
-	ErrRelayResponseValidationNilSupplierPubKey = errors.New("Received nil public key for supplier address")
+	ErrRelayResponseValidationNilSupplierPubKey = errors.New("received nil public key for supplier address")
 	// RelayResponse's signature failed validation.
 	ErrRelayResponseValidationSignatureError = errors.New("RelayResponse signature failed validation")
 )

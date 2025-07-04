@@ -44,7 +44,7 @@ func (ac *SupplierClient) GetAllSuppliers(
 				Limit: query.PaginationMaxLimit,
 			},
 		}
-		res, err := ac.QueryClient.AllSuppliers(ctx, req)
+		res, err := ac.AllSuppliers(ctx, req)
 		if err != nil {
 			fetchErr = err
 			return
@@ -77,7 +77,7 @@ func (ac *SupplierClient) GetSupplier(
 		defer close(doneCh)
 		req := &types.QueryGetSupplierRequest{OperatorAddress: SupplierAddress}
 		// TODO_TECHDEBT(@adshmh): Consider increasing default response size (e.g. grpc MaxCallRecvMsgSize)
-		res, err := ac.QueryClient.Supplier(ctx, req)
+		res, err := ac.Supplier(ctx, req)
 		if err != nil {
 			fetchErr = err
 			return

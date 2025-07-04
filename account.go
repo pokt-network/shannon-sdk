@@ -59,7 +59,7 @@ func (ac *AccountClient) GetPubKeyFromAddress(
 	address string,
 ) (pubKey cryptotypes.PubKey, err error) {
 	req := &accounttypes.QueryAccountRequest{Address: address}
-	res, err := ac.PoktNodeAccountFetcher.Account(ctx, req)
+	res, err := ac.Account(ctx, req)
 	if err != nil {
 		return nil, err
 	}

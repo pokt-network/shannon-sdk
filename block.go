@@ -37,7 +37,7 @@ func (bc *BlockClient) LatestBlockHeight(ctx context.Context) (height int64, err
 		return 0, errors.New("LatestBlockHeight: nil PoktNodeStatusFetcher")
 	}
 
-	nodeStatus, err := bc.PoktNodeStatusFetcher.Status(ctx)
+	nodeStatus, err := bc.Status(ctx)
 	if err != nil {
 		return 0, err
 	}

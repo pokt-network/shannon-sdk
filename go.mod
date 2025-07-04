@@ -10,7 +10,7 @@ require (
 	github.com/cometbft/cometbft v0.38.17
 	github.com/cosmos/cosmos-sdk v0.53.0
 	github.com/cosmos/gogoproto v1.7.0
-	github.com/pokt-network/poktroll v0.1.25
+	github.com/pokt-network/poktroll v0.1.26-0.20250704150000-317746c0d64f
 	github.com/pokt-network/ring-go v0.1.0
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.0
