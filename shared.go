@@ -20,7 +20,7 @@ type SharedClient struct {
 // - Returns error if context deadline is exceeded or query fails
 func (sc *SharedClient) GetParams(ctx context.Context) (sharedtypes.Params, error) {
 	req := &sharedtypes.QueryParamsRequest{}
-	res, err := sc.QueryClient.Params(ctx, req)
+	res, err := sc.Params(ctx, req)
 	if err != nil {
 		return sharedtypes.Params{}, err
 	}

@@ -32,7 +32,7 @@ func (s *Signer) Sign(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Sign: error getting a ring for application address %s: %w",
-			appRing.Application.Address,
+			appRing.Address,
 			err,
 		)
 	}
@@ -60,7 +60,7 @@ func (s *Signer) Sign(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Sign: error signing using the ring of application with address %s: %w",
-			appRing.Application.Address,
+			appRing.Address,
 			err,
 		)
 	}
@@ -70,7 +70,7 @@ func (s *Signer) Sign(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Sign: error serializing the signature of application with address %s: %w",
-			appRing.Application.Address,
+			appRing.Address,
 			err,
 		)
 	}

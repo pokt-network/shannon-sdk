@@ -44,6 +44,7 @@ go get github.com/pokt-network/poktroll@latest
 make proto_regen
 make go_lint
 go mod tidy
+make test_all
 git commit -am "[Poktroll] update poktroll go dependency in the shannon-sdk"
 git push
 # Merge the PR
