@@ -30,6 +30,7 @@ type PoktNodeSessionFetcher interface {
 // TODO_REFACTOR: Prefix Endpoint methods with `Get` to clarify they are getters.
 type Endpoint interface {
 	Header() sessiontypes.SessionHeader
+	RPCType() sharedtypes.RPCType
 	Supplier() SupplierAddress
 	Endpoint() sharedtypes.SupplierEndpoint
 }
@@ -63,6 +64,7 @@ type SessionFilter struct {
 // Implements the Endpoint interface.
 type endpoint struct {
 	header           sessiontypes.SessionHeader
+	rpcType          sharedtypes.RPCType
 	supplierEndpoint sharedtypes.SupplierEndpoint
 	supplier         SupplierAddress
 }
@@ -154,6 +156,7 @@ func (f *SessionFilter) AllEndpoints() (map[SupplierAddress][]Endpoint, error) {
 				newEndpoints = append(newEndpoints, endpoint{
 					// TODO_TECHDEBT: Investigate whether we need to do deep copying here and why.
 					header:           *header,
+					rpcType:          e.RpcType,
 					supplierEndpoint: *e,
 					supplier:         SupplierAddress(supplier.OperatorAddress),
 				})
@@ -209,4 +212,9 @@ func (e endpoint) Supplier() SupplierAddress {
 // Header returns the session header on which the supplier's endpoint was retrieved.
 func (e endpoint) Header() sessiontypes.SessionHeader {
 	return e.header
+}
+
+// RPCType returns the RPC type of the endpoint.
+func (e endpoint) RPCType() sharedtypes.RPCType {
+	return e.rpcType
 }
