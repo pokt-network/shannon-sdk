@@ -106,6 +106,56 @@ benchmark_secp256k1_report_no_cgo_fast: ## Quick CGO-free secp256k1 comparison
 	@echo "💡 Quick CGO-free comparison (Ethereum libsecp256k1 excluded)"
 	@echo "=================================================================="
 
+#####################
+### Build Targets ###
+#####################
+
+.PHONY: build_fast
+build_fast: ## Build with Ethereum backend (fastest, requires CGO)
+	@echo "🚀 Building Shannon SDK with Ethereum secp256k1 backend..."
+	@echo "   • Requires CGO and libsecp256k1"
+	@echo "   • ~50% faster signing, ~80% faster verification"
+	@echo "=================================================================="
+	go build -tags="ethereum_secp256k1" -o shannon-sdk-fast ./cmd/...
+	@echo "✅ Built: shannon-sdk-fast"
+
+.PHONY: build_portable
+build_portable: ## Build with Decred backend (portable, no CGO)
+	@echo "🌍 Building Shannon SDK with Decred secp256k1 backend..."
+	@echo "   • Pure Go, no CGO dependencies"  
+	@echo "   • Excellent performance, maximum portability"
+	@echo "=================================================================="
+	CGO_ENABLED=0 go build -o shannon-sdk-portable ./cmd/...
+	@echo "✅ Built: shannon-sdk-portable"
+
+.PHONY: build_auto
+build_auto: ## Auto-select best backend for current platform
+	@echo "🎯 Auto-selecting optimal crypto backend..."
+	@if command -v gcc >/dev/null 2>&1 && [ "$$CGO_ENABLED" != "0" ]; then \
+		echo "   • CGO available, building fast version..."; \
+		$(MAKE) build_fast; \
+	else \
+		echo "   • No CGO or CGO disabled, building portable version..."; \
+		$(MAKE) build_portable; \
+	fi
+
+.PHONY: build_all
+build_all: ## Build both fast and portable versions
+	@echo "🏗️  Building all Shannon SDK variants..."
+	$(MAKE) build_fast
+	$(MAKE) build_portable
+	@echo "=================================================================="
+	@echo "✅ Built all variants:"
+	@echo "   • shannon-sdk-fast     (Ethereum backend)"
+	@echo "   • shannon-sdk-portable (Decred backend)"
+	@ls -la shannon-sdk-*
+
+.PHONY: clean_builds
+clean_builds: ## Remove all built binaries
+	@echo "🧹 Cleaning built binaries..."
+	rm -f shannon-sdk-fast shannon-sdk-portable
+	@echo "✅ Cleaned all builds"
+
 ###############
 ### Linting ###
 ###############

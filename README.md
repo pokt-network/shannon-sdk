@@ -7,6 +7,7 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
 - [TechDebt: Updating the ShannonSDK](#techdebt-updating-the-shannonsdk)
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [Crypto Backends](#crypto-backends)
 - [Complete working integration example](#complete-working-integration-example)
 - [Core Components](#core-components)
 - [Installation](#installation)
@@ -65,10 +66,49 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 ## Key Features
 
 - Secure request signing using ring signatures
+- **Pluggable crypto backends** for optimal performance vs portability
 - Endpoint selection based on customizable filters
 - Robust error handling and validation
 - Protocol-specific serialization for HTTP requests/responses
 - Go-idiomatic API design
+
+## Crypto Backends
+
+Shannon SDK supports multiple secp256k1 crypto backends selected at build time:
+
+### 🚀 Performance Comparison
+
+| Backend | Signing Speed | Verification Speed | CGO Required | Use Case |
+|---------|---------------|-------------------|--------------|----------|
+| **Ethereum** | 20.5μs 🥇 | 23.8μs 🥇 | ✅ | High-throughput applications |
+| **Decred** | 37.6μs 🥈 | 129.8μs 🥈 | ❌ | Maximum portability |
+
+### 🛠️ Quick Start
+
+```bash
+# Fast build (50% faster, requires CGO)
+make build_fast
+
+# Portable build (pure Go, works everywhere)  
+make build_portable
+
+# Auto-select best for your platform
+make build_auto
+```
+
+```go
+// Usage is identical regardless of backend
+signer, err := sdk.NewSignerFromHex("your-private-key-hex")
+if err != nil {
+    log.Fatal(err)
+}
+
+// See which backend is active
+sdk.LogBackendInfo(signer.GetCryptoSigner())
+// Output: 🔐 Shannon SDK Crypto Backend: ethereum backend (requires CGO) - fastest - Signing: 20.5μs, Verification: 23.8μs
+```
+
+📖 **[Full Crypto Backend Documentation](./CRYPTO_BACKENDS.md)**
 
 ## Complete working integration example
 
