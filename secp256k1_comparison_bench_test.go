@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 // Package sdk provides comprehensive benchmarks comparing different secp256k1 implementations.
 //
 // Performance Summary (Apple M1 Max):
