@@ -59,6 +59,11 @@ benchmark_profile: ## Run benchmarks with CPU profiling (generates cpu.prof)
 benchmark_memory: ## Run benchmarks with memory profiling (generates mem.prof)
 	go test -bench=. -benchmem -run=^$$ -memprofile=mem.prof
 
+.PHONY: benchmark_secp256k1
+benchmark_secp256k1: ## Compare different secp256k1 library implementations
+	@echo "Benchmarking secp256k1 implementations (CosmosSDK vs BTCSuite vs Decred vs Ethereum)..."
+	go test -bench="BenchmarkKeyGeneration|BenchmarkSigning|BenchmarkVerification" -benchmem -run=^$$ -benchtime=3s
+
 ###############
 ### Linting ###
 ###############
