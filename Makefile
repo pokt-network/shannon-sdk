@@ -35,6 +35,30 @@ proto_regen:
 test_all: ## Run all go tests showing detailed output only on failures
 	go test -v -count=1 -race -tags test ./...
 
+####################
+### Benchmarking ###
+####################
+
+.PHONY: benchmark_all
+benchmark_all: ## Run all benchmarks
+	go test -bench=. -benchmem -run=^$$ ./...
+
+.PHONY: benchmark_signer
+benchmark_signer: ## Run signer benchmarks
+	go test -bench=. -benchmem -run=^$$ -benchtime=10s
+
+.PHONY: benchmark_compare
+benchmark_compare: ## Run benchmarks and save results for comparison (saves to bench_new.txt)
+	go test -bench=. -benchmem -run=^$$ ./... | tee bench_new.txt
+
+.PHONY: benchmark_profile
+benchmark_profile: ## Run benchmarks with CPU profiling (generates cpu.prof)
+	go test -bench=. -benchmem -run=^$$ -cpuprofile=cpu.prof
+
+.PHONY: benchmark_memory
+benchmark_memory: ## Run benchmarks with memory profiling (generates mem.prof)
+	go test -bench=. -benchmem -run=^$$ -memprofile=mem.prof
+
 ###############
 ### Linting ###
 ###############
