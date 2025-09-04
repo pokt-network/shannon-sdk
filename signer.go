@@ -8,7 +8,7 @@ import (
 )
 
 // Signer holds the application or gateway's private key used to sign Relay Requests.
-// 
+//
 // This version has been updated to use pluggable crypto backends for optimal performance
 // vs portability trade-offs. The backend is selected at build time:
 // - With "ethereum_secp256k1" tag: Uses Ethereum's libsecp256k1 (fastest, requires CGO)
@@ -16,7 +16,7 @@ import (
 type Signer struct {
 	// PrivateKeyHex is the hex-encoded private key string (maintained for compatibility)
 	PrivateKeyHex string
-	
+
 	// cryptoSigner is the pluggable crypto backend
 	cryptoSigner CryptoSigner
 }
@@ -25,19 +25,20 @@ type Signer struct {
 // The crypto backend is automatically selected based on build tags.
 //
 // Example usage:
-//   signer, err := sdk.NewSignerFromHex("1234567890abcdef...")
-//   if err != nil {
-//       log.Fatal(err)
-//   }
-//   
-//   // Log which backend is being used
-//   sdk.LogBackendInfo(signer.cryptoSigner)
+//
+//	signer, err := sdk.NewSignerFromHex("1234567890abcdef...")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+//	// Log which backend is being used
+//	sdk.LogBackendInfo(signer.cryptoSigner)
 func NewSignerFromHex(privateKeyHex string) (*Signer, error) {
 	cryptoSigner, err := NewSigner(privateKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create crypto signer: %w", err)
 	}
-	
+
 	return &Signer{
 		PrivateKeyHex: privateKeyHex,
 		cryptoSigner:  cryptoSigner,
@@ -82,7 +83,7 @@ func (s *Signer) Sign(
 		}
 		s.cryptoSigner = cryptoSigner
 	}
-	
+
 	// Delegate to the pluggable crypto backend
 	return s.cryptoSigner.Sign(ctx, relayRequest, appRing)
 }

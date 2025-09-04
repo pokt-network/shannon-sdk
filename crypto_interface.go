@@ -14,11 +14,11 @@ type CryptoSigner interface {
 	// Sign signs the given relay request using the signer's private key and the application's ring.
 	// Returns a pointer to avoid implicit output modification.
 	Sign(ctx context.Context, relayRequest *servicetypes.RelayRequest, appRing ApplicationRing) (*servicetypes.RelayRequest, error)
-	
+
 	// DecodePrivateKey converts a hex-encoded private key string to a PrivateKey instance.
 	// This method handles the backend-specific private key format and validation.
 	DecodePrivateKey(hexKey string) (PrivateKey, error)
-	
+
 	// GetBackendInfo returns information about the crypto backend being used.
 	GetBackendInfo() BackendInfo
 }
@@ -28,13 +28,13 @@ type CryptoSigner interface {
 type PrivateKey interface {
 	// Sign creates a signature over the given hash using this private key.
 	Sign(hash []byte) ([]byte, error)
-	
+
 	// Bytes returns the raw bytes of the private key.
 	Bytes() []byte
-	
+
 	// PubKey returns the corresponding public key.
 	PubKey() PublicKey
-	
+
 	// Hex returns the hex-encoded string representation of the private key.
 	Hex() string
 }
@@ -43,10 +43,10 @@ type PrivateKey interface {
 type PublicKey interface {
 	// Verify checks if the given signature is valid for the hash using this public key.
 	Verify(hash []byte, signature []byte) bool
-	
+
 	// Bytes returns the raw bytes of the public key.
 	Bytes() []byte
-	
+
 	// Hex returns the hex-encoded string representation of the public key.
 	Hex() string
 }
@@ -55,17 +55,17 @@ type PublicKey interface {
 type BackendInfo struct {
 	// Name of the backend (e.g., "ethereum", "decred")
 	Name string
-	
+
 	// CGORequired indicates if this backend requires CGO to be enabled
 	CGORequired bool
-	
+
 	// Performance metrics from benchmarks (in microseconds)
 	SigningSpeedUs      float64
 	VerificationSpeedUs float64
-	
+
 	// Human-readable performance description
 	PerformanceLevel string
-	
+
 	// Additional notes about the backend
 	Notes string
 }
@@ -76,8 +76,8 @@ func (bi BackendInfo) String() string {
 	if bi.CGORequired {
 		cgoStatus = "requires CGO"
 	}
-	
-	return fmt.Sprintf("%s backend (%s) - %s - Signing: %.1fμs, Verification: %.1fμs", 
+
+	return fmt.Sprintf("%s backend (%s) - %s - Signing: %.1fμs, Verification: %.1fμs",
 		bi.Name, cgoStatus, bi.PerformanceLevel, bi.SigningSpeedUs, bi.VerificationSpeedUs)
 }
 
@@ -88,9 +88,10 @@ func (bi BackendInfo) String() string {
 // - Without tag: Uses Decred's implementation (portable, pure Go)
 //
 // Example usage:
-//   signer := sdk.NewSigner("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
-//   info := signer.GetBackendInfo()
-//   fmt.Printf("Using: %s\n", info)
+//
+//	signer := sdk.NewSigner("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+//	info := signer.GetBackendInfo()
+//	fmt.Printf("Using: %s\n", info)
 func NewSigner(privateKeyHex string) (CryptoSigner, error) {
 	return newCryptoSigner(privateKeyHex)
 }

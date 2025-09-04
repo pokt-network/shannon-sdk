@@ -20,7 +20,7 @@ The Shannon SDK supports multiple secp256k1 crypto backends that can be selected
 # Fast build (requires CGO, ~50% faster)
 make build_fast
 
-# Portable build (pure Go, works everywhere) 
+# Portable build (pure Go, works everywhere)
 make build_portable
 
 # Auto-select best for your platform
@@ -236,18 +236,18 @@ func TestSigningCompatibility(t *testing.T) {
 
 ### Choose Ethereum Backend When:
 
-✅ **Maximum performance is critical**  
-✅ **High transaction throughput applications**  
-✅ **CGO dependencies are acceptable**  
-✅ **Deployment environment is controlled**  
+✅ **Maximum performance is critical**
+✅ **High transaction throughput applications**
+✅ **CGO dependencies are acceptable**
+✅ **Deployment environment is controlled**
 ✅ **Building for specific platforms**
 
 ### Choose Decred Backend When:
 
-✅ **Simple deployment is priority**  
-✅ **Cross-platform compatibility needed**  
-✅ **CGO dependencies are problematic**  
-✅ **Static binary distribution required**  
+✅ **Simple deployment is priority**
+✅ **Cross-platform compatibility needed**
+✅ **CGO dependencies are problematic**
+✅ **Static binary distribution required**
 ✅ **Performance requirements are moderate**
 
 ### Platform Considerations

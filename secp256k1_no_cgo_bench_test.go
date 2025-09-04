@@ -14,13 +14,13 @@ import (
 
 	// Current Cosmos SDK implementation
 	cosmossdk "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	
+
 	// Alternative CGO-free implementations
 	btcsuite "github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	decred "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	decred_ecdsa "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
-	
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,7 +73,7 @@ func BenchmarkKeyGenerationNoCgo_Decred(b *testing.B) {
 // CGO-free Signing Benchmarks
 func BenchmarkSigningNoCgo_CosmosSDK(b *testing.B) {
 	privKey := cosmossdk.GenPrivKey()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := privKey.Sign(testHashNoCgo[:])
@@ -86,7 +86,7 @@ func BenchmarkSigningNoCgo_CosmosSDK(b *testing.B) {
 func BenchmarkSigningNoCgo_BTCSuite(b *testing.B) {
 	privKeyBytes := generateRandomBytesNoCgo(32)
 	privKey, _ := btcsuite.PrivKeyFromBytes(privKeyBytes)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = ecdsa.Sign(privKey, testHashNoCgo[:])
@@ -96,7 +96,7 @@ func BenchmarkSigningNoCgo_BTCSuite(b *testing.B) {
 func BenchmarkSigningNoCgo_Decred(b *testing.B) {
 	privKeyBytes := generateRandomBytesNoCgo(32)
 	privKey := decred.PrivKeyFromBytes(privKeyBytes)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = decred_ecdsa.Sign(privKey, testHashNoCgo[:])
@@ -108,7 +108,7 @@ func BenchmarkVerificationNoCgo_CosmosSDK(b *testing.B) {
 	privKey := cosmossdk.GenPrivKey()
 	pubKey := privKey.PubKey()
 	signature, _ := privKey.Sign(testHashNoCgo[:])
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		valid := pubKey.VerifySignature(testHashNoCgo[:], signature)
@@ -122,7 +122,7 @@ func BenchmarkVerificationNoCgo_BTCSuite(b *testing.B) {
 	privKeyBytes := generateRandomBytesNoCgo(32)
 	privKey, pubKey := btcsuite.PrivKeyFromBytes(privKeyBytes)
 	signature := ecdsa.Sign(privKey, testHashNoCgo[:])
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		valid := signature.Verify(testHashNoCgo[:], pubKey)
@@ -137,7 +137,7 @@ func BenchmarkVerificationNoCgo_Decred(b *testing.B) {
 	privKey := decred.PrivKeyFromBytes(privKeyBytes)
 	pubKey := privKey.PubKey()
 	signature := decred_ecdsa.Sign(privKey, testHashNoCgo[:])
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		valid := signature.Verify(testHashNoCgo[:], pubKey)
@@ -151,24 +151,24 @@ func BenchmarkVerificationNoCgo_Decred(b *testing.B) {
 func TestCompatibilityNoCgo(t *testing.T) {
 	// Generate a test private key
 	privKeyBytes := generateRandomBytesNoCgo(32)
-	
+
 	// Test Cosmos SDK
 	cosmosPrivKey := &cosmossdk.PrivKey{Key: privKeyBytes}
 	cosmosPubKey := cosmosPrivKey.PubKey()
 	cosmosSignature, err := cosmosPrivKey.Sign(testHashNoCgo[:])
 	require.NoError(t, err)
 	require.True(t, cosmosPubKey.VerifySignature(testHashNoCgo[:], cosmosSignature))
-	
+
 	// Test btcsuite
 	btcPrivKey, btcPubKey := btcsuite.PrivKeyFromBytes(privKeyBytes)
 	btcSignature := ecdsa.Sign(btcPrivKey, testHashNoCgo[:])
 	require.True(t, btcSignature.Verify(testHashNoCgo[:], btcPubKey))
-	
+
 	// Test Decred
 	decredPrivKey := decred.PrivKeyFromBytes(privKeyBytes)
 	decredPubKey := decredPrivKey.PubKey()
 	decredSignature := decred_ecdsa.Sign(decredPrivKey, testHashNoCgo[:])
 	require.True(t, decredSignature.Verify(testHashNoCgo[:], decredPubKey))
-	
+
 	t.Log("All CGO-free secp256k1 implementations produce valid signatures")
 }

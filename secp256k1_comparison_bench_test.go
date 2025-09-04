@@ -20,22 +20,23 @@
 // VERIFICATION:
 // - Ethereum (libsecp256k1): ~23.8μs (FASTEST, 0 allocs)
 // - BTCSuite:                ~130.6μs (slower, 16 allocs)
-// - Decred:                  ~129.5μs (slower, 16 allocs)  
+// - Decred:                  ~129.5μs (slower, 16 allocs)
 // - CosmosSDK:               ~145.0μs (SLOWEST, 19 allocs)
 //
+// TODO_FUTURE: Consider adding benchmarks for batch verification scenarios
 // RECOMMENDATIONS:
 // 1. For maximum performance: Use Ethereum's libsecp256k1 wrapper (requires CGO)
-//    - ~50% faster signing, ~80% faster verification
-//    - Significantly fewer memory allocations
-//    - Production-ready (Bitcoin Core standard)
+//   - ~50% faster signing, ~80% faster verification
+//   - Significantly fewer memory allocations
+//   - Production-ready (Bitcoin Core standard)
 //
 // 2. For CGO-free alternative: Use Decred implementation
-//    - Similar performance to BTCSuite but slightly cleaner API
-//    - Good balance of speed and memory usage
+//   - Similar performance to BTCSuite but slightly cleaner API
+//   - Good balance of speed and memory usage
 //
 // 3. Current CosmosSDK implementation is acceptable but not optimal
-//    - More memory allocations than alternatives
-//    - Slightly slower verification times
+//   - More memory allocations than alternatives
+//   - Slightly slower verification times
 package sdk
 
 import (
@@ -46,23 +47,23 @@ import (
 
 	// Current Cosmos SDK implementation
 	cosmossdk "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	
+
 	// Alternative implementations to benchmark
 	btcsuite "github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	decred "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	decred_ecdsa "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
-	
+
 	// Ethereum's libsecp256k1 wrapper (requires CGO)
 	ethsecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
-	
+
 	"github.com/stretchr/testify/require"
 )
 
 const (
 	// Standard message hash for consistent benchmarking
 	testMessage = "test message for secp256k1 benchmarking"
-	numKeys     = 100 // Number of keys to generate for batch operations
+	numKeys     = 100 // Number of keys to generate for batch operations  // TODO_BENCHMARK: Add batch signing/verification tests
 )
 
 var (
@@ -123,7 +124,7 @@ func BenchmarkKeyGeneration_Ethereum(b *testing.B) {
 // BenchmarkSigning_CosmosSDK benchmarks signing using Cosmos SDK
 func BenchmarkSigning_CosmosSDK(b *testing.B) {
 	privKey := cosmossdk.GenPrivKey()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := privKey.Sign(testHash[:])
@@ -137,7 +138,7 @@ func BenchmarkSigning_CosmosSDK(b *testing.B) {
 func BenchmarkSigning_BTCSuite(b *testing.B) {
 	privKeyBytes := generateRandomBytes(32)
 	privKey, _ := btcsuite.PrivKeyFromBytes(privKeyBytes)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = ecdsa.Sign(privKey, testHash[:])
@@ -148,7 +149,7 @@ func BenchmarkSigning_BTCSuite(b *testing.B) {
 func BenchmarkSigning_Decred(b *testing.B) {
 	privKeyBytes := generateRandomBytes(32)
 	privKey := decred.PrivKeyFromBytes(privKeyBytes)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = decred_ecdsa.Sign(privKey, testHash[:])
@@ -158,7 +159,7 @@ func BenchmarkSigning_Decred(b *testing.B) {
 // BenchmarkSigning_Ethereum benchmarks signing using Ethereum's libsecp256k1
 func BenchmarkSigning_Ethereum(b *testing.B) {
 	privKeyBytes := generateRandomBytes(32)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := ethsecp256k1.Sign(testHash[:], privKeyBytes)
@@ -173,7 +174,7 @@ func BenchmarkVerification_CosmosSDK(b *testing.B) {
 	privKey := cosmossdk.GenPrivKey()
 	pubKey := privKey.PubKey()
 	signature, _ := privKey.Sign(testHash[:])
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		valid := pubKey.VerifySignature(testHash[:], signature)
@@ -189,7 +190,7 @@ func BenchmarkVerification_BTCSuite(b *testing.B) {
 	privKey, _ := btcsuite.PrivKeyFromBytes(privKeyBytes)
 	pubKey := privKey.PubKey()
 	signature := ecdsa.Sign(privKey, testHash[:])
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		valid := signature.Verify(testHash[:], pubKey)
@@ -205,7 +206,7 @@ func BenchmarkVerification_Decred(b *testing.B) {
 	privKey := decred.PrivKeyFromBytes(privKeyBytes)
 	pubKey := privKey.PubKey()
 	signature := decred_ecdsa.Sign(privKey, testHash[:])
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		valid := signature.Verify(testHash[:], pubKey)
@@ -219,11 +220,11 @@ func BenchmarkVerification_Decred(b *testing.B) {
 func BenchmarkVerification_Ethereum(b *testing.B) {
 	privKeyBytes := generateRandomBytes(32)
 	signature, _ := ethsecp256k1.Sign(testHash[:], privKeyBytes)
-	
+
 	// Recover public key from signature for verification
 	pubKey, err := ethsecp256k1.RecoverPubkey(testHash[:], signature)
 	require.NoError(b, err)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		valid := ethsecp256k1.VerifySignature(pubKey, testHash[:], signature[:64]) // Remove recovery ID
@@ -237,7 +238,7 @@ func BenchmarkVerification_Ethereum(b *testing.B) {
 func BenchmarkPrivateKeyDecoding_CosmosSDK(b *testing.B) {
 	privKey := cosmossdk.GenPrivKey()
 	privKeyHex := hex.EncodeToString(privKey.Bytes())
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		privKeyBytes, err := hex.DecodeString(privKeyHex)
@@ -252,7 +253,7 @@ func BenchmarkPrivateKeyDecoding_CosmosSDK(b *testing.B) {
 func BenchmarkPrivateKeyDecoding_BTCSuite(b *testing.B) {
 	privKeyBytes := generateRandomBytes(32)
 	privKeyHex := hex.EncodeToString(privKeyBytes)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		privKeyBytes, err := hex.DecodeString(privKeyHex)
@@ -267,7 +268,7 @@ func BenchmarkPrivateKeyDecoding_BTCSuite(b *testing.B) {
 func BenchmarkPrivateKeyDecoding_Decred(b *testing.B) {
 	privKeyBytes := generateRandomBytes(32)
 	privKeyHex := hex.EncodeToString(privKeyBytes)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		privKeyBytes, err := hex.DecodeString(privKeyHex)
@@ -282,7 +283,7 @@ func BenchmarkPrivateKeyDecoding_Decred(b *testing.B) {
 func BenchmarkPrivateKeyDecoding_Ethereum(b *testing.B) {
 	privKeyBytes := generateRandomBytes(32)
 	privKeyHex := hex.EncodeToString(privKeyBytes)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		privKeyBytes, err := hex.DecodeString(privKeyHex)
@@ -301,7 +302,7 @@ func BenchmarkBatchSigning_CosmosSDK(b *testing.B) {
 	for i := range keys {
 		keys[i] = cosmossdk.GenPrivKey()
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, key := range keys {
@@ -320,7 +321,7 @@ func BenchmarkBatchSigning_BTCSuite(b *testing.B) {
 		privKeyBytes := generateRandomBytes(32)
 		keys[i], _ = btcsuite.PrivKeyFromBytes(privKeyBytes)
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, key := range keys {
@@ -336,7 +337,7 @@ func BenchmarkBatchSigning_Decred(b *testing.B) {
 		privKeyBytes := generateRandomBytes(32)
 		keys[i] = decred.PrivKeyFromBytes(privKeyBytes)
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, key := range keys {
@@ -351,7 +352,7 @@ func BenchmarkBatchSigning_Ethereum(b *testing.B) {
 	for i := range keys {
 		keys[i] = generateRandomBytes(32)
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, key := range keys {
@@ -387,7 +388,7 @@ func BenchmarkMemoryAllocation_BTCSuite(b *testing.B) {
 	}
 }
 
-// BenchmarkMemoryAllocation_Decred benchmarks memory allocation for Decred operations  
+// BenchmarkMemoryAllocation_Decred benchmarks memory allocation for Decred operations
 func BenchmarkMemoryAllocation_Decred(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -415,31 +416,31 @@ func BenchmarkMemoryAllocation_Ethereum(b *testing.B) {
 func TestCompatibility(t *testing.T) {
 	// Generate a test private key
 	privKeyBytes := generateRandomBytes(32)
-	
+
 	// Test Cosmos SDK
 	cosmosPrivKey := &cosmossdk.PrivKey{Key: privKeyBytes}
 	cosmosPubKey := cosmosPrivKey.PubKey()
 	cosmosSignature, err := cosmosPrivKey.Sign(testHash[:])
 	require.NoError(t, err)
 	require.True(t, cosmosPubKey.VerifySignature(testHash[:], cosmosSignature))
-	
+
 	// Test btcsuite
 	btcPrivKey, btcPubKey := btcsuite.PrivKeyFromBytes(privKeyBytes)
 	btcSignature := ecdsa.Sign(btcPrivKey, testHash[:])
 	require.True(t, btcSignature.Verify(testHash[:], btcPubKey))
-	
+
 	// Test Decred
 	decredPrivKey := decred.PrivKeyFromBytes(privKeyBytes)
 	decredPubKey := decredPrivKey.PubKey()
 	decredSignature := decred_ecdsa.Sign(decredPrivKey, testHash[:])
 	require.True(t, decredSignature.Verify(testHash[:], decredPubKey))
-	
+
 	// Test Ethereum (requires CGO)
 	ethSignature, err := ethsecp256k1.Sign(testHash[:], privKeyBytes)
 	require.NoError(t, err)
 	ethPubKey, err := ethsecp256k1.RecoverPubkey(testHash[:], ethSignature)
 	require.NoError(t, err)
 	require.True(t, ethsecp256k1.VerifySignature(ethPubKey, testHash[:], ethSignature[:64]))
-	
+
 	t.Log("All secp256k1 implementations produce valid signatures")
 }

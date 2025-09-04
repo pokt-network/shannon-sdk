@@ -8,12 +8,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	decred "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	decred_ecdsa "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
+	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	"github.com/pokt-network/ring-go"
 )
 
+// TODO_OPTIMIZE: Consider caching computed public keys to avoid regenerating them on each call
 // decredSigner implements CryptoSigner using Decred's pure Go secp256k1 implementation.
 // This provides excellent performance without requiring CGO, making it highly portable.
 type decredSigner struct {
@@ -34,12 +35,12 @@ type DecredPublicKey struct {
 // This function is called by NewSigner when the ethereum_secp256k1 build tag is NOT active.
 func newCryptoSigner(privateKeyHex string) (CryptoSigner, error) {
 	signer := &decredSigner{}
-	
+
 	privKey, err := signer.DecodePrivateKey(privateKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode private key: %w", err)
 	}
-	
+
 	signer.privateKey = privKey.(*DecredPrivateKey)
 	return signer, nil
 }
@@ -78,6 +79,7 @@ func (s *decredSigner) Sign(
 		return nil, fmt.Errorf("Sign: error decoding private key to scalar: %w", err)
 	}
 
+	// TODO_INVESTIGATE: Profile memory allocations here - Decred shows 32 allocs vs Ethereum's 3
 	// Sign the request using the session ring and signer's private key
 	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
 	if err != nil {
@@ -109,11 +111,11 @@ func (s *decredSigner) DecodePrivateKey(hexKey string) (PrivateKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid hex key: %w", err)
 	}
-	
+
 	if len(keyBytes) != 32 {
 		return nil, fmt.Errorf("invalid private key length: expected 32 bytes, got %d", len(keyBytes))
 	}
-	
+
 	privKey := decred.PrivKeyFromBytes(keyBytes)
 	return &DecredPrivateKey{key: privKey}, nil
 }
@@ -123,7 +125,7 @@ func (s *decredSigner) GetBackendInfo() BackendInfo {
 	return BackendInfo{
 		Name:                "decred",
 		CGORequired:         false,
-		SigningSpeedUs:      37.6, // From benchmark results
+		SigningSpeedUs:      37.6,  // From benchmark results
 		VerificationSpeedUs: 129.8, // From benchmark results
 		PerformanceLevel:    "excellent (CGO-free)",
 		Notes:               "Pure Go implementation with optimal CGO-free performance",
@@ -142,7 +144,7 @@ func getAvailableBackends() []BackendInfo {
 			Notes:               "Pure Go implementation with optimal CGO-free performance",
 		},
 	}
-	
+
 	// Note about Ethereum backend being available with different build tags
 	backends = append(backends, BackendInfo{
 		Name:                "ethereum",
@@ -152,7 +154,7 @@ func getAvailableBackends() []BackendInfo {
 		PerformanceLevel:    "fastest (not compiled)",
 		Notes:               "Available with 'ethereum_secp256k1' build tag - requires CGO",
 	})
-	
+
 	return backends
 }
 
@@ -161,7 +163,7 @@ func (k *DecredPrivateKey) Sign(hash []byte) ([]byte, error) {
 	if len(hash) != 32 {
 		return nil, fmt.Errorf("hash must be exactly 32 bytes, got %d", len(hash))
 	}
-	
+
 	signature := decred_ecdsa.Sign(k.key, hash)
 	return signature.Serialize(), nil
 }
@@ -186,13 +188,13 @@ func (k *DecredPublicKey) Verify(hash []byte, signatureBytes []byte) bool {
 	if len(hash) != 32 {
 		return false
 	}
-	
+
 	// Parse DER signature format - this is what Decred's Serialize() returns
 	signature, err := decred_ecdsa.ParseDERSignature(signatureBytes)
 	if err != nil {
 		return false
 	}
-	
+
 	return signature.Verify(hash, k.key)
 }
 

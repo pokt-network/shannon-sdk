@@ -10,7 +10,7 @@ def format_time(ns):
     if ns >= 1_000_000:
         return f"{ns/1_000_000:.1f} ms"
     elif ns >= 1_000:
-        return f"{ns/1_000:.1f} μs" 
+        return f"{ns/1_000:.1f} μs"
     else:
         return f"{ns:.0f} ns"
 
@@ -42,14 +42,14 @@ def parse_benchmark_output():
         line = line.strip()
         if not line.startswith('Benchmark'):
             continue
-            
+
         # Parse benchmark line: BenchmarkSigning_CosmosSDK-10  31327  37620 ns/op  1744 B/op  34 allocs/op
         parts = line.split()
         if len(parts) < 8:
             continue
             
         bench_name = parts[0]
-        iterations = parts[1] 
+        iterations = parts[1]
         ns_per_op = parts[2]
         bytes_per_op = parts[4]
         allocs_per_op = parts[6]
@@ -67,7 +67,7 @@ def parse_benchmark_output():
         
         data[operation][library] = {
             'ns': float(ns_per_op),
-            'bytes': float(bytes_per_op), 
+            'bytes': float(bytes_per_op),
             'allocs': float(allocs_per_op),
             'iterations': int(iterations)
         }
