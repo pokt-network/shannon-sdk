@@ -3,6 +3,10 @@
 ### Makefile Helpers ###
 ########################
 
+# Include modular makefiles
+include makefiles/benchmark.mk
+include makefiles/build.mk
+
 .PHONY: prompt_user
 # Internal helper target - prompt the user before continuing
 prompt_user:
@@ -15,7 +19,27 @@ list: ## List all make targets
 .PHONY: help
 .DEFAULT_GOAL := help
 help: ## Prints all the targets in all the Makefiles
-	@grep -h -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-60s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m📋 Shannon SDK Makefile Targets\033[0m"
+	@echo ""
+	@echo "\033[1;34m=== 🔍 Information & Discovery ===\033[0m"
+	@grep -h -E '^(list|help):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 🧪 Testing ===\033[0m"
+	@grep -h -E '^test_.*:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== ⚡ Benchmarking ===\033[0m"
+	@grep -h -E '^benchmark_.*:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 🔨 Building ===\033[0m"
+	@grep -h -E '^(build_.*|clean_builds):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 🧹 Code Quality ===\033[0m"
+	@grep -h -E '^go_lint:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 📝 TODO Management ===\033[0m"
+	@grep -h -E '^todo_.*:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
 
 ################
 ### Protobuf ###
@@ -35,126 +59,7 @@ proto_regen:
 test_all: ## Run all go tests showing detailed output only on failures
 	go test -v -count=1 -race -tags test ./...
 
-####################
-### Benchmarking ###
-####################
 
-.PHONY: benchmark_all
-benchmark_all: ## Run all benchmarks
-	go test -bench=. -benchmem -run=^$$ ./...
-
-.PHONY: benchmark_signer
-benchmark_signer: ## Run signer benchmarks
-	go test -bench=. -benchmem -run=^$$ -benchtime=10s
-
-.PHONY: benchmark_compare
-benchmark_compare: ## Run benchmarks and save results for comparison (saves to bench_new.txt)
-	go test -bench=. -benchmem -run=^$$ ./... | tee bench_new.txt
-
-.PHONY: benchmark_profile
-benchmark_profile: ## Run benchmarks with CPU profiling (generates cpu.prof)
-	go test -bench=. -benchmem -run=^$$ -cpuprofile=cpu.prof
-
-.PHONY: benchmark_memory
-benchmark_memory: ## Run benchmarks with memory profiling (generates mem.prof)
-	go test -bench=. -benchmem -run=^$$ -memprofile=mem.prof
-
-.PHONY: benchmark_secp256k1
-benchmark_secp256k1: ## Compare different secp256k1 library implementations
-	@echo "Benchmarking secp256k1 implementations (CosmosSDK vs BTCSuite vs Decred vs Ethereum)..."
-	go test -bench="BenchmarkKeyGeneration|BenchmarkSigning|BenchmarkVerification" -benchmem -run=^$$ -benchtime=3s
-
-.PHONY: benchmark_secp256k1_report
-benchmark_secp256k1_report: ## Compare secp256k1 implementations with formatted report
-	@echo "🔬 Benchmarking secp256k1 implementations..."
-	@echo "=================================================================="
-	@timeout 60s go test -bench="BenchmarkKeyGeneration|BenchmarkSigning|BenchmarkVerification" -benchmem -run=^$$ -benchtime=3s 2>/dev/null | python3 format_benchmark.py || (echo "⚠️  Benchmark timed out or failed. Trying without Ethereum library..." && make benchmark_secp256k1_report_no_cgo)
-	@echo "=================================================================="
-	@echo "💡 Key Insights:"
-	@echo "   🥇 = Fastest    🥈 = Second fastest    🥉 = Third fastest"
-	@echo ""
-	@echo "   • Ethereum (libsecp256k1) is fastest but requires CGO"
-	@echo "   • Decred offers best CGO-free performance"
-	@echo "   • CosmosSDK has most memory allocations"
-	@echo "   • BTCSuite does extensive validation during key generation"
-	@echo "=================================================================="
-
-.PHONY: benchmark_secp256k1_report_fast
-benchmark_secp256k1_report_fast: ## Quick secp256k1 comparison (1s benchtime)
-	@echo "🔬 Quick secp256k1 benchmark (1s each)..."
-	@echo "=================================================================="
-	@timeout 30s go test -bench="BenchmarkKeyGeneration|BenchmarkSigning|BenchmarkVerification" -benchmem -run=^$$ -benchtime=1s 2>/dev/null | python3 format_benchmark.py || (echo "⚠️  Benchmark timed out. Trying CGO-free only..." && make benchmark_secp256k1_report_no_cgo_fast)
-	@echo "=================================================================="
-	@echo "💡 This was a quick benchmark. Use 'make benchmark_secp256k1_report' for full results."
-	@echo "=================================================================="
-
-.PHONY: benchmark_secp256k1_report_no_cgo
-benchmark_secp256k1_report_no_cgo: ## Compare CGO-free secp256k1 implementations only
-	@echo "🔬 Benchmarking CGO-free secp256k1 implementations..."
-	@echo "=================================================================="
-	@CGO_ENABLED=0 go test -bench="BenchmarkKeyGenerationNoCgo|BenchmarkSigningNoCgo|BenchmarkVerificationNoCgo" -benchmem -run=^$$ -benchtime=3s 2>/dev/null | python3 format_benchmark.py
-	@echo "=================================================================="
-	@echo "💡 CGO-free comparison only (Ethereum libsecp256k1 excluded)"
-	@echo "=================================================================="
-
-.PHONY: benchmark_secp256k1_report_no_cgo_fast  
-benchmark_secp256k1_report_no_cgo_fast: ## Quick CGO-free secp256k1 comparison
-	@echo "🔬 Quick CGO-free secp256k1 benchmark..."
-	@echo "=================================================================="
-	@CGO_ENABLED=0 go test -bench="BenchmarkKeyGenerationNoCgo|BenchmarkSigningNoCgo|BenchmarkVerificationNoCgo" -benchmem -run=^$$ -benchtime=1s 2>/dev/null | python3 format_benchmark.py
-	@echo "=================================================================="
-	@echo "💡 Quick CGO-free comparison (Ethereum libsecp256k1 excluded)"
-	@echo "=================================================================="
-
-#####################
-### Build Targets ###
-#####################
-
-.PHONY: build_fast
-build_fast: ## Build with Ethereum backend (fastest, requires CGO)
-	@echo "🚀 Building Shannon SDK with Ethereum secp256k1 backend..."
-	@echo "   • Requires CGO and libsecp256k1"
-	@echo "   • ~50% faster signing, ~80% faster verification"
-	@echo "=================================================================="
-	go build -tags="ethereum_secp256k1" -o shannon-sdk-fast ./cmd/...
-	@echo "✅ Built: shannon-sdk-fast"
-
-.PHONY: build_portable
-build_portable: ## Build with Decred backend (portable, no CGO)
-	@echo "🌍 Building Shannon SDK with Decred secp256k1 backend..."
-	@echo "   • Pure Go, no CGO dependencies"  
-	@echo "   • Excellent performance, maximum portability"
-	@echo "=================================================================="
-	CGO_ENABLED=0 go build -o shannon-sdk-portable ./cmd/...
-	@echo "✅ Built: shannon-sdk-portable"
-
-.PHONY: build_auto
-build_auto: ## Auto-select best backend for current platform
-	@echo "🎯 Auto-selecting optimal crypto backend..."
-	@if command -v gcc >/dev/null 2>&1 && [ "$$CGO_ENABLED" != "0" ]; then \
-		echo "   • CGO available, building fast version..."; \
-		$(MAKE) build_fast; \
-	else \
-		echo "   • No CGO or CGO disabled, building portable version..."; \
-		$(MAKE) build_portable; \
-	fi
-
-.PHONY: build_all
-build_all: ## Build both fast and portable versions
-	@echo "🏗️  Building all Shannon SDK variants..."
-	$(MAKE) build_fast
-	$(MAKE) build_portable
-	@echo "=================================================================="
-	@echo "✅ Built all variants:"
-	@echo "   • shannon-sdk-fast     (Ethereum backend)"
-	@echo "   • shannon-sdk-portable (Decred backend)"
-	@ls -la shannon-sdk-*
-
-.PHONY: clean_builds
-clean_builds: ## Remove all built binaries
-	@echo "🧹 Cleaning built binaries..."
-	rm -f shannon-sdk-fast shannon-sdk-portable
-	@echo "✅ Cleaned all builds"
 
 ###############
 ### Linting ###

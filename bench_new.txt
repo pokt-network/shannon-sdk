@@ -1,0 +1,5 @@
+FAIL	github.com/pokt-network/shannon-sdk [build failed]
+FAIL	github.com/pokt-network/shannon-sdk/crypto [build failed]
+PASS
+ok  	github.com/pokt-network/shannon-sdk/types	0.393s
+FAIL

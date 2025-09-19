@@ -1,4 +1,4 @@
-package sdk
+package crypto
 
 import (
 	"context"
@@ -7,9 +7,19 @@ import (
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
 
+// ApplicationRing is an interface that crypto package needs from the main SDK.
+// This avoids circular dependencies.
+type ApplicationRing interface {
+	GetRing(ctx context.Context, sessionEndHeight uint64) (interface{}, error)
+}
+
 // CryptoSigner defines the interface for signing operations in the Shannon SDK.
-// Different implementations can be selected at build time for optimal performance
-// vs portability trade-offs.
+// BUILD-TIME CONFIGURATION: Different implementations are selected at compile time
+// based on build tags for optimal performance vs portability trade-offs.
+//
+// Available backends:
+// - Ethereum (build tag: ethereum_secp256k1): Uses libsecp256k1 C library, fastest performance, requires CGO
+// - Decred (default, no build tag): Pure Go implementation, excellent performance, maximum portability
 type CryptoSigner interface {
 	// Sign signs the given relay request using the signer's private key and the application's ring.
 	// Returns a pointer to avoid implicit output modification.
@@ -82,14 +92,15 @@ func (bi BackendInfo) String() string {
 }
 
 // NewSigner creates a new CryptoSigner instance using the specified private key.
-// The actual implementation is determined at build time based on build tags:
+// BUILD-TIME CONFIGURATION: The actual implementation is determined at compile time
+// based on build tags:
 //
 // - With "ethereum_secp256k1" tag: Uses Ethereum's libsecp256k1 (fastest, requires CGO)
 // - Without tag: Uses Decred's implementation (portable, pure Go)
 //
 // Example usage:
 //
-//	signer := sdk.NewSigner("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+//	signer := crypto.NewSigner("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 //	info := signer.GetBackendInfo()
 //	fmt.Printf("Using: %s\n", info)
 func NewSigner(privateKeyHex string) (CryptoSigner, error) {
@@ -98,12 +109,13 @@ func NewSigner(privateKeyHex string) (CryptoSigner, error) {
 
 // GetAvailableBackends returns information about all backends that could be compiled
 // based on the current environment and build tags.
+// BUILD-TIME CONFIGURATION: This reflects what was available at compile time.
 func GetAvailableBackends() []BackendInfo {
 	return getAvailableBackends()
 }
 
 // LogBackendInfo logs information about the currently active crypto backend.
-// This is useful for debugging and performance analysis.
+// This is useful for debugging and verifying which backend was selected at build time.
 func LogBackendInfo(signer CryptoSigner) {
 	info := signer.GetBackendInfo()
 	fmt.Printf("🔐 Shannon SDK Crypto Backend: %s\n", info)

@@ -1,7 +1,7 @@
 //go:build !ethereum_secp256k1
 // +build !ethereum_secp256k1
 
-package sdk
+package crypto
 
 import (
 	"context"

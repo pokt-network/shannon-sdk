@@ -74,41 +74,26 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 
 ## Crypto Backends
 
-Shannon SDK supports multiple secp256k1 crypto backends selected at build time:
+Shannon SDK supports multiple secp256k1 crypto backends for optimal performance vs portability tradeoffs.
 
-### 🚀 Performance Comparison
+**Ethereum Backend**: Fastest performance using Bitcoin Core's libsecp256k1 C library (~50% faster signing, ~80% faster verification). Requires CGO and is ideal for high-throughput applications in controlled deployment environments.
 
-| Backend | Signing Speed | Verification Speed | CGO Required | Use Case |
-|---------|---------------|-------------------|--------------|----------|
-| **Ethereum** | 20.5μs 🥇 | 23.8μs 🥇 | ✅ | High-throughput applications |
-| **Decred** | 37.6μs 🥈 | 129.8μs 🥈 | ❌ | Maximum portability |
+**Decred Backend**: Pure Go implementation offering excellent performance without any C dependencies. Perfect for maximum portability, simple deployment, and cross-platform compatibility.
 
-### 🛠️ Quick Start
+### Quick Start
 
 ```bash
 # Fast build (50% faster, requires CGO)
 make build_fast
 
-# Portable build (pure Go, works everywhere)  
+# Portable build (pure Go, works everywhere)
 make build_portable
 
 # Auto-select best for your platform
 make build_auto
 ```
 
-```go
-// Usage is identical regardless of backend
-signer, err := sdk.NewSignerFromHex("your-private-key-hex")
-if err != nil {
-    log.Fatal(err)
-}
-
-// See which backend is active
-sdk.LogBackendInfo(signer.GetCryptoSigner())
-// Output: 🔐 Shannon SDK Crypto Backend: ethereum backend (requires CGO) - fastest - Signing: 20.5μs, Verification: 23.8μs
-```
-
-📖 **[Full Crypto Backend Documentation](./CRYPTO_BACKENDS.md)**
+Application code remains identical regardless of backend choice. Use `make help` to see all available build and benchmark targets.
 
 ## Complete working integration example
 
