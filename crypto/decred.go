@@ -11,12 +11,15 @@ import (
 	decred "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	decred_ecdsa "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
-	"github.com/pokt-network/ring-go"
 )
 
 // TODO_OPTIMIZE: Consider caching computed public keys to avoid regenerating them on each call
 // decredSigner implements CryptoSigner using Decred's pure Go secp256k1 implementation.
 // This provides excellent performance without requiring CGO, making it highly portable.
+
+var _ CryptoSigner = (*decredSigner)(nil)
+
+// decredSigner implements CryptoSigner using Decred's pure Go secp256k1 implementation.
 type decredSigner struct {
 	privateKey *DecredPrivateKey
 }
@@ -46,69 +49,13 @@ func newCryptoSigner(privateKeyHex string) (CryptoSigner, error) {
 }
 
 // Sign implements CryptoSigner.Sign using Decred's secp256k1 implementation.
-// This follows the same logic as the original signer but uses the Decred backend.
+// TODO_INVESTIGATE: Profile memory allocations - Decred shows 32 allocs vs Ethereum's 3
 func (s *decredSigner) Sign(
 	ctx context.Context,
 	relayRequest *servicetypes.RelayRequest,
 	appRing ApplicationRing,
 ) (*servicetypes.RelayRequest, error) {
-	// Get the session ring for the application's session end block height
-	sessionRingInterface, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
-	if err != nil {
-		return nil, fmt.Errorf(
-			"Sign: error getting a ring for application address %s: %w",
-			appRing.GetAddress(),
-			err,
-		)
-	}
-
-	// Type assert to *ring.Ring
-	sessionRing, ok := sessionRingInterface.(*ring.Ring)
-	if !ok {
-		return nil, fmt.Errorf("Sign: unexpected ring type: %T", sessionRingInterface)
-	}
-
-	// Get the signable bytes hash from the relay request
-	signableBz, err := relayRequest.GetSignableBytesHash()
-	if err != nil {
-		return nil, fmt.Errorf("Sign: error getting signable bytes hash from the relay request: %w", err)
-	}
-
-	// Convert hex private key to ring-go scalar format
-	signerPrivKeyBz, err := hex.DecodeString(s.privateKey.Hex())
-	if err != nil {
-		return nil, fmt.Errorf("Sign: error decoding private key to bytes: %w", err)
-	}
-
-	signerPrivKey, err := ring.Secp256k1().DecodeToScalar(signerPrivKeyBz)
-	if err != nil {
-		return nil, fmt.Errorf("Sign: error decoding private key to scalar: %w", err)
-	}
-
-	// TODO_INVESTIGATE: Profile memory allocations here - Decred shows 32 allocs vs Ethereum's 3
-	// Sign the request using the session ring and signer's private key
-	ringSig, err := sessionRing.Sign(signableBz, signerPrivKey)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"Sign: error signing using the ring of application with address %s: %w",
-			appRing.GetAddress(),
-			err,
-		)
-	}
-
-	// Serialize the signature
-	signature, err := ringSig.Serialize()
-	if err != nil {
-		return nil, fmt.Errorf(
-			"Sign: error serializing the signature of application with address %s: %w",
-			appRing.GetAddress(),
-			err,
-		)
-	}
-
-	// Set the signature on the relay request
-	relayRequest.Meta.Signature = signature
-	return relayRequest, nil
+	return commonSign(ctx, relayRequest, appRing, s.privateKey)
 }
 
 // DecodePrivateKey implements CryptoSigner.DecodePrivateKey.
