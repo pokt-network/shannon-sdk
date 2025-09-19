@@ -52,7 +52,7 @@ func ExampleRelay() {
 	// 4.d. Create an application ring
 	var app apptypes.Application
 	// Load/Set app to the target application
-	ring := ApplicationRing{
+	ring := applicationRing{
 		Application:      app,
 		PublicKeyFetcher: &accountClient,
 	}

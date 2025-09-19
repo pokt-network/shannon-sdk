@@ -8,6 +8,7 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Crypto Backends](#crypto-backends)
+  - [Building for Different Backends](#building-for-different-backends)
 - [Complete working integration example](#complete-working-integration-example)
 - [Core Components](#core-components)
 - [Installation](#installation)
@@ -74,26 +75,35 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 
 ## Crypto Backends
 
-Shannon SDK supports multiple secp256k1 crypto backends for optimal performance vs portability tradeoffs.
+Shannon SDK supports multiple `secp256k1` crypto backends for optimal performance vs portability tradeoffs.
 
-**Ethereum Backend**: Fastest performance using Bitcoin Core's libsecp256k1 C library (~50% faster signing, ~80% faster verification). Requires CGO and is ideal for high-throughput applications in controlled deployment environments.
+**Ethereum Backend**: Fastest performance using Bitcoin Core's `libsecp256k1` C library (~50% faster signing, ~80% faster verification). Requires `CGO` and is ideal for high-throughput applications in controlled deployment environments.
 
 **Decred Backend**: Pure Go implementation offering excellent performance without any C dependencies. Perfect for maximum portability, simple deployment, and cross-platform compatibility.
 
-### Quick Start
+### Building for Different Backends
+
+Fast build (50% faster, requires CGO)
 
 ```bash
-# Fast build (50% faster, requires CGO)
 make build_fast
+```
 
-# Portable build (pure Go, works everywhere)
+Portable build (pure Go, works everywhere):
+
+```bash
 make build_portable
+```
 
-# Auto-select best for your platform
+Auto-select best for your platform:
+
+```bash
 make build_auto
 ```
 
-Application code remains identical regardless of backend choice. Use `make help` to see all available build and benchmark targets.
+Application code remains identical regardless of backend choice.
+
+Use `make help` to see all available build and benchmark targets.
 
 ## Complete working integration example
 

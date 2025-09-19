@@ -44,7 +44,7 @@ func (m *mockPublicKeyFetcher) GetPubKeyFromAddress(ctx context.Context, address
 }
 
 // setupBenchmarkData creates test data for benchmarks
-func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, ApplicationRing) {
+func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, applicationRing) {
 	// Generate test private keys
 	appPrivKey := secp256k1.GenPrivKey()
 	supplierPrivKey1 := secp256k1.GenPrivKey()
@@ -71,7 +71,7 @@ func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, Appl
 		Address: "pokt1app1",
 	}
 
-	appRing := ApplicationRing{
+	appRing := applicationRing{
 		Application:      app,
 		PublicKeyFetcher: pubKeyFetcher,
 	}

@@ -10,15 +10,19 @@ import (
 	query "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/application/types"
+
+	"github.com/pokt-network/shannon-sdk/crypto"
 )
 
-type ApplicationRing struct {
+var _ crypto.ApplicationRing = (*applicationRing)(nil)
+
+type applicationRing struct {
 	types.Application
 	PublicKeyFetcher
 }
 
 // GetAddress returns the application address. Required for the crypto package interface.
-func (a ApplicationRing) GetAddress() string {
+func (a applicationRing) GetAddress() string {
 	return a.Address
 }
 
@@ -137,7 +141,7 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 //
 // - Ring is created using the application's public key and the public keys of gateways currently delegated from the application
 // - Returns error if PublicKeyFetcher is not set or any pubkey fetch fails
-func (a ApplicationRing) GetRing(
+func (a applicationRing) GetRing(
 	ctx context.Context,
 	sessionEndHeight uint64,
 ) (addressRing interface{}, err error) {

@@ -2,7 +2,6 @@ package crypto
 
 import (
 	"context"
-	"fmt"
 
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
@@ -15,6 +14,7 @@ type ApplicationRing interface {
 }
 
 // CryptoSigner defines the interface for signing operations in the Shannon SDK.
+//
 // BUILD-TIME CONFIGURATION: Different implementations are selected at compile time
 // based on build tags for optimal performance vs portability trade-offs.
 //
@@ -29,9 +29,6 @@ type CryptoSigner interface {
 	// DecodePrivateKey converts a hex-encoded private key string to a PrivateKey instance.
 	// This method handles the backend-specific private key format and validation.
 	DecodePrivateKey(hexKey string) (PrivateKey, error)
-
-	// GetBackendInfo returns information about the crypto backend being used.
-	GetBackendInfo() BackendInfo
 }
 
 // PrivateKey represents a secp256k1 private key with signing capabilities.
@@ -62,36 +59,6 @@ type PublicKey interface {
 	Hex() string
 }
 
-// BackendInfo provides information about the crypto backend implementation.
-type BackendInfo struct {
-	// Name of the backend (e.g., "ethereum", "decred")
-	Name string
-
-	// CGORequired indicates if this backend requires CGO to be enabled
-	CGORequired bool
-
-	// Performance metrics from benchmarks (in microseconds)
-	SigningSpeedUs      float64
-	VerificationSpeedUs float64
-
-	// Human-readable performance description
-	PerformanceLevel string
-
-	// Additional notes about the backend
-	Notes string
-}
-
-// String returns a formatted string representation of the backend info.
-func (bi BackendInfo) String() string {
-	cgoStatus := "pure Go"
-	if bi.CGORequired {
-		cgoStatus = "requires CGO"
-	}
-
-	return fmt.Sprintf("%s backend (%s) - %s - Signing: %.1fμs, Verification: %.1fμs",
-		bi.Name, cgoStatus, bi.PerformanceLevel, bi.SigningSpeedUs, bi.VerificationSpeedUs)
-}
-
 // NewSigner creates a new CryptoSigner instance using the specified private key.
 // BUILD-TIME CONFIGURATION: The actual implementation is determined at compile time
 // based on build tags:
@@ -102,22 +69,6 @@ func (bi BackendInfo) String() string {
 // Example usage:
 //
 //	signer := crypto.NewSigner("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
-//	info := signer.GetBackendInfo()
-//	fmt.Printf("Using: %s\n", info)
 func NewSigner(privateKeyHex string) (CryptoSigner, error) {
 	return newCryptoSigner(privateKeyHex)
-}
-
-// GetAvailableBackends returns information about all backends that could be compiled
-// based on the current environment and build tags.
-// BUILD-TIME CONFIGURATION: This reflects what was available at compile time.
-func GetAvailableBackends() []BackendInfo {
-	return getAvailableBackends()
-}
-
-// LogBackendInfo logs information about the currently active crypto backend.
-// This is useful for debugging and verifying which backend was selected at build time.
-func LogBackendInfo(signer CryptoSigner) {
-	info := signer.GetBackendInfo()
-	fmt.Printf("🔐 Shannon SDK Crypto Backend: %s\n", info)
 }

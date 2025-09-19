@@ -126,44 +126,6 @@ func (s *decredSigner) DecodePrivateKey(hexKey string) (PrivateKey, error) {
 	return &DecredPrivateKey{key: privKey}, nil
 }
 
-// GetBackendInfo implements CryptoSigner.GetBackendInfo.
-func (s *decredSigner) GetBackendInfo() BackendInfo {
-	return BackendInfo{
-		Name:                "decred",
-		CGORequired:         false,
-		SigningSpeedUs:      37.6,  // From benchmark results
-		VerificationSpeedUs: 129.8, // From benchmark results
-		PerformanceLevel:    "excellent (CGO-free)",
-		Notes:               "Pure Go implementation with optimal CGO-free performance",
-	}
-}
-
-// getAvailableBackends returns info about available backends when Decred is the default.
-func getAvailableBackends() []BackendInfo {
-	backends := []BackendInfo{
-		{
-			Name:                "decred",
-			CGORequired:         false,
-			SigningSpeedUs:      37.6,
-			VerificationSpeedUs: 129.8,
-			PerformanceLevel:    "excellent (CGO-free)",
-			Notes:               "Pure Go implementation with optimal CGO-free performance",
-		},
-	}
-
-	// Note about Ethereum backend being available with different build tags
-	backends = append(backends, BackendInfo{
-		Name:                "ethereum",
-		CGORequired:         true,
-		SigningSpeedUs:      20.5,
-		VerificationSpeedUs: 23.8,
-		PerformanceLevel:    "fastest (not compiled)",
-		Notes:               "Available with 'ethereum_secp256k1' build tag - requires CGO",
-	})
-
-	return backends
-}
-
 // Sign implements PrivateKey.Sign using Decred's secp256k1.
 func (k *DecredPrivateKey) Sign(hash []byte) ([]byte, error) {
 	if len(hash) != 32 {

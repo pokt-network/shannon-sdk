@@ -134,32 +134,6 @@ func (s *ethereumSigner) DecodePrivateKey(hexKey string) (PrivateKey, error) {
 	return &EthereumPrivateKey{keyBytes: keyBytes}, nil
 }
 
-// GetBackendInfo implements CryptoSigner.GetBackendInfo.
-func (s *ethereumSigner) GetBackendInfo() BackendInfo {
-	return BackendInfo{
-		Name:                "ethereum",
-		CGORequired:         true,
-		SigningSpeedUs:      20.5, // From benchmark results
-		VerificationSpeedUs: 23.8, // From benchmark results
-		PerformanceLevel:    "fastest",
-		Notes:               "Uses Bitcoin Core's libsecp256k1 via CGO for maximum performance",
-	}
-}
-
-// getAvailableBackends returns info about available backends when Ethereum is compiled in.
-func getAvailableBackends() []BackendInfo {
-	return []BackendInfo{
-		{
-			Name:                "ethereum",
-			CGORequired:         true,
-			SigningSpeedUs:      20.5,
-			VerificationSpeedUs: 23.8,
-			PerformanceLevel:    "fastest",
-			Notes:               "Uses Bitcoin Core's libsecp256k1 via CGO for maximum performance",
-		},
-	}
-}
-
 // Sign implements PrivateKey.Sign using Ethereum's libsecp256k1.
 func (k *EthereumPrivateKey) Sign(hash []byte) ([]byte, error) {
 	if len(hash) != 32 {
