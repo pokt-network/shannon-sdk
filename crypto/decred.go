@@ -53,13 +53,19 @@ func (s *decredSigner) Sign(
 	appRing ApplicationRing,
 ) (*servicetypes.RelayRequest, error) {
 	// Get the session ring for the application's session end block height
-	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+	sessionRingInterface, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Sign: error getting a ring for application address %s: %w",
-			appRing.Address,
+			appRing.GetAddress(),
 			err,
 		)
+	}
+
+	// Type assert to *ring.Ring
+	sessionRing, ok := sessionRingInterface.(*ring.Ring)
+	if !ok {
+		return nil, fmt.Errorf("Sign: unexpected ring type: %T", sessionRingInterface)
 	}
 
 	// Get the signable bytes hash from the relay request
@@ -85,7 +91,7 @@ func (s *decredSigner) Sign(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Sign: error signing using the ring of application with address %s: %w",
-			appRing.Address,
+			appRing.GetAddress(),
 			err,
 		)
 	}
@@ -95,7 +101,7 @@ func (s *decredSigner) Sign(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Sign: error serializing the signature of application with address %s: %w",
-			appRing.Address,
+			appRing.GetAddress(),
 			err,
 		)
 	}

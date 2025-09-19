@@ -11,6 +11,7 @@ import (
 // This avoids circular dependencies.
 type ApplicationRing interface {
 	GetRing(ctx context.Context, sessionEndHeight uint64) (interface{}, error)
+	GetAddress() string
 }
 
 // CryptoSigner defines the interface for signing operations in the Shannon SDK.

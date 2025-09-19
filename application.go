@@ -10,12 +10,16 @@ import (
 	query "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/pokt-network/poktroll/pkg/crypto/rings"
 	"github.com/pokt-network/poktroll/x/application/types"
-	"github.com/pokt-network/ring-go"
 )
 
 type ApplicationRing struct {
 	types.Application
 	PublicKeyFetcher
+}
+
+// GetAddress returns the application address. Required for the crypto package interface.
+func (a ApplicationRing) GetAddress() string {
+	return a.Address
 }
 
 // ApplicationClient is the interface to interact with the on-chain application-module.
@@ -136,7 +140,7 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 func (a ApplicationRing) GetRing(
 	ctx context.Context,
 	sessionEndHeight uint64,
-) (addressRing *ring.Ring, err error) {
+) (addressRing interface{}, err error) {
 	if a.PublicKeyFetcher == nil {
 		return nil, errors.New("GetRing: Public Key Fetcher not set")
 	}

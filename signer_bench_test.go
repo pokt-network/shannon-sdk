@@ -156,9 +156,13 @@ func BenchmarkSignWithCachedPrivateKey(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Get the session ring
-		sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+		sessionRingInterface, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 		if err != nil {
 			b.Fatalf("GetRing failed: %v", err)
+		}
+		sessionRing, ok := sessionRingInterface.(*ring.Ring)
+		if !ok {
+			b.Fatalf("unexpected ring type: %T", sessionRingInterface)
 		}
 
 		// Get signable bytes
@@ -223,7 +227,8 @@ func BenchmarkSerializeSignature(b *testing.B) {
 	signer, relayRequest, appRing := setupBenchmarkData(b)
 
 	// Prepare everything needed for signing
-	sessionRing, _ := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+	sessionRingInterface, _ := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+	sessionRing := sessionRingInterface.(*ring.Ring)
 	signableBz, _ := relayRequest.GetSignableBytesHash()
 	signerPrivKeyBz, _ := hex.DecodeString(signer.PrivateKeyHex)
 	signerPrivKey, _ := ring.Secp256k1().DecodeToScalar(signerPrivKeyBz)

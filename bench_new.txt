@@ -1,5 +1,41 @@
-FAIL	github.com/pokt-network/shannon-sdk [build failed]
-FAIL	github.com/pokt-network/shannon-sdk/crypto [build failed]
+goos: darwin
+goarch: arm64
+pkg: github.com/pokt-network/shannon-sdk
+cpu: Apple M1 Max
+BenchmarkKeyGeneration_CosmosSDK-10         	 3954349	       299.6 ns/op	      96 B/op	       2 allocs/op
+BenchmarkKeyGeneration_BTCSuite-10          	   34246	     34341 ns/op	     144 B/op	       3 allocs/op
+BenchmarkKeyGeneration_Decred-10            	 4136700	       287.5 ns/op	      32 B/op	       1 allocs/op
+BenchmarkKeyGeneration_Ethereum-10          	 4377710	       271.0 ns/op	      32 B/op	       1 allocs/op
+BenchmarkSigning_CosmosSDK-10               	   31947	     37758 ns/op	    1744 B/op	      34 allocs/op
+BenchmarkSigning_BTCSuite-10                	   32059	     37642 ns/op	    1632 B/op	      32 allocs/op
+BenchmarkSigning_Decred-10                  	   32536	     37580 ns/op	    1632 B/op	      32 allocs/op
+BenchmarkSigning_Ethereum-10                	   58503	     20712 ns/op	     164 B/op	       3 allocs/op
+BenchmarkVerification_CosmosSDK-10          	    8170	    142295 ns/op	     864 B/op	      19 allocs/op
+BenchmarkVerification_BTCSuite-10           	    9099	    130339 ns/op	     688 B/op	      16 allocs/op
+BenchmarkVerification_Decred-10             	    9144	    132166 ns/op	     688 B/op	      16 allocs/op
+BenchmarkVerification_Ethereum-10           	   49363	     23682 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPrivateKeyDecoding_CosmosSDK-10    	25896135	        44.27 ns/op	      32 B/op	       1 allocs/op
+BenchmarkPrivateKeyDecoding_BTCSuite-10     	   35402	     33025 ns/op	     144 B/op	       3 allocs/op
+BenchmarkPrivateKeyDecoding_Decred-10       	21359073	        54.92 ns/op	      32 B/op	       1 allocs/op
+BenchmarkPrivateKeyDecoding_Ethereum-10     	26714157	        45.15 ns/op	      32 B/op	       1 allocs/op
+BenchmarkBatchSigning_CosmosSDK-10          	     301	   3904923 ns/op	  174400 B/op	    3400 allocs/op
+BenchmarkBatchSigning_BTCSuite-10           	     315	   3829351 ns/op	  163200 B/op	    3200 allocs/op
+BenchmarkBatchSigning_Decred-10             	     316	   3794391 ns/op	  163200 B/op	    3200 allocs/op
+BenchmarkBatchSigning_Ethereum-10           	     584	   2064412 ns/op	   16400 B/op	     300 allocs/op
+BenchmarkMemoryAllocation_CosmosSDK-10      	   30314	     38375 ns/op	    1840 B/op	      36 allocs/op
+BenchmarkMemoryAllocation_BTCSuite-10       	   16550	     72712 ns/op	    1776 B/op	      35 allocs/op
+BenchmarkMemoryAllocation_Decred-10         	   30708	     38418 ns/op	    1664 B/op	      33 allocs/op
+BenchmarkMemoryAllocation_Ethereum-10       	   57499	     21004 ns/op	     196 B/op	       4 allocs/op
+BenchmarkSign-10                            	     716	   1645613 ns/op	    9347 B/op	     154 allocs/op
+BenchmarkSignParallel-10                    	    5398	    217658 ns/op	    9350 B/op	     154 allocs/op
+BenchmarkPrivateKeyDecoding-10              	   29464	     40792 ns/op	     680 B/op	      14 allocs/op
+BenchmarkSignWithCachedPrivateKey-10        	     747	   1617074 ns/op	    8426 B/op	     137 allocs/op
+BenchmarkSignLargePayload-10                	     672	   1670579 ns/op	   20099 B/op	     154 allocs/op
+BenchmarkGetSignableBytesHash-10            	 7722477	       153.5 ns/op	     288 B/op	       3 allocs/op
+BenchmarkSerializeSignature-10              	   29461	     40623 ns/op	     968 B/op	      11 allocs/op
+BenchmarkSignMemoryAllocation-10            	     708	   1733988 ns/op	    9346 B/op	     154 allocs/op
 PASS
-ok  	github.com/pokt-network/shannon-sdk/types	0.393s
-FAIL
+ok  	github.com/pokt-network/shannon-sdk	47.295s
+?   	github.com/pokt-network/shannon-sdk/crypto	[no test files]
+PASS
+ok  	github.com/pokt-network/shannon-sdk/types	0.392s
