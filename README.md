@@ -145,7 +145,7 @@ make benchmark_all
 Compare secp256k1 crypto backend performance:
 
 ```bash
-make benchmark_secp256k1_report
+make benchmark_report
 ```
 
 ## Complete working integration example
