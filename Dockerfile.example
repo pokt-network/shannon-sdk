@@ -1,42 +1,49 @@
-# Multi-stage build for different crypto backend variants
-FROM golang:1.25-alpine AS builder
+# syntax=docker/dockerfile:1.6
 
-# Install CGO dependencies (required for Ethereum backend)
-RUN apk add --no-cache gcc musl-dev
-
+##############################
+# Base with Go + module cache
+##############################
+FROM golang:1.25-alpine AS base
 WORKDIR /app
+RUN apk add --no-cache git
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 
-# ===== CRYPTO BACKEND BUILD OPTIONS =====
-# Choose one of the following build variants:
+########################################
+# Option 1: Portable (pure-Go) build (no CGO/tag)
+########################################
+FROM base AS build-portable
+ENV CGO_ENABLED=0
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /out/shannon-sdk .
 
-# Option 1: Ethereum backend (fastest performance)
-# Requires: CGO, libsecp256k1
-# Performance: ~50% faster signing, ~80% faster verification
-RUN go build -tags="ethereum_secp256k1" -o shannon-sdk-fast
+#############################################
+# Option 2: Ethereum secp256k1 (CGO) build (fast path)
+#############################################
+FROM base AS build-eth
 
-# Option 2: Decred backend (maximum portability)
-# Requires: No CGO dependencies
-# Performance: Excellent performance with pure Go
-RUN CGO_ENABLED=0 go build -o shannon-sdk-portable
+# Toolchain + headers for CGO and libsecp256k1
+RUN apk add --no-cache build-base pkgconfig libsecp256k1-dev
+ENV CGO_ENABLED=1
 
-# Option 3: Auto-select backend (uncomment to use)
-# Uses optimal backend for the target platform
-# RUN go build -tags="auto_backend" -o shannon-sdk-auto
+# If your code expects the build tag only (and uses cgo automatically), this is enough.
+# The cgo-gated file has: cgo && ethereum_secp256k1, so we must pass the tag:
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    go build -tags "ethereum_secp256k1" -trimpath -ldflags="-s -w" -o /out/shannon-sdk .
 
-# ===== END CRYPTO BACKEND BUILD OPTIONS =====
+##########################
+# Final images per flavor
+##########################
 
-# Final image
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
+# Option 1: Portable: truly minimal
+FROM scratch AS portable
+COPY --from=build-portable /out/shannon-sdk /shannon-sdk
+ENTRYPOINT ["/shannon-sdk"]
 
-# Choose which binary to include:
-
-## 1. For maximum performance (requires CGO dependencies):
-COPY --from=builder /app/shannon-sdk-fast ./shannon-sdk
-
-## 2. For maximum portability (uncomment this instead):
-# COPY --from=builder /app/shannon-sdk-portable ./shannon-sdk
-
-CMD ["./shannon-sdk"]
+# Option 2: Ethereum CGO: needs libc and (usually) libsecp256k1 at runtime
+FROM alpine:3.21 AS ethereum
+RUN apk add --no-cache ca-certificates libsecp256k1 # runtime lib if dynamically linked
+WORKDIR /root
+COPY --from=build-eth /out/shannon-sdk ./shannon-sdk
+ENTRYPOINT ["./shannon-sdk"]

@@ -8,7 +8,11 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Crypto Backends](#crypto-backends)
-  - [Building for Different Backends](#building-for-different-backends)
+  - [Comparison](#comparison)
+  - [Docker Build Commands](#docker-build-commands)
+    - [Portable (Pure Go)](#portable-pure-go)
+    - [Ethereum secp256k1 (CGO)](#ethereum-secp256k1-cgo)
+  - [Benchmarking Crypto Backends](#benchmarking-crypto-backends)
 - [Complete working integration example](#complete-working-integration-example)
 - [Core Components](#core-components)
 - [Installation](#installation)
@@ -79,39 +83,70 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 
 Shannon SDK supports multiple `secp256k1` crypto backends for optimal performance vs portability tradeoffs.
 
-| Backend      | Build Tag            | CGO Required | Performance                                                | Use Case                                       |
-| ------------ | -------------------- | ------------ | ---------------------------------------------------------- | ---------------------------------------------- |
-| **Ethereum** | `ethereum_secp256k1` | ✅ Yes       | 🚀 Fastest (~50% faster signing, ~80% faster verification) | High-throughput production environments        |
-| **Decred**   | (default)            | ❌ No        | ⚡ Excellent pure Go performance                           | Development, cross-platform deployment, Docker |
+This project supports two mutually exclusive crypto backend variants, controlled by build tags.
 
-**Build Tag Usage:**
+### Comparison
 
-- Ethereum: `go build -tags="ethereum_secp256k1"`
-- Decred: `go build` (no tags needed)
+| Backend                | Build Tags / Env                             | Dependencies                      | Performance                                   | Portability                |
+| ---------------------- | -------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------- |
+| **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                              | Excellent (Go stdlib secp256k1)               | Runs anywhere              |
+| **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `musl-dev`, `libsecp256k1` | ~50% faster signing, ~80% faster verification | Requires CGO + system libs |
 
-### Building for Different Backends
+### Docker Build Commands
 
-Fast build (50% faster, requires CGO)
+#### Portable (Pure Go)
+
+Build:
 
 ```bash
-make build_fast
+docker build -t shannon-sdk:portable --target portable .
 ```
 
-Portable build (pure Go, works everywhere):
+And run:
+
+```bash
+docker run --rm shannon-sdk:portable
+```
+
+You can also use the Makefile helpers:
 
 ```bash
 make build_portable
 ```
 
-Auto-select best for your platform:
+#### Ethereum secp256k1 (CGO)
+
+Build:
 
 ```bash
-make build_auto
+docker build -t shannon-sdk:ethereum --target ethereum .
 ```
 
-Application code remains identical regardless of backend choice.
+And run:
 
-Use `make help` to see all available build and benchmark targets.
+```bash
+docker run --rm shannon-sdk:ethereum
+```
+
+You can also use the Makefile helpers:
+
+```bash
+make build_fast
+```
+
+### Benchmarking Crypto Backends
+
+Run all benchmarks:
+
+```bash
+make benchmark_all
+```
+
+Compare secp256k1 crypto backend performance:
+
+```bash
+make benchmark_secp256k1_report
+```
 
 ## Complete working integration example
 
