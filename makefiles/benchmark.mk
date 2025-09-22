@@ -3,15 +3,21 @@
 ####################
 
 .PHONY: benchmark_all
-benchmark_all: ## Run all benchmarks
+benchmark_all: ## Run all benchmarks (tests both Decred and Ethereum backends)
+	@echo "🔬 Running benchmarks with Decred backend (Pure Go)..."
+	@echo "=================================================="
 	go test -v -bench=. -benchmem -run=^$$ ./...
+	@echo ""
+	@echo "🔬 Running benchmarks with Ethereum backend (CGO + libsecp256k1)..."
+	@echo "=================================================================="
+	go test -tags=ethereum_secp256k1 -v -bench=. -benchmem -run=^$$ ./...
 
 .PHONY: benchmark_report
 benchmark_report: ## Compare secp256k1 implementations with formatted report
 	@echo "🔬 Benchmarking secp256k1 implementations..."
 	@echo "=================================================================="
 	@timeout 60s \
-		go test \
+		go test ./crypto \
 			-bench="BenchmarkKeyGeneration|BenchmarkSigning|BenchmarkVerification" \
 			-benchmem \
 			-run=^$$ \
@@ -20,7 +26,7 @@ benchmark_report: ## Compare secp256k1 implementations with formatted report
 		python3 format_benchmark.py \
 		|| ( \
 			echo "⚠️  Benchmark timed out or failed. Trying without Ethernet library..." && \
-			CGO_ENABLED=0 go test \
+			CGO_ENABLED=0 go test ./crypto \
 				-bench="BenchmarkKeyGenerationNoCgo|BenchmarkSigningNoCgo|BenchmarkVerificationNoCgo" \
 				-benchmem \
 				-run=^$$ \

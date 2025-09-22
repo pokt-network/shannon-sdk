@@ -44,7 +44,7 @@ func (m *mockPublicKeyFetcher) GetPubKeyFromAddress(ctx context.Context, address
 }
 
 // setupBenchmarkData creates test data for benchmarks
-func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, applicationRing) {
+func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, *applicationRing) {
 	// Generate test private keys
 	appPrivKey := secp256k1.GenPrivKey()
 	supplierPrivKey1 := secp256k1.GenPrivKey()
@@ -53,8 +53,9 @@ func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, appl
 	// Use the app private key for signing (convert to hex)
 	privateKeyHex := hex.EncodeToString(appPrivKey.Bytes())
 
-	signer := &Signer{
-		PrivateKeyHex: privateKeyHex,
+	signer, err := NewSignerFromHex(privateKeyHex)
+	if err != nil {
+		b.Fatalf("Failed to create signer: %v", err)
 	}
 
 	// Create a mock public key fetcher with corresponding public keys
@@ -71,7 +72,7 @@ func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, appl
 		Address: "pokt1app1",
 	}
 
-	appRing := applicationRing{
+	appRing := &applicationRing{
 		Application:      app,
 		PublicKeyFetcher: pubKeyFetcher,
 	}

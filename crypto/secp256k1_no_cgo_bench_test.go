@@ -1,11 +1,11 @@
 //go:build !cgo
 // +build !cgo
 
-// Package sdk provides CGO-free secp256k1 benchmarks for comparison.
+// Package crypto provides CGO-free secp256k1 benchmarks for comparison.
 //
 // This file contains benchmarks that work without CGO enabled,
 // comparing CosmosSDK, BTCSuite, and Decred implementations.
-package sdk
+package crypto
 
 import (
 	"crypto/rand"

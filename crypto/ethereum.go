@@ -43,7 +43,6 @@ func NewCryptoSigner(privateKeyHex string) (CryptoSigner, error) {
 	}
 
 	signer.privateKey = privKey.(*EthereumPrivateKey)
-
 	fmt.Println("SHANNON SDK CRYPTO SIGNER: Using 'Ethereum' signer backend. CGO is enabled so this will be faster than 'Decred' signer backend.")
 	return signer, nil
 }

@@ -136,11 +136,15 @@ make build_fast
 
 ### Benchmarking Crypto Backends
 
-Run all benchmarks:
+Run all benchmarks (tests both backends):
 
 ```bash
 make benchmark_all
 ```
+
+This will test:
+1. **Decred backend** (pure Go, no build tags needed)
+2. **Ethereum backend** (CGO + libsecp256k1, requires `-tags=ethereum_secp256k1`)
 
 Compare secp256k1 crypto backend performance:
 

@@ -37,7 +37,7 @@
 // 3. Current CosmosSDK implementation is acceptable but not optimal
 //   - More memory allocations than alternatives
 //   - Slightly slower verification times
-package sdk
+package crypto
 
 import (
 	"crypto/rand"
