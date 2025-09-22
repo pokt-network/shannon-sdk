@@ -23,7 +23,7 @@ type applicationRing struct {
 
 func NewApplicationRing(
 	app types.Application,
-	publicKeyFetcher crypto.PublicKeyFetcher,
+	publicKeyFetcher PublicKeyFetcher,
 ) crypto.ApplicationRing {
 	return &applicationRing{
 		Application:      app,
