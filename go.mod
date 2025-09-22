@@ -2,9 +2,21 @@ module github.com/pokt-network/shannon-sdk
 
 go 1.24.3
 
-// DEV_NOTE: Uncomment the line below to use a local version of poktroll if there's
-// a need to use new gRPC methods or protobufs that have not been released yet.
+// TODO_TECHDEBT: Find a way to remove the shannon-sdk <-> poktroll circular dependency.
+// Why is this hard?
+// - PATH depends on the shannon-sdk
+// - Poktroll depends on the shannon-sdk
+// - Poktroll contains onchain types and SHOULD not live in a different repo
+// - BUT, the shannon-sdk needs access to these types
+// A non over-engineered over-abstracted solution needs to be found here.
+//
+// DEV_NOTE: Uncomment the line below to use a local version of poktroll.
+// This is useful if, for example, there has been a change to onchain protobufs.
 // replace github.com/pokt-network/poktroll => ../poktroll
+//
+// DEV_NOTE: Uncomment the line below to use a local version of ring-go.
+// This is useful if, for example, there has been a change to ring-go.
+replace github.com/pokt-network/ring-go => ../ring-go
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5
@@ -137,6 +149,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/hdevalence/ed25519consensus v0.2.0 // indirect
+	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/huandu/skiplist v1.2.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
