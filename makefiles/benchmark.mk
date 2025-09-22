@@ -4,7 +4,7 @@
 
 .PHONY: benchmark_all
 benchmark_all: ## Run all benchmarks
-	go test -bench=. -benchmem -run=^$$ ./...
+	go test -v -bench=. -benchmem -run=^$$ ./...
 
 .PHONY: benchmark_report
 benchmark_report: ## Compare secp256k1 implementations with formatted report
