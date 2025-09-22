@@ -75,11 +75,19 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 
 ## Crypto Backends
 
+⚠️ **The crypto backend is a BUILD-TIME, not a RUN-TIME configuration** ⚠️
+
 Shannon SDK supports multiple `secp256k1` crypto backends for optimal performance vs portability tradeoffs.
 
-**Ethereum Backend**: Fastest performance using Bitcoin Core's `libsecp256k1` C library (~50% faster signing, ~80% faster verification). Requires `CGO` and is ideal for high-throughput applications in controlled deployment environments.
+| Backend      | Build Tag            | CGO Required | Performance                                                | Use Case                                       |
+| ------------ | -------------------- | ------------ | ---------------------------------------------------------- | ---------------------------------------------- |
+| **Ethereum** | `ethereum_secp256k1` | ✅ Yes       | 🚀 Fastest (~50% faster signing, ~80% faster verification) | High-throughput production environments        |
+| **Decred**   | (default)            | ❌ No        | ⚡ Excellent pure Go performance                           | Development, cross-platform deployment, Docker |
 
-**Decred Backend**: Pure Go implementation offering excellent performance without any C dependencies. Perfect for maximum portability, simple deployment, and cross-platform compatibility.
+**Build Tag Usage:**
+
+- Ethereum: `go build -tags="ethereum_secp256k1"`
+- Decred: `go build` (no tags needed)
 
 ### Building for Different Backends
 
