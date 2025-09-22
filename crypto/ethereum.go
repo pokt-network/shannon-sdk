@@ -32,9 +32,9 @@ type EthereumPublicKey struct {
 	keyBytes []byte
 }
 
-// newCryptoSigner creates a new Ethereum-based crypto signer.
+// NewCryptoSigner creates a new Ethereum-based crypto signer.
 // This function is called by NewSigner when the ethereum_secp256k1 build tag is active.
-func newCryptoSigner(privateKeyHex string) (CryptoSigner, error) {
+func NewCryptoSigner(privateKeyHex string) (CryptoSigner, error) {
 	signer := &ethereumSigner{}
 
 	privKey, err := signer.DecodePrivateKey(privateKeyHex)

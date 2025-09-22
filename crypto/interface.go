@@ -70,5 +70,5 @@ type PublicKey interface {
 //
 //	signer := crypto.NewSigner("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 func NewSigner(privateKeyHex string) (CryptoSigner, error) {
-	return newCryptoSigner(privateKeyHex)
+	return NewCryptoSigner(privateKeyHex)
 }

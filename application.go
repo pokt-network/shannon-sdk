@@ -21,6 +21,16 @@ type applicationRing struct {
 	PublicKeyFetcher
 }
 
+func NewApplicationRing(
+	app types.Application,
+	publicKeyFetcher crypto.PublicKeyFetcher,
+) crypto.ApplicationRing {
+	return &applicationRing{
+		Application:      app,
+		PublicKeyFetcher: publicKeyFetcher,
+	}
+}
+
 // GetAddress returns the application address. Required for the crypto package interface.
 func (a applicationRing) GetAddress() string {
 	return a.Address

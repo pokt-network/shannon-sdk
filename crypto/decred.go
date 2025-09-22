@@ -34,9 +34,9 @@ type DecredPublicKey struct {
 	key *decred.PublicKey
 }
 
-// newCryptoSigner creates a new Decred-based crypto signer.
+// NewCryptoSigner creates a new Decred-based crypto signer.
 // This function is called by NewSigner when the ethereum_secp256k1 build tag is NOT active.
-func newCryptoSigner(privateKeyHex string) (CryptoSigner, error) {
+func NewCryptoSigner(privateKeyHex string) (CryptoSigner, error) {
 	signer := &decredSigner{}
 
 	privKey, err := signer.DecodePrivateKey(privateKeyHex)
