@@ -18,6 +18,9 @@ go 1.24.3
 // This is useful if, for example, there has been a change to ring-go.
 replace github.com/pokt-network/ring-go => ../ring-go
 
+// DEV_NOTE: Use local go-dleq to support Ethereum backend in ring-go
+replace github.com/athanorlabs/go-dleq => ../go-dleq
+
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5
 	github.com/cometbft/cometbft v0.38.17

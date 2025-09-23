@@ -83,8 +83,8 @@ def print_formatted_results(data):
         if operation not in data:
             continue
             
-        print(f"\n📊 {operation.upper()} PERFORMANCE:")
-        print(f"{'Library':<15} {'Time/op':<12} {'Memory/op':<12} {'Allocs/op':<12} {'Iterations':<15}")
+        print(f"\n\033[1m📊 {operation.upper()} PERFORMANCE:\033[0m")
+        print(f"\033[1m{'Library':<15} {'Time/op':<12} {'Memory/op':<12} {'Allocs/op':<12} {'Iterations':<15}\033[0m")
         print(f"{'-------':<15} {'--------':<12} {'---------':<12} {'---------':<12} {'----------':<15}")
         
         # Sort libraries by performance (time)
@@ -97,7 +97,7 @@ def print_formatted_results(data):
             iter_str = format_number(metrics['iterations'])
             medal = medals[i] if i < len(medals)-1 else medals[-1]
             
-            print(f"{library:<15} {time_str:<12} {memory_str:<12} {allocs_str:<12} {iter_str:<15} {medal}")
+            print(f"{library:<15} \033[32m{time_str:<12}\033[0m \033[34m{memory_str:<12}\033[0m \033[33m{allocs_str:<12}\033[0m \033[36m{iter_str:<15}\033[0m {medal}")
 
 if __name__ == "__main__":
     data = parse_benchmark_output()
