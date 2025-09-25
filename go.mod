@@ -152,7 +152,6 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/hdevalence/ed25519consensus v0.2.0 // indirect
-	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/huandu/skiplist v1.2.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
@@ -181,6 +180,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/pokt-network/go-dleq v0.0.0-20250925202155-488f42ad642a // indirect
 	github.com/pokt-network/smt v0.13.0 // indirect
 	github.com/pokt-network/smt/kvstore/pebble v0.0.0-20240822175047-21ea8639c188 // indirect
 	github.com/prometheus/client_golang v1.22.0 // indirect
