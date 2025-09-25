@@ -146,10 +146,19 @@ This runs each benchmark suite twice:
 1. Default portable backend (pure Go)
 2. Ethereum backend (CGO + libsecp256k1, via `-tags=ethereum_secp256k1`)
 
-Compare SDK-level ring signature performance directly in ring-go:
+Compare SDK- and ring-go-level ring signature performance:
 
 ```bash
 make benchmark_report
+```
+
+This uses a helper tool to run SDK signer benchmarks under both backends (default portable and `-tags=ethereum_secp256k1`).
+If CGO or libsecp256k1 are unavailable, only the portable backend is shown.
+
+Run directly as:
+
+```bash
+go run cmd/benchmark/main.go -report -duration=1s
 ```
 
 ## Complete working integration example

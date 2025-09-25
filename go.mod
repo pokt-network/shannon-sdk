@@ -11,7 +11,8 @@ go 1.24.3
 // A non over-engineered over-abstracted solution needs to be found here.
 //
 // DEV_NOTE: Uncomment the line below to use a local version of various repos.
-// replace github.com/pokt-network/poktroll => ../poktroll
+replace github.com/pokt-network/poktroll => ../poktroll
+
 // replace github.com/pokt-network/ring-go => ../ring-go
 // replace github.com/pokt-network/go-dleq => ../go-dleq
 
@@ -20,7 +21,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.53.0
 	github.com/cosmos/gogoproto v1.7.0
 	github.com/pokt-network/poktroll v0.1.26-0.20250704150000-317746c0d64f
-	github.com/pokt-network/ring-go v0.1.0
+	github.com/pokt-network/ring-go v0.1.1-0.20250925213458-782cc69bc1ec
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
@@ -95,11 +96,13 @@ require (
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
+	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/emicklei/dot v1.6.2 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
+	github.com/ethereum/go-ethereum v1.14.12 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -173,7 +176,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/pokt-network/smt v0.13.0 // indirect
+	github.com/pokt-network/go-dleq v0.0.0-20250925202155-488f42ad642a // indirect
+	github.com/pokt-network/smt v0.14.1 // indirect
 	github.com/pokt-network/smt/kvstore/pebble v0.0.0-20240822175047-21ea8639c188 // indirect
 	github.com/prometheus/client_golang v1.22.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect

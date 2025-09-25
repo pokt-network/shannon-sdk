@@ -1,32 +1,32 @@
 package sdk
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "slices"
+	"context"
+	"errors"
+	"fmt"
+	"slices"
 
-    cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-    query "github.com/cosmos/cosmos-sdk/types/query"
-    "github.com/pokt-network/poktroll/pkg/crypto/rings"
-    "github.com/pokt-network/poktroll/x/application/types"
-    "github.com/pokt-network/ring-go"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	query "github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/pokt-network/poktroll/pkg/crypto/rings"
+	"github.com/pokt-network/poktroll/x/application/types"
+	"github.com/pokt-network/ring-go"
 )
 
 // ApplicationRing groups the application and helper required to construct a *ring.Ring.
 type ApplicationRing struct {
-    types.Application
-    PublicKeyFetcher
+	types.Application
+	PublicKeyFetcher
 }
 
 func NewApplicationRing(
-    app types.Application,
-    publicKeyFetcher PublicKeyFetcher,
+	app types.Application,
+	publicKeyFetcher PublicKeyFetcher,
 ) *ApplicationRing {
-    return &ApplicationRing{
-        Application:      app,
-        PublicKeyFetcher: publicKeyFetcher,
-    }
+	return &ApplicationRing{
+		Application:      app,
+		PublicKeyFetcher: publicKeyFetcher,
+	}
 }
 
 // ApplicationClient is the interface to interact with the on-chain application-module.
@@ -145,12 +145,12 @@ func (ac *ApplicationClient) GetApplicationsDelegatingToGateway(
 // - Ring is created using the application's public key and the public keys of gateways currently delegated from the application
 // - Returns error if PublicKeyFetcher is not set or any pubkey fetch fails
 func (a ApplicationRing) GetRing(
-    ctx context.Context,
-    sessionEndHeight uint64,
+	ctx context.Context,
+	sessionEndHeight uint64,
 ) (addressRing *ring.Ring, err error) {
-    if a.PublicKeyFetcher == nil {
-        return nil, errors.New("GetRing: Public Key Fetcher not set")
-    }
+	if a.PublicKeyFetcher == nil {
+		return nil, errors.New("GetRing: Public Key Fetcher not set")
+	}
 
 	currentGatewayAddresses := rings.GetRingAddressesAtSessionEndHeight(&a.Application, sessionEndHeight)
 
@@ -172,5 +172,5 @@ func (a ApplicationRing) GetRing(
 		ringPubKeys = append(ringPubKeys, pubKey)
 	}
 
-    return rings.GetRingFromPubKeys(ringPubKeys)
+	return rings.GetRingFromPubKeys(ringPubKeys)
 }

@@ -18,17 +18,17 @@
 package sdk
 
 import (
-	"context"
-	"encoding/hex"
-	"testing"
+    "context"
+    "encoding/hex"
+    "testing"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	apptypes "github.com/pokt-network/poktroll/x/application/types"
-	servicetypes "github.com/pokt-network/poktroll/x/service/types"
-	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
-	"github.com/pokt-network/ring-go"
-	"github.com/stretchr/testify/require"
+    "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+    cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+    apptypes "github.com/pokt-network/poktroll/x/application/types"
+    servicetypes "github.com/pokt-network/poktroll/x/service/types"
+    sessiontypes "github.com/pokt-network/poktroll/x/session/types"
+    "github.com/pokt-network/ring-go"
+    "github.com/stretchr/testify/require"
 )
 
 // mockPublicKeyFetcher is a test implementation of PublicKeyFetcher
@@ -252,4 +252,61 @@ func BenchmarkSignMemoryAllocation(b *testing.B) {
 			b.Fatalf("Sign failed: %v", err)
 		}
 	}
+}
+
+// sink variables to prevent compiler from optimizing away results
+var (
+    sinkSigBz []byte
+)
+
+// BenchmarkSignCore isolates the core ring signature path to better reflect
+// crypto backend differences (portable vs ethereum).
+func BenchmarkSignCore(b *testing.B) {
+    ctx := context.Background()
+    signer, relayRequest, appRing := setupBenchmarkData(b)
+
+    // Precompute session ring, signable hash, and decode scalar once
+    sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+    require.NoError(b, err)
+
+    signableBz, err := relayRequest.GetSignableBytesHash()
+    require.NoError(b, err)
+
+    keyBz, err := hex.DecodeString(signer.PrivateKeyHex)
+    require.NoError(b, err)
+
+    scalar, err := ring.Secp256k1().DecodeToScalar(keyBz)
+    require.NoError(b, err)
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        sig, err := sessionRing.Sign(signableBz, scalar)
+        if err != nil {
+            b.Fatalf("Sign failed: %v", err)
+        }
+        bz, err := sig.Serialize()
+        if err != nil {
+            b.Fatalf("Serialize failed: %v", err)
+        }
+        sinkSigBz = bz
+    }
+}
+
+// BenchmarkSignReuseRing reuses the computed ring across iterations to reduce
+// benchmark overhead unrelated to crypto and better expose backend differences.
+func BenchmarkSignReuseRing(b *testing.B) {
+    ctx := context.Background()
+    signer, relayRequest, appRing := setupBenchmarkData(b)
+
+    sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+    require.NoError(b, err)
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        _, err := signer.Sign(ctx, relayRequest, appRing)
+        if err != nil {
+            b.Fatalf("Sign failed: %v", err)
+        }
+        _ = sessionRing // ensure not optimized out
+    }
 }
