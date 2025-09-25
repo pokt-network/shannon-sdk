@@ -79,17 +79,17 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 
 ## Crypto Backends
 
-⚠️ **The crypto backend is a BUILD-TIME, not a RUN-TIME configuration** ⚠️
+⚠️ The crypto backend is a BUILD-TIME configuration (not runtime).
 
-Shannon SDK supports multiple `secp256k1` crypto backends for optimal performance vs portability tradeoffs.
-
-This project supports two mutually exclusive crypto backend variants, controlled by build tags.
+Shannon SDK delegates `secp256k1` implementation choice to `github.com/pokt-network/ring-go`,
+which supports two mutually-exclusive variants controlled by build tags. You select the backend
+by building/tests with or without the `ethereum_secp256k1` tag (and CGO).
 
 ### Comparison
 
 | Backend                | Build Tags / Env                             | Dependencies                      | Performance                                   | Portability                |
 | ---------------------- | -------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------- |
-| **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                              | Excellent (Go stdlib secp256k1)               | Runs anywhere              |
+| **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                              | Excellent (Decred secp256k1 via ring-go)      | Runs anywhere              |
 | **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `musl-dev`, `libsecp256k1` | ~50% faster signing, ~80% faster verification | Requires CGO + system libs |
 
 ### Docker Build Commands
@@ -136,17 +136,17 @@ make build_fast
 
 ### Benchmarking Crypto Backends
 
-Run all benchmarks (tests both backends):
+Run all SDK benchmarks in this repository (default portable + Ethereum tag):
 
 ```bash
 make benchmark_all
 ```
 
-This will test:
-1. **Decred backend** (pure Go, no build tags needed)
-2. **Ethereum backend** (CGO + libsecp256k1, requires `-tags=ethereum_secp256k1`)
+This runs each benchmark suite twice:
+1. Default portable backend (pure Go)
+2. Ethereum backend (CGO + libsecp256k1, via `-tags=ethereum_secp256k1`)
 
-Compare secp256k1 crypto backend performance:
+Compare SDK-level ring signature performance directly in ring-go:
 
 ```bash
 make benchmark_report
@@ -286,8 +286,12 @@ func main() {
   }
 
   // 9. Sign the relay request
-  signer := sdk.Signer{PrivateKeyHex: "YOUR_PRIVATE_KEY"}
-  signedRelayReq, err := signer.Sign(context.Background(), relayReq, ring)
+  signer, err := sdk.NewSignerFromHex("YOUR_PRIVATE_KEY")
+  if err != nil {
+    fmt.Printf("Error creating signer: %v\n", err)
+    return
+  }
+  signedRelayReq, err := signer.Sign(context.Background(), relayReq, &ring)
   if err != nil {
     fmt.Printf("Error signing relay request: %v\n", err)
     return

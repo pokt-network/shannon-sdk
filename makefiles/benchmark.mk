@@ -13,32 +13,8 @@ benchmark_all: ## Run all benchmarks (tests both Decred and Ethereum backends)
 	go test -tags=ethereum_secp256k1 -v -bench=. -benchmem -run=^$$ ./...
 
 .PHONY: benchmark_report
-benchmark_report: ## Compare secp256k1 implementations with formatted report
-	@echo "🔬 Benchmarking secp256k1 implementations..."
-	@echo "=================================================================="
-	@echo ""
-	@echo "\033[1m📊 LOW-LEVEL CRYPTO PERFORMANCE (Direct ECDSA Operations)\033[0m"
-	@echo "--------------------------------------------------------"
-	@timeout 60s \
-		go test ./crypto \
-			-bench="BenchmarkKeyGeneration|BenchmarkSigning|BenchmarkVerification" \
-			-benchmem \
-			-run=^$$ \
-			-benchtime=3s \
-			2>/dev/null | \
-		python3 format_benchmark.py \
-		|| ( \
-			echo "⚠️  Benchmark timed out or failed. Trying without Ethernet library..." && \
-			CGO_ENABLED=0 go test ./crypto \
-				-bench="BenchmarkKeyGenerationNoCgo|BenchmarkSigningNoCgo|BenchmarkVerificationNoCgo" \
-				-benchmem \
-				-run=^$$ \
-				-benchtime=3s \
-				2>/dev/null | \
-			python3 format_benchmark.py \
-		)
-	@echo ""
-	@echo "\033[1m📊 SDK-LEVEL PERFORMANCE (Ring Signatures + Full SDK Stack)\033[0m"
+benchmark_report: ## Report SDK-level ring-go performance (Decred vs Ethereum backends)
+	@echo "\n📊 SDK-LEVEL PERFORMANCE (Ring Signatures via ring-go)"
 	@echo "-----------------------------------------------------------"
 	@echo "\033[1mBackend         Time/op      Memory/op    Allocs/op    Iterations     \033[0m"
 	@echo "-------         --------     ---------    ---------    ----------     "

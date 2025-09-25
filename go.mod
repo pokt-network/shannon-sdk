@@ -10,24 +10,15 @@ go 1.24.3
 // - BUT, the shannon-sdk needs access to these types
 // A non over-engineered over-abstracted solution needs to be found here.
 //
-// DEV_NOTE: Uncomment the line below to use a local version of poktroll.
-// This is useful if, for example, there has been a change to onchain protobufs.
+// DEV_NOTE: Uncomment the line below to use a local version of various repos.
 // replace github.com/pokt-network/poktroll => ../poktroll
-//
-// DEV_NOTE: Uncomment the line below to use a local version of ring-go.
-// This is useful if, for example, there has been a change to ring-go.
-replace github.com/pokt-network/ring-go => ../ring-go
-
-// DEV_NOTE: Use local go-dleq to support Ethereum backend in ring-go
-replace github.com/athanorlabs/go-dleq => ../go-dleq
+// replace github.com/pokt-network/ring-go => ../ring-go
+// replace github.com/pokt-network/go-dleq => ../go-dleq
 
 require (
-	github.com/btcsuite/btcd/btcec/v2 v2.3.5
 	github.com/cometbft/cometbft v0.38.17
 	github.com/cosmos/cosmos-sdk v0.53.0
 	github.com/cosmos/gogoproto v1.7.0
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0
-	github.com/ethereum/go-ethereum v1.16.3
 	github.com/pokt-network/poktroll v0.1.26-0.20250704150000-317746c0d64f
 	github.com/pokt-network/ring-go v0.1.0
 	github.com/stretchr/testify v1.10.0
@@ -72,6 +63,7 @@ require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.2.0 // indirect
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -99,6 +91,7 @@ require (
 	github.com/cosmos/ledger-cosmos-go v0.14.0 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
@@ -180,7 +173,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/pokt-network/go-dleq v0.0.0-20250925202155-488f42ad642a // indirect
 	github.com/pokt-network/smt v0.13.0 // indirect
 	github.com/pokt-network/smt/kvstore/pebble v0.0.0-20240822175047-21ea8639c188 // indirect
 	github.com/prometheus/client_golang v1.22.0 // indirect

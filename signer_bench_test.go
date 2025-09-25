@@ -44,7 +44,7 @@ func (m *mockPublicKeyFetcher) GetPubKeyFromAddress(ctx context.Context, address
 }
 
 // setupBenchmarkData creates test data for benchmarks
-func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, *applicationRing) {
+func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, *ApplicationRing) {
 	// Generate test private keys
 	appPrivKey := secp256k1.GenPrivKey()
 	supplierPrivKey1 := secp256k1.GenPrivKey()
@@ -72,10 +72,10 @@ func setupBenchmarkData(b *testing.B) (*Signer, *servicetypes.RelayRequest, *app
 		Address: "pokt1app1",
 	}
 
-	appRing := &applicationRing{
-		Application:      app,
-		PublicKeyFetcher: pubKeyFetcher,
-	}
+    appRing := &ApplicationRing{
+        Application:      app,
+        PublicKeyFetcher: pubKeyFetcher,
+    }
 
 	// Create a relay request
 	relayRequest := &servicetypes.RelayRequest{
@@ -101,7 +101,7 @@ func BenchmarkSign(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := signer.Sign(ctx, relayRequest, appRing)
+        _, err := signer.Sign(ctx, relayRequest, appRing)
 		if err != nil {
 			b.Fatalf("Sign failed: %v", err)
 		}
@@ -115,7 +115,7 @@ func BenchmarkSignParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		signer, relayRequest, appRing := setupBenchmarkData(b)
 		for pb.Next() {
-			_, err := signer.Sign(ctx, relayRequest, appRing)
+            _, err := signer.Sign(ctx, relayRequest, appRing)
 			if err != nil {
 				b.Fatalf("Sign failed: %v", err)
 			}
@@ -156,15 +156,11 @@ func BenchmarkSignWithCachedPrivateKey(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		// Get the session ring
-		sessionRingInterface, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
-		if err != nil {
-			b.Fatalf("GetRing failed: %v", err)
-		}
-		sessionRing, ok := sessionRingInterface.(*ring.Ring)
-		if !ok {
-			b.Fatalf("unexpected ring type: %T", sessionRingInterface)
-		}
+        // Get the session ring
+        sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+        if err != nil {
+            b.Fatalf("GetRing failed: %v", err)
+        }
 
 		// Get signable bytes
 		signableBz, err := relayRequest.GetSignableBytesHash()
@@ -202,7 +198,7 @@ func BenchmarkSignLargePayload(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := signer.Sign(ctx, relayRequest, appRing)
+        _, err := signer.Sign(ctx, relayRequest, appRing)
 		if err != nil {
 			b.Fatalf("Sign failed: %v", err)
 		}
@@ -228,8 +224,7 @@ func BenchmarkSerializeSignature(b *testing.B) {
 	signer, relayRequest, appRing := setupBenchmarkData(b)
 
 	// Prepare everything needed for signing
-	sessionRingInterface, _ := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
-	sessionRing := sessionRingInterface.(*ring.Ring)
+    sessionRing, _ := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
 	signableBz, _ := relayRequest.GetSignableBytesHash()
 	signerPrivKeyBz, _ := hex.DecodeString(signer.PrivateKeyHex)
 	signerPrivKey, _ := ring.Secp256k1().DecodeToScalar(signerPrivKeyBz)

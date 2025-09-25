@@ -52,14 +52,14 @@ func ExampleRelay() {
 	// 4.d. Create an application ring
 	var app apptypes.Application
 	// Load/Set app to the target application
-	ring := applicationRing{
-		Application:      app,
-		PublicKeyFetcher: &accountClient,
-	}
+    ring := ApplicationRing{
+        Application:      app,
+        PublicKeyFetcher: &accountClient,
+    }
 
 	ctx := context.Background()
 	// 4.e. Sign the Relay Request
-	req, err = signer.Sign(ctx, req, ring)
+    req, err = signer.Sign(ctx, req, &ring)
 	if err != nil {
 		fmt.Printf("error signing relay: %v", err)
 		return
