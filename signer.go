@@ -23,7 +23,6 @@ type Signer struct {
 }
 
 // NewSignerFromHex creates a new Signer instance from a hex-encoded private key.
-// EVERGREEN: The crypto backend is automatically selected based on build tags.
 //
 // Example usage:
 //

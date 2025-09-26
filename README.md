@@ -9,9 +9,6 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
 - [Key Features](#key-features)
 - [Crypto Backends](#crypto-backends)
   - [Comparison](#comparison)
-  - [Docker Build Commands](#docker-build-commands)
-    - [Portable (Pure Go)](#portable-pure-go)
-    - [Ethereum secp256k1 (CGO)](#ethereum-secp256k1-cgo)
   - [Benchmarking Crypto Backends](#benchmarking-crypto-backends)
 - [Complete working integration example](#complete-working-integration-example)
 - [Core Components](#core-components)
@@ -79,64 +76,35 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 
 ## Crypto Backends
 
-⚠️ The crypto backend is a BUILD-TIME configuration (not runtime).
+The crypto backend is a BUILD-TIME configuration.
 
-Shannon SDK delegates `secp256k1` implementation choice to `github.com/pokt-network/ring-go`,
-which supports two mutually-exclusive variants controlled by build tags. You select the backend
-by building/tests with or without the `ethereum_secp256k1` tag (and CGO).
+Shannon SDK uses ring signatures implemented in `github.com/pokt-network/ring-go`, which in turn
+uses `github.com/athanorlabs/go-dleq` and a `secp256k1` library. Those repos select fast vs portable
+implementations via build tags. This SDK follows their selection — there’s nothing to toggle at runtime.
+
+- ring-go: https://github.com/pokt-network/ring-go
+- go-dleq: https://github.com/athanorlabs/go-dleq
 
 ### Comparison
 
 | Backend                | Build Tags / Env                             | Dependencies                      | Performance                                   | Portability                |
 | ---------------------- | -------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------- |
 | **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                              | Excellent (Decred secp256k1 via ring-go)      | Runs anywhere              |
-| **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `musl-dev`, `libsecp256k1` | ~50% faster signing, ~80% faster verification | Requires CGO + system libs |
+| **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `libsecp256k1` headers     | Faster signing/verification                   | Requires CGO + system libs |
 
-### Docker Build Commands
-
-#### Portable (Pure Go)
-
-Build:
+To use the faster backend locally (copy/paste):
 
 ```bash
-docker build -t shannon-sdk:portable --target portable .
-```
+# Build
+CGO_ENABLED=1 go build -tags=ethereum_secp256k1 ./...
 
-And run:
-
-```bash
-docker run --rm shannon-sdk:portable
-```
-
-You can also use the Makefile helpers:
-
-```bash
-make build_portable
-```
-
-#### Ethereum secp256k1 (CGO)
-
-Build:
-
-```bash
-docker build -t shannon-sdk:ethereum --target ethereum .
-```
-
-And run:
-
-```bash
-docker run --rm shannon-sdk:ethereum
-```
-
-You can also use the Makefile helpers:
-
-```bash
-make build_fast
+# Run tests/benchmarks
+CGO_ENABLED=1 go test -tags=ethereum_secp256k1 -bench=. -benchmem ./...
 ```
 
 ### Benchmarking Crypto Backends
 
-Run all SDK benchmarks in this repository (default portable + Ethereum tag):
+Run all SDK benchmarks in this repository (portable + ethereum):
 
 ```bash
 make benchmark_all
@@ -152,7 +120,7 @@ Compare SDK- and ring-go-level ring signature performance:
 make benchmark_report
 ```
 
-This uses a helper tool to run SDK signer benchmarks under both backends (default portable and `-tags=ethereum_secp256k1`).
+This uses a helper to run SDK signer benchmarks under both backends (default portable and `-tags=ethereum_secp256k1`).
 If CGO or libsecp256k1 are unavailable, only the portable backend is shown.
 
 Run directly as:

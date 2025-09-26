@@ -1,20 +1,3 @@
-// Package sdk benchmarks for the Signer implementation.
-//
-// Benchmark Results Summary (Apple M1 Max):
-// - BenchmarkSign: ~1.7ms per operation, 9KB memory, 151 allocations
-// - BenchmarkSignParallel: ~231μs per operation with parallel execution
-// - BenchmarkPrivateKeyDecoding: ~41μs overhead that could be eliminated by caching
-// - BenchmarkSignWithCachedPrivateKey: ~1.65ms (saves ~50μs and 14 allocations)
-// - BenchmarkSignLargePayload: ~1.7ms (10KB payload has minimal impact)
-// - BenchmarkGetSignableBytesHash: ~158ns (very fast)
-// - BenchmarkSerializeSignature: ~41μs per serialization
-//
-// Key Findings:
-// - Private key decoding accounts for ~2.5% of signing time
-// - Most time is spent in ring signature operations (~97%)
-// - Caching the decoded private key saves 14 allocations per sign operation
-// - Payload size has negligible impact on performance
-// - Parallel signing scales well across cores
 package sdk
 
 import (
