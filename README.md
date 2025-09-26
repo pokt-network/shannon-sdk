@@ -79,18 +79,18 @@ The SDK provides an intuitive interface to manage `Sessions`, `Applications`, an
 The crypto backend is a BUILD-TIME configuration.
 
 Shannon SDK uses ring signatures implemented in `github.com/pokt-network/ring-go`, which in turn
-uses `github.com/athanorlabs/go-dleq` and a `secp256k1` library. Those repos select fast vs portable
+uses `github.com/pokt-network/go-dleq` and a `secp256k1` library. Those repos select fast vs portable
 implementations via build tags. This SDK follows their selection — there’s nothing to toggle at runtime.
 
 - ring-go: https://github.com/pokt-network/ring-go
-- go-dleq: https://github.com/athanorlabs/go-dleq
+- go-dleq: https://github.com/pokt-network/go-dleq
 
 ### Comparison
 
-| Backend                | Build Tags / Env                             | Dependencies                      | Performance                                   | Portability                |
-| ---------------------- | -------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------- |
-| **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                              | Excellent (Decred secp256k1 via ring-go)      | Runs anywhere              |
-| **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `libsecp256k1` headers     | Faster signing/verification                   | Requires CGO + system libs |
+| Backend                | Build Tags / Env                             | Dependencies                  | Performance                              | Portability                |
+| ---------------------- | -------------------------------------------- | ----------------------------- | ---------------------------------------- | -------------------------- |
+| **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                          | Excellent (Decred secp256k1 via ring-go) | Runs anywhere              |
+| **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `libsecp256k1` headers | Faster signing/verification              | Requires CGO + system libs |
 
 To use the faster backend locally (copy/paste):
 
@@ -111,6 +111,7 @@ make benchmark_all
 ```
 
 This runs each benchmark suite twice:
+
 1. Default portable backend (pure Go)
 2. Ethereum backend (CGO + libsecp256k1, via `-tags=ethereum_secp256k1`)
 

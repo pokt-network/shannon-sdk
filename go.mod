@@ -20,7 +20,7 @@ require (
 	github.com/cometbft/cometbft v0.38.17
 	github.com/cosmos/cosmos-sdk v0.53.0
 	github.com/cosmos/gogoproto v1.7.0
-	github.com/pokt-network/poktroll v0.1.26-0.20250704150000-317746c0d64f
+	github.com/pokt-network/poktroll v0.1.30-0.20250925154110-993412bbd6e7
 	github.com/pokt-network/ring-go v0.1.1-0.20250925213458-782cc69bc1ec
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.0
@@ -58,7 +58,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.26.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.48.1 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.48.1 // indirect
-	github.com/athanorlabs/go-dleq v0.1.0 // indirect
 	github.com/aws/aws-sdk-go v1.44.224 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
