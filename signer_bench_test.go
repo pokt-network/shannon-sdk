@@ -293,3 +293,128 @@ func BenchmarkSignReuseRing(b *testing.B) {
         _ = sessionRing // ensure not optimized out
     }
 }
+
+// BenchmarkVerifyECDSASignature measures verification of a standard ECDSA signature
+// used for supplier/operator signing on relay responses (Cosmos secp256k1).
+func BenchmarkVerifyECDSASignature(b *testing.B) {
+    // Generate a Cosmos secp256k1 keypair
+    priv := secp256k1.GenPrivKey()
+    pub := priv.PubKey()
+
+    // Use a fixed 32-byte message
+    var msg [32]byte
+    msg[0] = 1
+
+    // Pre-sign once outside the loop
+    sig, err := priv.Sign(msg[:])
+    require.NoError(b, err)
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        if ok := pub.VerifySignature(msg[:], sig); !ok {
+            b.Fatalf("VerifySignature failed")
+        }
+    }
+}
+
+// BenchmarkVerifyRingSignature measures verification of a ring signature using ring-go.
+func BenchmarkVerifyRingSignature(b *testing.B) {
+    ctx := context.Background()
+    signer, relayRequest, appRing := setupBenchmarkData(b)
+
+    // Prepare ring, signable hash and scalar
+    sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+    require.NoError(b, err)
+
+    signableBz, err := relayRequest.GetSignableBytesHash()
+    require.NoError(b, err)
+
+    keyBz, err := hex.DecodeString(signer.PrivateKeyHex)
+    require.NoError(b, err)
+    scalar, err := ring.Secp256k1().DecodeToScalar(keyBz)
+    require.NoError(b, err)
+
+    // Create a valid ring signature once
+    rsig, err := sessionRing.Sign(signableBz, scalar)
+    require.NoError(b, err)
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        if ok := rsig.Verify(signableBz); !ok {
+            b.Fatalf("ring signature verify failed")
+        }
+    }
+}
+
+// BenchmarkDeserializeAndVerifyRingSignature includes deserialize + verify cost.
+func BenchmarkDeserializeAndVerifyRingSignature(b *testing.B) {
+    ctx := context.Background()
+    signer, relayRequest, appRing := setupBenchmarkData(b)
+
+    // Prepare ring, signable hash and scalar
+    sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+    require.NoError(b, err)
+
+    signableBz, err := relayRequest.GetSignableBytesHash()
+    require.NoError(b, err)
+
+    keyBz, err := hex.DecodeString(signer.PrivateKeyHex)
+    require.NoError(b, err)
+    scalar, err := ring.Secp256k1().DecodeToScalar(keyBz)
+    require.NoError(b, err)
+
+    // Create a valid ring signature and serialize once
+    rsig, err := sessionRing.Sign(signableBz, scalar)
+    require.NoError(b, err)
+    sigBz, err := rsig.Serialize()
+    require.NoError(b, err)
+
+    curve := ring.Secp256k1()
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        var parsed ring.RingSig
+        if err := parsed.Deserialize(curve, sigBz); err != nil {
+            b.Fatalf("deserialize failed: %v", err)
+        }
+        if ok := parsed.Verify(signableBz); !ok {
+            b.Fatalf("ring signature verify failed after deserialize")
+        }
+    }
+}
+
+// --- Parameterized ring verification benchmarks (synthetic rings) ---
+
+// benchVerifyRingSignatureN verifies a ring signature for a synthetic ring of given size.
+func benchVerifyRingSignatureN(b *testing.B, size int) {
+    curve := ring.Secp256k1()
+    // signer key
+    signerPrivBz := secp256k1.GenPrivKey().Bytes()
+    signerScalar, err := curve.DecodeToScalar(signerPrivBz)
+    if err != nil {
+        b.Fatalf("decode scalar: %v", err)
+    }
+    idx := size / 2
+    keyring, err := ring.NewKeyRing(curve, size, signerScalar, idx)
+    if err != nil {
+        b.Fatalf("NewKeyRing: %v", err)
+    }
+    // fixed message
+    var msg [32]byte
+    msg[0] = 42
+    sig, err := keyring.Sign(msg, signerScalar)
+    if err != nil {
+        b.Fatalf("Sign: %v", err)
+    }
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        if ok := sig.Verify(msg); !ok {
+            b.Fatalf("Verify failed")
+        }
+    }
+}
+
+func BenchmarkVerifyRingSignature5(b *testing.B)  { benchVerifyRingSignatureN(b, 5) }
+func BenchmarkVerifyRingSignature10(b *testing.B) { benchVerifyRingSignatureN(b, 10) }
+func BenchmarkVerifyRingSignature20(b *testing.B) { benchVerifyRingSignatureN(b, 20) }
+func BenchmarkVerifyRingSignature40(b *testing.B) { benchVerifyRingSignatureN(b, 40) }
