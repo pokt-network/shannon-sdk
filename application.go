@@ -13,9 +13,20 @@ import (
 	"github.com/pokt-network/ring-go"
 )
 
+// ApplicationRing groups the application and helper required to construct a *ring.Ring.
 type ApplicationRing struct {
 	types.Application
 	PublicKeyFetcher
+}
+
+func NewApplicationRing(
+	app types.Application,
+	publicKeyFetcher PublicKeyFetcher,
+) *ApplicationRing {
+	return &ApplicationRing{
+		Application:      app,
+		PublicKeyFetcher: publicKeyFetcher,
+	}
 }
 
 // ApplicationClient is the interface to interact with the on-chain application-module.

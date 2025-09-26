@@ -3,19 +3,39 @@
 ### Makefile Helpers ###
 ########################
 
+# Include modular makefiles
+include makefiles/benchmark.mk
+include makefiles/build.mk
+
 .PHONY: prompt_user
 # Internal helper target - prompt the user before continuing
 prompt_user:
 	@echo "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
 
-.PHONY: list
-list: ## List all make targets
-	@${MAKE} -pRrn : -f $(MAKEFILE_LIST) 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | egrep -v -e '^[^[:alnum:]]' -e '^$@$$' | sort
-
 .PHONY: help
 .DEFAULT_GOAL := help
 help: ## Prints all the targets in all the Makefiles
-	@grep -h -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-60s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m📋 Shannon SDK Makefile Targets\033[0m"
+	@echo ""
+	@echo "\033[1;34m=== 🔍 Information & Discovery ===\033[0m"
+	@grep -h -E '^(list|help):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 🧪 Testing ===\033[0m"
+	@grep -h -E '^test_.*:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== ⚡ Benchmarking ===\033[0m"
+	@grep -h -E '^benchmark_.*:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 🔨 Building ===\033[0m"
+	@grep -h -E '^(build_.*|clean_builds):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 🧹 Code Quality ===\033[0m"
+	@grep -h -E '^go_lint:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "\033[1;34m=== 📝 TODO Management ===\033[0m"
+	@grep -h -E '^todo_.*:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-58s\033[0m %s\n", $$1, $$2}'
+	@echo ""
 
 ################
 ### Protobuf ###
@@ -34,6 +54,8 @@ proto_regen:
 .PHONY: test_all
 test_all: ## Run all go tests showing detailed output only on failures
 	go test -v -count=1 -race -tags test ./...
+
+
 
 ###############
 ### Linting ###
