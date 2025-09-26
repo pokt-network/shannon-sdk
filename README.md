@@ -4,23 +4,21 @@ ShannonSDK is a Go-based toolkit for interacting with the POKT Network, designed
 
 ## Table of Contents <!-- omit in toc -->
 
-- [TechDebt: Updating the ShannonSDK](#techdebt-updating-the-shannonsdk)
-- [Overview](#overview)
-- [Key Features](#key-features)
+- [TODO_TECHDEBT: Updating the ShannonSDK](#todo_techdebt-updating-the-shannonsdk)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [Complete working integration example](#complete-working-integration-example)
+  - [Relay Request Workflow](#relay-request-workflow)
+  - [Example Code](#example-code)
+- [Shannon SDK Usage](#shannon-sdk-usage)
+  - [Shannon SDK Core Components](#shannon-sdk-core-components)
 - [Crypto Backends](#crypto-backends)
   - [Comparison](#comparison)
   - [Benchmarking Crypto Backends](#benchmarking-crypto-backends)
-- [Complete working integration example](#complete-working-integration-example)
-- [Core Components](#core-components)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-  - [Relay Request Workflow](#relay-request-workflow)
-  - [Example Code](#example-code)
-- [API Reference](#api-reference)
 
-## TechDebt: Updating the ShannonSDK
+## TODO_TECHDEBT: Updating the ShannonSDK
 
-As of 07/2025, the two primary repositories dependant on ShannonSDK are:
+As of 09/2025, the two primary repositories dependant on ShannonSDK are:
 
 - [Grove's Path](https://github.com/buildwithgrove/path)
 - [Pocket's Poktroll](https://github.com/pokt-network/poktroll)
@@ -54,101 +52,6 @@ git push
 # Merge the PR after the CI is green
 ```
 
-## Overview
-
-ShannonSDK streamlines:
-
-- Constructing POKT-compatible `RelayRequest`s
-- Verifying `RelayResponse`s from `RelayMiner`s
-- Building `Suppliers` co-processors
-- Abstracting protocol-specific details
-
-The SDK provides an intuitive interface to manage `Sessions`, `Applications`, and `RelayRequests`.
-
-## Key Features
-
-- Secure request signing using ring signatures
-- **Pluggable crypto backends** for optimal performance vs portability
-- Endpoint selection based on customizable filters
-- Robust error handling and validation
-- Protocol-specific serialization for HTTP requests/responses
-- Go-idiomatic API design
-
-## Crypto Backends
-
-The crypto backend is a BUILD-TIME configuration.
-
-Shannon SDK uses ring signatures implemented in `github.com/pokt-network/ring-go`, which in turn
-uses `github.com/pokt-network/go-dleq` and a `secp256k1` library. Those repos select fast vs portable
-implementations via build tags. This SDK follows their selection — there’s nothing to toggle at runtime.
-
-- ring-go: https://github.com/pokt-network/ring-go
-- go-dleq: https://github.com/pokt-network/go-dleq
-
-### Comparison
-
-| Backend                | Build Tags / Env                             | Dependencies                  | Performance                              | Portability                |
-| ---------------------- | -------------------------------------------- | ----------------------------- | ---------------------------------------- | -------------------------- |
-| **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                          | Excellent (Decred secp256k1 via ring-go) | Runs anywhere              |
-| **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `libsecp256k1` headers | Faster signing/verification              | Requires CGO + system libs |
-
-To use the faster backend locally (copy/paste):
-
-```bash
-# Build
-CGO_ENABLED=1 go build -tags=ethereum_secp256k1 ./...
-
-# Run tests/benchmarks
-CGO_ENABLED=1 go test -tags=ethereum_secp256k1 -bench=. -benchmem ./...
-```
-
-### Benchmarking Crypto Backends
-
-Run all SDK benchmarks in this repository (portable + ethereum):
-
-```bash
-make benchmark_all
-```
-
-This runs each benchmark suite twice:
-
-1. Default portable backend (pure Go)
-2. Ethereum backend (CGO + libsecp256k1, via `-tags=ethereum_secp256k1`)
-
-Compare SDK- and ring-go-level ring signature performance:
-
-```bash
-make benchmark_report
-```
-
-This uses a helper to run SDK signer benchmarks under both backends (default portable and `-tags=ethereum_secp256k1`).
-If CGO or libsecp256k1 are unavailable, only the portable backend is shown.
-
-Run directly as:
-
-```bash
-go run cmd/benchmark/main.go -report -duration=1s
-```
-
-## Complete working integration example
-
-A complete and working example of how to use the ShannonSDK can be found in `PATH`'s
-implementation of the `signer`. See [signer.go](https://github.com/buildwithgrove/path/blob/53d0f84cc0321c25d1e28b2ffb9b70714918870b/protocol/shannon/signer.go#L9).
-
-## Core Components
-
-| Component          | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| Account Client     | Query and manage account information           |
-| Application Client | Handle application operations and queries      |
-| ApplicationRing    | Manage gateway delegations and ring signatures |
-| Block Client       | Retrieve blockchain information                |
-| Session Client     | Manage session operations                      |
-| Shared Client      | Interops with the onchain shared module        |
-| Session Filter     | Select supplier endpoints based on criteria    |
-| Signer             | Sign relay requests securely                   |
-| Relayer            | Build and validate relay requests/responses    |
-
 ## Installation
 
 ```bash
@@ -156,6 +59,11 @@ go get github.com/pokt-network/shannon-sdk
 ```
 
 ## Quick Start
+
+### Complete working integration example
+
+A complete and working example of how to use the ShannonSDK can be found in `PATH`'s
+implementation of the `signer`. See [signer.go](https://github.com/buildwithgrove/path/blob/53d0f84cc0321c25d1e28b2ffb9b70714918870b/protocol/shannon/signer.go#L9).
 
 ### Relay Request Workflow
 
@@ -327,16 +235,117 @@ func main() {
 
 </details>
 
-## API Reference
+## Shannon SDK Usage
 
-| Component             | Description                                       | Key Method                                                                         |
-| --------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **AccountClient**     | Fetches account information including public keys | `GetPubKeyFromAddress()`                                                           |
-| **ApplicationClient** | Manages application operations and queries        | `GetApplication()`, `GetAllApplications()`, `GetApplicationsDelegatingToGateway()` |
-| **ApplicationRing**   | Handles gateway delegations and ring signatures   | `GetRing()`                                                                        |
-| **BlockClient**       | Retrieves blockchain information                  | `LatestBlockHeight()`                                                              |
-| **SessionClient**     | Manages session operations                        | `GetSession()`                                                                     |
-| **SharedClient**      | Interops with the onchain shared module           | `GetParams()`                                                                      |
-| **SessionFilter**     | Filters and selects supplier endpoints            | `AllEndpoints()`, `FilteredEndpoints()`                                            |
-| **Signer**            | Signs relay requests with private keys            | `Sign()`                                                                           |
-| **Relayer Functions** | Builds and validates relay requests/responses     | `BuildRelayRequest()`, `ValidateRelayResponse()`                                   |
+ShannonSDK streamlines:
+
+- Constructing POKT-compatible `RelayRequest`s
+- Verifying `RelayResponse`s from `RelayMiner`s
+- Building `Suppliers` co-processors
+- Abstracting protocol-specific details
+
+The SDK provides an intuitive interface to manage `Sessions`, `Applications`, and `RelayRequests`.
+
+### Shannon SDK Core Components
+
+| Component          | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| Account Client     | Query and manage account information           |
+| Application Client | Handle application operations and queries      |
+| ApplicationRing    | Manage gateway delegations and ring signatures |
+| Block Client       | Retrieve blockchain information                |
+| Session Client     | Manage session operations                      |
+| Shared Client      | Interops with the onchain shared module        |
+| Session Filter     | Select supplier endpoints based on criteria    |
+| Signer             | Sign relay requests securely                   |
+| Relayer            | Build and validate relay requests/responses    |
+
+## Crypto Backends
+
+⚠️The crypto backend is a BUILD-TIME configuration ⚠️
+
+Shannon SDK uses ring signatures implemented in [ring-go](https://github.com/pokt-network/ring-go), which in turn
+uses [go-dleq](https://github.com/pokt-network/go-dleq) and a `secp256k1` library. Those repos select fast vs portable
+implementations via build tags. This SDK follows their selection — there’s nothing to toggle at runtime.
+
+### Comparison
+
+| Backend                | Build Tags / Env                             | Dependencies                  | Performance                              | Portability                |
+| ---------------------- | -------------------------------------------- | ----------------------------- | ---------------------------------------- | -------------------------- |
+| **Portable (Pure Go)** | `CGO_ENABLED=0` (default)                    | None                          | Excellent (Decred secp256k1 via ring-go) | Runs anywhere              |
+| **Ethereum secp256k1** | `CGO_ENABLED=1` + `-tags=ethereum_secp256k1` | `gcc`, `libsecp256k1` headers | Faster signing/verification              | Requires CGO + system libs |
+
+To use the faster backend locally (copy/paste):
+
+```bash
+# Build
+CGO_ENABLED=1 go build -tags=ethereum_secp256k1 ./...
+
+# Run tests/benchmarks
+CGO_ENABLED=1 go test -tags=ethereum_secp256k1 -bench=. -benchmem ./...
+```
+
+NOTE: You may need to add other flags to enable CGO, such as `-ldflags "-linkshared"` depending on your system.
+
+### Benchmarking Crypto Backends
+
+To see the benchmarks, run this command:
+
+```bash
+make benchmark_report
+```
+
+<details>
+<summary>Benchmark Output</summary>
+
+```bash
+📊 Shannon SDK Benchmarks (portable vs ethereum)
+🔬 Shannon SDK Benchmark Comparison
+====================================
+
+📊 Testing Portable Backend (Pure Go)
+
+📊 Testing Ethereum Backend (libsecp256k1)
+
+=== SDK Performance Comparison ===
+
+## Benchmark Portable Ethereum Improvement Δ Time Δ %
+
+BenchmarkSign 1.7 ms 766 μs 🚀 2.2x faster - 915 μs -54.4%
+BenchmarkSignWithCachedPrivateKey 1.8 ms 745 μs 🚀 2.4x faster - 1.0 ms -58.2%
+BenchmarkSignLargePayload 1.8 ms 776 μs 🚀 2.3x faster - 980 μs -55.8%
+BenchmarkSerializeSignature 42 μs 399 ns 🚀 104.6x faster - 41 μs -99.0%
+BenchmarkSignCore 1.5 ms 631 μs 🚀 2.4x faster - 890 μs -58.5%
+BenchmarkSignReuseRing 1.7 ms 784 μs 🚀 2.1x faster - 888 μs -53.1%
+BenchmarkVerifyRingSignature 1.0 ms 458 μs 🚀 2.2x faster - 553 μs -54.7%
+BenchmarkDeserializeAndVerifyRingSignature 1.1 ms 473 μs 🚀 2.3x faster - 597 μs -55.8%
+BenchmarkVerifyRingSignature5 2.5 ms 1.1 ms 🚀 2.3x faster - 1.4 ms -55.7%
+BenchmarkVerifyRingSignature10 5.1 ms 2.1 ms 🚀 2.4x faster - 3.0 ms -58.6%
+BenchmarkVerifyRingSignature20 9.9 ms 4.2 ms 🚀 2.4x faster - 5.7 ms -57.8%
+BenchmarkVerifyRingSignature40 20.6 ms 8.2 ms 🚀 2.5x faster - 12.4 ms -60.2%
+
+Summary
+Benchmarks: 12
+Avg speedup: 10.83x
+Median speedup: 2.32x
+Avg Δ%%: -60.1%
+
+=== Memory Usage Comparison ===
+
+## Benchmark Port B/op Port Allocs Eth B/op Eth Allocs Δ B/op Δ Allocs Δ% B Δ% Allocs
+
+BenchmarkSign 9073 150 43108 1030 +34035 +880 +375.1% +586.7%
+BenchmarkSignWithCachedPrivateKey 8425 137 39030 898 +30605 +761 +363.3% +555.5%
+BenchmarkSignLargePayload 19827 150 54090 1058 +34263 +908 +172.8% +605.3%
+BenchmarkSerializeSignature 968 11 968 11 +0 +0 +0.0% +0.0%
+BenchmarkSignCore 5977 95 23070 376 +17093 +281 +286.0% +295.8%
+BenchmarkSignReuseRing 9073 150 43448 1072 +34375 +922 +378.9% +614.7%
+BenchmarkVerifyRingSignature 3392 53 19172 299 +15780 +246 +465.2% +464.2%
+BenchmarkDeserializeAndVerifyRingSignature 4512 77 30335 676 +25823 +599 +572.3% +777.9%
+BenchmarkVerifyRingSignature5 8480 131 47730 744 +39250 +613 +462.9% +467.9%
+BenchmarkVerifyRingSignature10 16961 261 95588 1489 +78627 +1228 +463.6% +470.5%
+BenchmarkVerifyRingSignature20 33920 521 191145 2976 +157225 +2455 +463.5% +471.2%
+BenchmarkVerifyRingSignature40 67904 1041 382960 5959 +315056 +4918 +464.0% +472.4%
+```
+
+</details>

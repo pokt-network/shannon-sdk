@@ -32,9 +32,6 @@ type PoktNodeAccountFetcher interface {
 }
 
 // AccountClient is used to interact with the account module.
-//
-// Example usage:
-//   - Get the public key corresponding to an address.
 type AccountClient struct {
 	PoktNodeAccountFetcher
 }

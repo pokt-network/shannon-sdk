@@ -23,13 +23,6 @@ type Signer struct {
 }
 
 // NewSignerFromHex creates a new Signer instance from a hex-encoded private key.
-//
-// Example usage:
-//
-//	signer, err := sdk.NewSignerFromHex("1234567890abcdef...")
-//	if err != nil {
-//	    log.Fatal(err)
-//	}
 func NewSignerFromHex(privateKeyHex string) (*Signer, error) {
 	keyBytes, err := hex.DecodeString(privateKeyHex)
 	if err != nil {
