@@ -9,10 +9,9 @@ go 1.24.3
 // - Poktroll contains onchain types and SHOULD not live in a different repo
 // - BUT, the shannon-sdk needs access to these types
 // A non over-engineered over-abstracted solution needs to be found here.
-//
-// DEV_NOTE: Uncomment the line below to use a local version of various repos.
-replace github.com/pokt-network/poktroll => ../poktroll
 
+// DEV_NOTE: Uncomment the line below to use a local version of various repos.
+// replace github.com/pokt-network/poktroll => ../poktroll
 // replace github.com/pokt-network/ring-go => ../ring-go
 // replace github.com/pokt-network/go-dleq => ../go-dleq
 
@@ -58,6 +57,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.26.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.48.1 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.48.1 // indirect
+	github.com/athanorlabs/go-dleq v0.1.0 // indirect
 	github.com/aws/aws-sdk-go v1.44.224 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
