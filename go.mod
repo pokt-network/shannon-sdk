@@ -20,7 +20,8 @@ require (
 	github.com/cosmos/cosmos-sdk v0.53.7
 	github.com/cosmos/gogoproto v1.7.2
 	github.com/pokt-network/poktroll v0.1.30-0.20250926212324-1588b0a53acb
-	github.com/pokt-network/ring-go v0.1.1-0.20250925213458-782cc69bc1ec
+	// Use ring-go with SignerContext optimization (perf/sign-precompute branch)
+	github.com/pokt-network/ring-go v0.1.1-0.20251219190013-b576b71e4648
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
