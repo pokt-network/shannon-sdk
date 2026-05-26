@@ -39,17 +39,29 @@ func (ac *SupplierClient) GetAllSuppliers(
 
 	go func() {
 		defer close(doneCh)
-		req := &types.QueryAllSuppliersRequest{
-			Pagination: &query.PageRequest{
-				Limit: query.PaginationMaxLimit,
-			},
+		// cosmos-sdk v0.53.6 removed the unbounded query.PaginationMaxLimit constant.
+		// Page through results in fixed-size chunks until the chain reports no NextKey.
+		// 1000 matches the cosmos-sdk default upper bound for safe pagination.
+		const pageLimit = 1000
+		var nextKey []byte
+		for {
+			req := &types.QueryAllSuppliersRequest{
+				Pagination: &query.PageRequest{
+					Limit: pageLimit,
+					Key:   nextKey,
+				},
+			}
+			res, err := ac.AllSuppliers(ctx, req)
+			if err != nil {
+				fetchErr = err
+				return
+			}
+			fetchedSuppliers = append(fetchedSuppliers, res.Supplier...)
+			if res.Pagination == nil || len(res.Pagination.NextKey) == 0 {
+				return
+			}
+			nextKey = res.Pagination.NextKey
 		}
-		res, err := ac.AllSuppliers(ctx, req)
-		if err != nil {
-			fetchErr = err
-			return
-		}
-		fetchedSuppliers = res.Supplier
 	}()
 
 	select {
