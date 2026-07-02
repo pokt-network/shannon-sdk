@@ -1,6 +1,6 @@
 module github.com/pokt-network/shannon-sdk
 
-go 1.25.8
+go 1.26.4
 
 // TODO_TECHDEBT: Find a way to remove the shannon-sdk <-> poktroll circular dependency.
 // Why is this hard?
