@@ -15,6 +15,8 @@ the SDK's `perf/signer-context-cache` branch, moving to the new
   are still valid and verify identically. You simply lose the speedup until you
   switch to the off-chain methods.
 - Requires the **Go 1.26** toolchain (propagates from the SDK).
+- ⚠️ The off-chain context cache is **unbounded** — call `ClearSignerContextCache()`
+  on session rollover or it leaks slowly. See step 3.
 
 ## Why it changed
 
@@ -78,7 +80,16 @@ signs, reuse:
 - the same ring pointer — prefer `SignOffChainWithRing` with a ring you cache by
   session, so rebuilding the ring per message does not discard the precompute.
 
-Call `ClearSignerContextCache()` when a session rolls over and old rings are gone.
+> ### ⚠️ You MUST evict the cache on session rollover
+>
+> The off-chain `signerContextCache` is keyed by **ring pointer** and is
+> **unbounded** — it grows one entry per distinct ring (i.e. per session),
+> alongside your own ring cache. It is **not evicted automatically**. If you never
+> clear it, it leaks slowly (memory climbs over days).
+>
+> Call **`ClearSignerContextCache()` on session rollover**, when the old rings are
+> no longer used. This clears the whole cache; rebuild lazily on the next sign.
+> (PATH wires this into its existing per-session rollover eviction.)
 
 ### 4. Validate
 

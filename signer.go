@@ -217,7 +217,12 @@ func (s *Signer) SignOffChainWithRing(
 }
 
 // ClearSignerContextCache clears the cached SignerContexts used by the off-chain
-// signing path. Call it when sessions roll over and old rings are no longer needed.
+// signing path.
+//
+// The cache is keyed by ring pointer and is UNBOUNDED: it grows one entry per
+// distinct ring (i.e. per session) and is never evicted automatically. Callers
+// using SignOffChain/SignOffChainWithRing MUST call this on session rollover,
+// once the old rings are no longer used, or memory leaks slowly over time.
 func (s *Signer) ClearSignerContextCache() {
 	s.signerContextCache = sync.Map{}
 }
