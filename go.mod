@@ -1,6 +1,6 @@
 module github.com/pokt-network/shannon-sdk
 
-go 1.26.4
+go 1.26.5
 
 // TODO_TECHDEBT: Find a way to remove the shannon-sdk <-> poktroll circular dependency.
 // Why is this hard?
@@ -20,7 +20,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.53.7
 	github.com/cosmos/gogoproto v1.7.2
 	github.com/pokt-network/go-dleq v0.0.0-20250925202155-488f42ad642a
-	github.com/pokt-network/poktroll v0.1.35-0.20260812131559-3e1b2ab93e6d
+	github.com/pokt-network/poktroll v0.1.35
 	github.com/pokt-network/ring-go v0.2.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.82.1

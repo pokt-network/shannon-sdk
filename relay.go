@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	cosmossdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/pokt-network/poktroll/app"
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 )
 
@@ -15,6 +14,14 @@ import (
 // Interfaces & Structs
 // =======================
 // (No interfaces or structs defined in this file. If you add any, group them here.)
+
+// accountAddressPrefix is the Bech32 prefix for Pocket Network addresses.
+//
+// Intentionally duplicated from poktroll's accountAddressPrefix rather than
+// imported: importing github.com/pokt-network/poktroll/app pulls the entire chain
+// application (all keepers, modules, simulation, cmd, aws/gcp/otel) into every
+// consumer of this SDK, adding ~100MB to their binaries. A test guards against drift.
+const accountAddressPrefix = "pokt"
 
 var (
 	// Ensures Cosmos SDK init is run only once
@@ -44,14 +51,14 @@ func init() {
 // - Ensures application addresses are in the expected Bech32 format with a "pokt" prefix.
 func initCosmosSDKConfig() {
 	// Set Bech32 prefixes
-	accountPubKeyPrefix := app.AccountAddressPrefix + "pub"
-	validatorAddressPrefix := app.AccountAddressPrefix + "valoper"
-	validatorPubKeyPrefix := app.AccountAddressPrefix + "valoperpub"
-	consNodeAddressPrefix := app.AccountAddressPrefix + "valcons"
-	consNodePubKeyPrefix := app.AccountAddressPrefix + "valconspub"
+	accountPubKeyPrefix := accountAddressPrefix + "pub"
+	validatorAddressPrefix := accountAddressPrefix + "valoper"
+	validatorPubKeyPrefix := accountAddressPrefix + "valoperpub"
+	consNodeAddressPrefix := accountAddressPrefix + "valcons"
+	consNodePubKeyPrefix := accountAddressPrefix + "valconspub"
 
 	config := cosmossdk.GetConfig()
-	config.SetBech32PrefixForAccount(app.AccountAddressPrefix, accountPubKeyPrefix)
+	config.SetBech32PrefixForAccount(accountAddressPrefix, accountPubKeyPrefix)
 	config.SetBech32PrefixForValidator(validatorAddressPrefix, validatorPubKeyPrefix)
 	config.SetBech32PrefixForConsensusNode(consNodeAddressPrefix, consNodePubKeyPrefix)
 	config.Seal()
