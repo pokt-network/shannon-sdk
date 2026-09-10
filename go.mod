@@ -19,7 +19,7 @@ require (
 	github.com/cometbft/cometbft v0.38.21
 	github.com/cosmos/cosmos-sdk v0.53.7
 	github.com/cosmos/gogoproto v1.7.2
-	github.com/pokt-network/go-dleq v0.0.0-20250925202155-488f42ad642a
+	github.com/pokt-network/go-dleq v0.0.0-20260910080229-86b20e4865eb
 	github.com/pokt-network/poktroll v0.1.35
 	github.com/pokt-network/ring-go v0.2.0
 	github.com/stretchr/testify v1.11.1
