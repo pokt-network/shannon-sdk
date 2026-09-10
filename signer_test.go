@@ -12,6 +12,7 @@ import (
 	servicetypes "github.com/pokt-network/poktroll/x/service/types"
 	sessiontypes "github.com/pokt-network/poktroll/x/session/types"
 	ring "github.com/pokt-network/ring-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -169,5 +170,45 @@ func TestSignerContextCacheConcurrentClear(t *testing.T) {
 			signer.ClearSignerContextCache()
 		}
 	}()
+	wg.Wait()
+}
+
+// TestSignerOffChainConcurrentSharedRing proves concurrent off-chain signs on
+// one shared ring are race-free end to end and every signature verifies.
+// Regression for go-dleq's in-place ToAffine in Encode/Equals (fixed in
+// go-dleq 86b20e4): RingSig.Serialize rewrote the shared ring pubkeys under
+// concurrent signers and could tear a point into a bad signature. Run with -race.
+func TestSignerOffChainConcurrentSharedRing(t *testing.T) {
+	ctx := context.Background()
+	signer, relayRequest, appRing := setupSignerTestData(t)
+
+	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+	require.NoError(t, err)
+
+	signableBz, err := relayRequest.GetSignableBytesHash()
+	require.NoError(t, err)
+
+	const workers, iterations = 8, 100
+	var wg sync.WaitGroup
+	for g := 0; g < workers; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req := *relayRequest
+			for i := 0; i < iterations; i++ {
+				signed, err := signer.SignOffChainWithRing(ctx, &req, sessionRing)
+				if !assert.NoError(t, err) {
+					return
+				}
+				var sig ring.RingSig
+				if !assert.NoError(t, sig.Deserialize(ring.Secp256k1(), signed.Meta.Signature)) {
+					return
+				}
+				if !assert.True(t, sig.Verify(signableBz), "concurrent off-chain signature must verify") {
+					return
+				}
+			}
+		}()
+	}
 	wg.Wait()
 }
