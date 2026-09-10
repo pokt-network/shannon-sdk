@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"encoding/hex"
+	"sync"
 	"testing"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -135,4 +136,38 @@ func TestSignerOffChainCacheReuse(t *testing.T) {
 	// Clearing the cache empties it.
 	signer.ClearSignerContextCache()
 	require.Equal(t, 0, cachedContextCount(signer), "cache must be empty after ClearSignerContextCache")
+}
+
+// TestSignerContextCacheConcurrentClear proves the off-chain SignerContext
+// cache is safe under concurrent creation and ClearSignerContextCache.
+// Regressions covered: assigning over a live sync.Map tore it (nil-pointer
+// dereference in readers), and unserialized NewSignerContext calls raced on
+// the ring's shared curve points. Run with -race.
+func TestSignerContextCacheConcurrentClear(t *testing.T) {
+	ctx := context.Background()
+	signer, relayRequest, appRing := setupSignerTestData(t)
+
+	sessionRing, err := appRing.GetRing(ctx, uint64(relayRequest.Meta.SessionHeader.SessionEndBlockHeight))
+	require.NoError(t, err)
+
+	const workers, iterations = 8, 200
+	var wg sync.WaitGroup
+	for g := 0; g < workers; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < iterations; i++ {
+				_, err := signer.getOrCreateSignerContext(sessionRing)
+				require.NoError(t, err)
+			}
+		}()
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			signer.ClearSignerContextCache()
+		}
+	}()
+	wg.Wait()
 }

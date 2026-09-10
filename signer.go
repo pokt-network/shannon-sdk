@@ -40,6 +40,12 @@ type Signer struct {
 	// Key is the ring pointer. The SignerContext holds no secret material, so it
 	// is safe to cache. The deterministic Sign path never touches this cache.
 	signerContextCache sync.Map // map[*ring.Ring]*ring.SignerContext
+	// signerContextCreateMu serializes SignerContext creation. NewSignerContext
+	// normalizes the ring's shared curve points in place, so two goroutines
+	// building a context for the same ring race on the ring's internals.
+	// ponytail: one global lock; creation is once per ring per session, so
+	// contention is negligible. Move to per-ring locks if that ever changes.
+	signerContextCreateMu sync.Mutex
 }
 
 // NewSignerFromHex creates a new Signer instance from a hex-encoded private key.
@@ -127,6 +133,13 @@ func (s *Signer) getOrCreateSignerContext(sessionRing *ring.Ring) (*ring.SignerC
 		return cached.(*ring.SignerContext), nil
 	}
 
+	// Serialize creation: only one goroutine builds a context per ring.
+	s.signerContextCreateMu.Lock()
+	defer s.signerContextCreateMu.Unlock()
+	if cached, ok := s.signerContextCache.Load(sessionRing); ok {
+		return cached.(*ring.SignerContext), nil
+	}
+
 	// Create a new SignerContext with pre-computed values for this ring.
 	signerCtx, err := sessionRing.NewSignerContext(s.signerScalar)
 	if err != nil {
@@ -140,9 +153,8 @@ func (s *Signer) getOrCreateSignerContext(sessionRing *ring.Ring) (*ring.SignerC
 	// the same s.signerScalar.
 	signerCtx.SkipSelfCheck = true
 
-	// Cache it (use LoadOrStore to handle concurrent creation)
-	actual, _ := s.signerContextCache.LoadOrStore(sessionRing, signerCtx)
-	return actual.(*ring.SignerContext), nil
+	s.signerContextCache.Store(sessionRing, signerCtx)
+	return signerCtx, nil
 }
 
 // SignOffChain signs the given relay request using the faster off-chain path
@@ -223,6 +235,7 @@ func (s *Signer) SignOffChainWithRing(
 // distinct ring (i.e. per session) and is never evicted automatically. Callers
 // using SignOffChain/SignOffChainWithRing MUST call this on session rollover,
 // once the old rings are no longer used, or memory leaks slowly over time.
+// Safe to call concurrently with the off-chain signing methods.
 func (s *Signer) ClearSignerContextCache() {
-	s.signerContextCache = sync.Map{}
+	s.signerContextCache.Clear()
 }
