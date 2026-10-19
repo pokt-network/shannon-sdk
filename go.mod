@@ -16,15 +16,15 @@ go 1.27.2
 // replace github.com/pokt-network/go-dleq => ../go-dleq
 
 require (
-	github.com/cometbft/cometbft v0.38.21
-	github.com/cosmos/cosmos-sdk v0.53.7
+	github.com/cometbft/cometbft v0.38.26
+	github.com/cosmos/cosmos-sdk v0.53.8
 	github.com/cosmos/gogoproto v1.7.2
 	github.com/pokt-network/go-dleq v0.0.0-20260910080229-86b20e4865eb
 	github.com/pokt-network/poktroll v0.1.35
 	github.com/pokt-network/ring-go v0.2.0
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/grpc v1.83.1
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/grpc v1.83.2
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
@@ -87,6 +87,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 // indirect
 	github.com/cockroachdb/apd/v2 v2.0.2 // indirect
